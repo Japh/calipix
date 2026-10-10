@@ -294,6 +294,8 @@ pub struct CommandSpec {
     /// The command's name in ImageJ, as used by `run("...")` in macros and
     /// as a search alias.
     pub ijm_name: Option<String>,
+    /// Keyboard shortcut such as `Ctrl+Shift+S`. `Ctrl` means Cmd on macOS.
+    pub shortcut: Option<String>,
 }
 
 impl CommandSpec {
@@ -309,6 +311,7 @@ impl CommandSpec {
             effects: Effects::default(),
             flags: Flags::default(),
             ijm_name: None,
+            shortcut: None,
         }
     }
 
@@ -356,6 +359,11 @@ impl CommandSpec {
         self
     }
 
+    pub fn shortcut(mut self, shortcut: impl Into<String>) -> CommandSpec {
+        self.shortcut = Some(shortcut.into());
+        self
+    }
+
     pub fn param(&self, name: &str) -> Option<&ParamSpec> {
         self.inputs.iter().find(|p| p.name == name)
     }
@@ -374,6 +382,16 @@ impl CommandSpec {
         }
         if self.title.trim().is_empty() {
             return fail("title is empty".into());
+        }
+        if self.title.ends_with("...") || self.title.ends_with('…') {
+            return fail("title ends with an ellipsis; the interface adds one when needed".into());
+        }
+        if let Some(shortcut) = &self.shortcut
+            && !is_shortcut(shortcut)
+        {
+            return fail(format!(
+                "`{shortcut}` is not a shortcut like `Ctrl+Shift+S`"
+            ));
         }
         if let Some(menu) = &self.menu
             && menu.path.iter().any(|p| p.is_empty())
@@ -482,9 +500,60 @@ impl CommandSpec {
                 "recordable": self.flags.recordable,
             },
             "ijm_name": self.ijm_name,
+            "shortcut": self.shortcut,
             "input_schema": self.input_schema(),
         })
     }
+}
+
+/// Zero or more of Ctrl, Shift and Alt, then one key, joined by `+`.
+fn is_shortcut(s: &str) -> bool {
+    // The `+` key itself is written last, as in `Ctrl++`.
+    let (modifiers, key) = match s.strip_suffix('+') {
+        Some(rest) if rest.is_empty() || rest.ends_with('+') => {
+            (rest.strip_suffix('+').unwrap_or(rest), "+")
+        }
+        Some(_) => return false,
+        None => match s.rsplit_once('+') {
+            Some((modifiers, key)) => (modifiers, key),
+            None => ("", s),
+        },
+    };
+    let mut seen = Vec::new();
+    if !modifiers.is_empty() {
+        for m in modifiers.split('+') {
+            if !["Ctrl", "Shift", "Alt"].contains(&m) || seen.contains(&m) {
+                return false;
+            }
+            seen.push(m);
+        }
+    }
+    let named = [
+        "Enter",
+        "Escape",
+        "Space",
+        "Tab",
+        "Delete",
+        "Backspace",
+        "Left",
+        "Right",
+        "Up",
+        "Down",
+        "Home",
+        "End",
+        "PageUp",
+        "PageDown",
+    ];
+    let function_key = key
+        .strip_prefix('F')
+        .and_then(|n| n.parse::<u8>().ok())
+        .is_some_and(|n| (1..=12).contains(&n));
+    let mut chars = key.chars();
+    let single = matches!(
+        (chars.next(), chars.next()),
+        (Some(c), None) if c.is_ascii_uppercase() || c.is_ascii_digit() || c.is_ascii_punctuation()
+    );
+    single || function_key || named.contains(&key)
 }
 
 fn is_identifier(s: &str) -> bool {
@@ -528,6 +597,38 @@ mod tests {
         assert!(CommandSpec::new("blur", "Blur").validate().is_err());
         assert!(CommandSpec::new("Filter.Blur", "Blur").validate().is_err());
         assert!(CommandSpec::new("filter.blur", " ").validate().is_err());
+        assert!(
+            CommandSpec::new("filter.blur", "Blur...")
+                .validate()
+                .is_err()
+        );
+        for good in [
+            "Ctrl+O",
+            "Ctrl+Shift+S",
+            "F5",
+            "+",
+            "Ctrl++",
+            "0",
+            "Alt+Left",
+            "Delete",
+        ] {
+            let spec = CommandSpec::new("filter.blur", "Blur").shortcut(good);
+            assert!(spec.validate().is_ok(), "{good}");
+        }
+        for bad in [
+            "ctrl+o",
+            "Ctrl+",
+            "Ctrl+Ctrl+O",
+            "Cmd+O",
+            "Ctrl+Open",
+            "",
+            "F13",
+            "o",
+            "+Ctrl+O",
+        ] {
+            let spec = CommandSpec::new("filter.blur", "Blur").shortcut(bad);
+            assert!(spec.validate().is_err(), "{bad}");
+        }
         let dup = blur().input(ParamSpec::new("sigma", ParamType::Float));
         assert!(dup.validate().is_err());
         let bad_default = blur().input(ParamSpec::new("n", ParamType::Int).default_value("x"));

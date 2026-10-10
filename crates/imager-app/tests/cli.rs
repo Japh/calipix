@@ -33,7 +33,7 @@ fn lists_and_describes_commands() {
     let help = imager(&["commands", "file.save_as"]).unwrap();
     assert!(help.contains("--input <image file, required>"), "{help}");
     assert!(help.contains("--path <path, required>"), "{help}");
-    assert!(help.contains("Menu: File > Save As..."), "{help}");
+    assert!(help.contains("Menu: File > Save As"), "{help}");
 
     let json: serde_json::Value =
         serde_json::from_str(&imager(&["commands", "--json"]).unwrap()).unwrap();

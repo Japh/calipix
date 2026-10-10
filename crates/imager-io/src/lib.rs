@@ -4,7 +4,12 @@
 //! the file's leading bytes, falling back to its extension; [`save`] picks
 //! it from the extension.
 
+mod bmp;
+mod gif;
+mod jpeg;
+mod nrrd;
 mod png;
+mod tiff;
 
 use std::fs::File;
 use std::io::Read;
@@ -62,7 +67,14 @@ pub trait Format: Send + Sync {
 
 /// The formats built into the application.
 pub fn formats() -> &'static [&'static dyn Format] {
-    &[&png::Png]
+    &[
+        &tiff::Tiff,
+        &png::Png,
+        &jpeg::Jpeg,
+        &gif::Gif,
+        &bmp::Bmp,
+        &nrrd::Nrrd,
+    ]
 }
 
 fn by_extension(path: &Path) -> Option<&'static dyn Format> {

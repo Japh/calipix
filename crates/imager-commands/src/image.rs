@@ -43,7 +43,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                  inverted over each plane's own minimum and maximum, and float images over \
                  their display range (or each plane's minimum and maximum if none is set).",
             )
-            .menu("Image > Adjust", 10.0)
+            .menu("Process", 10.0)
             .ijm_name("Invert")
             .effects(Effects {
                 image: ImageEffect::Modifies,

@@ -91,7 +91,7 @@ impl AppState {
             .executor
             .registry()
             .get(id)
-            .map(|c| c.spec().title.trim_end_matches("...").to_string())
+            .map(|c| c.spec().title.clone())
             .unwrap_or_else(|_| id.to_string());
         self.status = match self.executor.run(&mut self.session, id, args) {
             Ok(_) => Status::Done(title),
@@ -113,14 +113,14 @@ impl AppState {
 
     pub fn undo(&mut self) {
         self.status = match self.executor.undo(&mut self.session) {
-            Ok(title) => Status::Done(format!("Undid {}", title.trim_end_matches("..."))),
+            Ok(title) => Status::Done(format!("Undid {title}")),
             Err(e) => Status::Failed(e.to_string()),
         };
     }
 
     pub fn redo(&mut self) {
         self.status = match self.executor.redo(&mut self.session) {
-            Ok(title) => Status::Done(format!("Redid {}", title.trim_end_matches("..."))),
+            Ok(title) => Status::Done(format!("Redid {title}")),
             Err(e) => Status::Failed(e.to_string()),
         };
     }

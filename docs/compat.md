@@ -24,7 +24,7 @@ the macros in `fixtures/imagej/gen`. `cargo xtask gen` regenerates them and
 
 | Command | ImageJ equivalent | Behaviour | Status |
 |---|---|---|---|
-| `image.invert` | Edit > Invert | 8-bit and RGB: `255 - v`. 16-bit: `max - (v - min)` over each plane's data range ("Full range 16-bit inversions" off, the ImageJ default). Float: the same over the display range. | 8-bit, 16-bit and RGB **verified** against ImageJ 1.54p (`imagej_golden` test); float from source until TIFF reading exists |
+| `image.invert` (Process > Invert) | Edit > Invert | 8-bit and RGB: `255 - v`. 16-bit: `max - (v - min)` over each plane's data range ("Full range 16-bit inversions" off, the ImageJ default). Float: the same over the display range. | 8-bit, 16-bit and RGB **verified** against ImageJ 1.54p (`imagej_golden` test); float from source until TIFF reading exists |
 
 ## Intentional differences
 

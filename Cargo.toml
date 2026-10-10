@@ -17,18 +17,29 @@ imager-io = { path = "crates/imager-io" }
 imager-render = { path = "crates/imager-render" }
 imager-commands = { path = "crates/imager-commands" }
 imager-ops = { path = "crates/imager-ops" }
+imager-view = { path = "crates/imager-view" }
 
 anyhow = "1"
+bytemuck = { version = "1", features = ["derive"] }
 clap = { version = "4", features = ["derive"] }
+egui = "0.36.2"
+egui-wgpu = "0.36.2"
+egui_kittest = "0.36.2"
+egui_tiles = "0.17.1"
 eframe = { version = "0.36.2", default-features = false, features = ["wgpu", "default_fonts", "x11", "wayland"] }
-image = { version = "0.25", default-features = false, features = ["png"] }
+flate2 = "1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp"] }
 num-complex = "0.4"
 proc-macro2 = "1"
 proptest = "1"
 quote = "1"
+rfd = "0.15"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 syn = { version = "2", features = ["full"] }
 thiserror = "2"
+tiff = "0.11"
+weezl = "0.1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

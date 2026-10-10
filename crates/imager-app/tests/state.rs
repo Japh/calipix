@@ -35,11 +35,11 @@ fn titles(items: &[MenuItem]) -> Vec<&str> {
 #[test]
 fn menus_come_from_the_registry() {
     let state = AppState::new();
-    assert_eq!(titles(state.menu()), ["File", "Image"]);
+    assert_eq!(titles(state.menu()), ["File", "Image", "Process"]);
     let MenuItem::Submenu { items, .. } = &state.menu()[0] else {
         panic!("File is a menu");
     };
-    assert_eq!(titles(items), ["Open...", "Save As...", "Close"]);
+    assert_eq!(titles(items), ["Open", "Save As", "Close"]);
 }
 
 #[test]

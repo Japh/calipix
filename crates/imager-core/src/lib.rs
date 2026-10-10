@@ -11,6 +11,7 @@
 //! planes are numbered.
 
 mod buffer;
+mod cache;
 mod dtype;
 mod error;
 mod mem;
@@ -19,6 +20,7 @@ mod source;
 mod view;
 
 pub use buffer::{Buffer, crop_buffer};
+pub use cache::{Cached, PlaneCache};
 pub use dtype::{DType, Pixel, RealPixel};
 pub use error::{Error, Result};
 pub use mem::MemImage;

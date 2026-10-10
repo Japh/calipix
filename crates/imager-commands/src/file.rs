@@ -26,9 +26,10 @@ struct SaveAsParams {
 
 pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
-        CommandSpec::new("file.open", "Open...")
+        CommandSpec::new("file.open", "Open")
             .summary("Opens an image file.")
             .menu("File", 10.0)
+            .shortcut("Ctrl+O")
             .output("image", ParamType::Image)
             .effects(Effects {
                 image: ImageEffect::Creates,
@@ -43,9 +44,10 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        CommandSpec::new("file.save_as", "Save As...")
+        CommandSpec::new("file.save_as", "Save As")
             .summary("Saves an image to a file in the format given by its extension.")
             .menu("File", 20.0)
+            .shortcut("Ctrl+Shift+S")
             .effects(Effects {
                 writes_fs: true,
                 ..Effects::default()
@@ -61,6 +63,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         CommandSpec::new("file.close", "Close")
             .summary("Closes an image without saving it.")
             .menu("File", 30.0)
+            .shortcut("Ctrl+W")
             .ijm_name("Close")
             .effects(Effects {
                 image: ImageEffect::Modifies,
