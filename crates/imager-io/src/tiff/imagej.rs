@@ -222,7 +222,12 @@ pub(crate) struct IjMeta {
 }
 
 fn utf16(order: ByteOrder, bytes: &[u8]) -> String {
-    let units: Vec<u16> = bytes.chunks_exact(2).map(|c| order.u16(c)).collect();
+    let units: Vec<u16> = bytes
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| order.u16(c))
+        .collect();
     String::from_utf16_lossy(&units)
 }
 
@@ -276,7 +281,9 @@ impl IjMeta {
                 RANGES => {
                     if let Some(block) = blocks.first() {
                         meta.ranges = block
-                            .chunks_exact(8)
+                            .as_chunks::<8>()
+                            .0
+                            .iter()
                             .map(|c| f64::from_bits(order.u64(c)))
                             .collect();
                     }
@@ -286,7 +293,9 @@ impl IjMeta {
                 OVERLAY => meta.overlay = blocks.iter().map(|b| b.to_vec()).collect(),
                 PROPERTIES => {
                     meta.props = blocks
-                        .chunks_exact(2)
+                        .as_chunks::<2>()
+                        .0
+                        .iter()
                         .map(|pair| (utf16(order, pair[0]), utf16(order, pair[1])))
                         .collect();
                 }
@@ -431,7 +440,7 @@ pub(crate) fn hex_encode(bytes: &[u8]) -> String {
 }
 
 pub(crate) fn hex_decode(text: &str) -> Option<Vec<u8>> {
-    if text.len() % 2 != 0 || !text.is_ascii() {
+    if !text.len().is_multiple_of(2) || !text.is_ascii() {
         return None;
     }
     (0..text.len())

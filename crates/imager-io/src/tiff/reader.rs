@@ -157,7 +157,7 @@ impl IfdInfo {
                     4 => "transparency mask",
                     5 => "CMYK",
                     6 => "YCbCr",
-                    8 | 9 | 10 => "CIE L*a*b*",
+                    8..=10 => "CIE L*a*b*",
                     32803 => "colour filter array",
                     _ => "unknown",
                 };
@@ -538,7 +538,13 @@ pub(crate) fn open(storage: Arc<dyn Storage>, file_name: &str) -> TiffResult<Ima
     // frames only if they multiply to the stack size; a plain stack is Z.
     let rgb = info.photometric == 2;
     let used = info.used_samples();
-    let nonzero = |v: f64| if v >= 1.0 && v < 1e12 { v as usize } else { 1 };
+    let nonzero = |v: f64| {
+        if (1.0..1e12).contains(&v) {
+            v as usize
+        } else {
+            1
+        }
+    };
     let (dc, dz, dt) = ij.as_ref().map_or((1, 1, 1), |d| {
         (
             nonzero(d.double("channels")),

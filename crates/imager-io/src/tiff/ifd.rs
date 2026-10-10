@@ -421,9 +421,19 @@ impl TiffFile {
         let o = self.order;
         Ok(match entry.typ {
             field::BYTE | field::UNDEFINED => raw.iter().map(|&b| u64::from(b)).collect(),
-            field::SHORT => raw.chunks_exact(2).map(|c| u64::from(o.u16(c))).collect(),
-            field::LONG | field::IFD => raw.chunks_exact(4).map(|c| u64::from(o.u32(c))).collect(),
-            field::LONG8 | field::IFD8 => raw.chunks_exact(8).map(|c| o.u64(c)).collect(),
+            field::SHORT => raw
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| u64::from(o.u16(c)))
+                .collect(),
+            field::LONG | field::IFD => raw
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| u64::from(o.u32(c)))
+                .collect(),
+            field::LONG8 | field::IFD8 => raw.as_chunks::<8>().0.iter().map(|c| o.u64(c)).collect(),
             other => {
                 return format_err(format!(
                     "tag {} has field type {other}, expected an unsigned integer",

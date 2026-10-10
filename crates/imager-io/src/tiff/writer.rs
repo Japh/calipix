@@ -442,23 +442,32 @@ fn offset_entry(tag: u16, value: u64, big: bool) -> Entry {
     }
 }
 
-/// Sample bytes of a plane in file order.
+/// Sample bytes of a plane in file (little-endian) order.
 fn plane_bytes(buffer: &Buffer, signed16: bool) -> Vec<u8> {
-    fn le<T: Copy, const N: usize>(samples: &[T], f: fn(T) -> [u8; N]) -> Vec<u8> {
-        samples.iter().flat_map(|&v| f(v)).collect()
+    fn le<T: bytemuck::Pod>(samples: &[T], swap: fn(T) -> T) -> Vec<u8> {
+        if ByteOrder::NATIVE == ORDER {
+            bytemuck::cast_slice(samples).to_vec()
+        } else {
+            let swapped: Vec<T> = samples.iter().map(|&v| swap(v)).collect();
+            bytemuck::cast_slice(&swapped).to_vec()
+        }
     }
     match buffer {
         Buffer::U8(s) => s.to_vec(),
-        Buffer::I8(s) => s.iter().map(|&v| v as u8).collect(),
-        Buffer::U16(s) => le(s, u16::to_le_bytes),
-        Buffer::I16(s) if signed16 => le(s, |v| ((v as u16) ^ 0x8000).to_le_bytes()),
-        Buffer::I16(s) => le(s, i16::to_le_bytes),
-        Buffer::U32(s) => le(s, u32::to_le_bytes),
-        Buffer::I32(s) => le(s, i32::to_le_bytes),
-        Buffer::U64(s) => le(s, u64::to_le_bytes),
-        Buffer::I64(s) => le(s, i64::to_le_bytes),
-        Buffer::F32(s) => le(s, f32::to_le_bytes),
-        Buffer::F64(s) => le(s, f64::to_le_bytes),
+        Buffer::I8(s) => bytemuck::cast_slice(s).to_vec(),
+        Buffer::U16(s) => le(s, u16::swap_bytes),
+        Buffer::I16(s) if signed16 => {
+            // ImageJ's signed 16-bit: value + 32768, stored unsigned.
+            let offset: Vec<i16> = s.iter().map(|&v| v ^ i16::MIN).collect();
+            le(&offset, i16::swap_bytes)
+        }
+        Buffer::I16(s) => le(s, i16::swap_bytes),
+        Buffer::U32(s) => le(s, u32::swap_bytes),
+        Buffer::I32(s) => le(s, i32::swap_bytes),
+        Buffer::U64(s) => le(s, u64::swap_bytes),
+        Buffer::I64(s) => le(s, i64::swap_bytes),
+        Buffer::F32(s) => le::<f32>(s, |v| f32::from_bits(v.to_bits().swap_bytes())),
+        Buffer::F64(s) => le::<f64>(s, |v| f64::from_bits(v.to_bits().swap_bytes())),
         // Refused by `plan` before any plane is read.
         Buffer::C32(_) | Buffer::C64(_) => Vec::new(),
     }

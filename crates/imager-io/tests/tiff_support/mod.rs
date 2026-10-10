@@ -350,3 +350,47 @@ pub fn tiles(
     }
     out
 }
+
+/// The start of a file in ImageJ's layout with a single directory: header,
+/// directory, out-of-line values. Pixel data for every plane follows
+/// directly, `plane_bytes` each (`ij.io.TiffEncoder`). `entries` must not
+/// include the strip tags.
+pub fn imagej_head(enc: Enc, entries: &[Entry], plane_bytes: u32) -> Vec<u8> {
+    let mut entries = entries.to_vec();
+    entries.push(enc.longs(273, &[0]));
+    entries.push(enc.longs(279, &[plane_bytes]));
+    entries.sort_by_key(|e| e.tag);
+    let directory = 2 + entries.len() * 12 + 4;
+    let pixels = 8
+        + directory
+        + entries
+            .iter()
+            .map(|e| e.data.len())
+            .filter(|&n| n > 4)
+            .sum::<usize>();
+    let mut out = Vec::new();
+    out.extend(if enc.big_endian { b"MM" } else { b"II" });
+    out.extend(enc.u16(42));
+    out.extend(enc.u32(8));
+    out.extend(enc.u16(entries.len() as u16));
+    let mut values: Vec<u8> = Vec::new();
+    for entry in &entries {
+        out.extend(enc.u16(entry.tag));
+        out.extend(enc.u16(entry.typ));
+        out.extend(enc.u32(entry.count as u32));
+        if entry.tag == 273 {
+            out.extend(enc.u32(pixels as u32));
+        } else if entry.data.len() <= 4 {
+            let mut field = [0u8; 4];
+            field[..entry.data.len()].copy_from_slice(&entry.data);
+            out.extend(field);
+        } else {
+            out.extend(enc.u32((8 + directory + values.len()) as u32));
+            values.extend(&entry.data);
+        }
+    }
+    out.extend(enc.u32(0));
+    out.extend(values);
+    assert_eq!(out.len(), pixels);
+    out
+}

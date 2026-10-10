@@ -76,40 +76,45 @@ fn alloc(len: usize) -> TiffResult<Vec<u8>> {
 
 /// Converts sample bytes in `order` to a typed buffer.
 fn to_buffer(dtype: DType, bytes: Vec<u8>, order: ByteOrder, signed16: bool) -> TiffResult<Buffer> {
-    fn typed<T: imager_core::Pixel, const N: usize>(
+    // One block copy, then a byte swap in place if the file's order is not
+    // the machine's.
+    fn typed<T: imager_core::Pixel + bytemuck::Pod>(
         bytes: &[u8],
         order: ByteOrder,
-        le: fn([u8; N]) -> T,
-        be: fn([u8; N]) -> T,
-    ) -> Buffer {
-        let convert = if order == ByteOrder::Little { le } else { be };
-        let samples: Vec<T> = bytes
-            .chunks_exact(N)
-            .map(|c| {
-                let mut a = [0u8; N];
-                a.copy_from_slice(c);
-                convert(a)
-            })
-            .collect();
-        Buffer::from_vec(samples)
+        swap: fn(T) -> T,
+    ) -> Vec<T> {
+        let mut samples: Vec<T> = bytemuck::pod_collect_to_vec(bytes);
+        if order != ByteOrder::NATIVE {
+            for sample in &mut samples {
+                *sample = swap(*sample);
+            }
+        }
+        samples
     }
     Ok(match dtype {
         DType::U8 => Buffer::from_vec(bytes),
-        DType::I8 => Buffer::from_vec(bytes.iter().map(|&b| b as i8).collect::<Vec<_>>()),
-        DType::U16 => typed(&bytes, order, u16::from_le_bytes, u16::from_be_bytes),
-        DType::I16 if signed16 => typed(
-            &bytes,
-            order,
-            |a| (u16::from_le_bytes(a) ^ 0x8000) as i16,
-            |a| (u16::from_be_bytes(a) ^ 0x8000) as i16,
-        ),
-        DType::I16 => typed(&bytes, order, i16::from_le_bytes, i16::from_be_bytes),
-        DType::U32 => typed(&bytes, order, u32::from_le_bytes, u32::from_be_bytes),
-        DType::I32 => typed(&bytes, order, i32::from_le_bytes, i32::from_be_bytes),
-        DType::U64 => typed(&bytes, order, u64::from_le_bytes, u64::from_be_bytes),
-        DType::I64 => typed(&bytes, order, i64::from_le_bytes, i64::from_be_bytes),
-        DType::F32 => typed(&bytes, order, f32::from_le_bytes, f32::from_be_bytes),
-        DType::F64 => typed(&bytes, order, f64::from_le_bytes, f64::from_be_bytes),
+        DType::I8 => Buffer::from_vec(bytemuck::pod_collect_to_vec::<u8, i8>(&bytes)),
+        DType::U16 => Buffer::from_vec(typed(&bytes, order, u16::swap_bytes)),
+        DType::I16 => {
+            let mut samples = typed(&bytes, order, i16::swap_bytes);
+            if signed16 {
+                // Stored as value + 32768: flipping the top bit undoes it.
+                for sample in &mut samples {
+                    *sample ^= i16::MIN;
+                }
+            }
+            Buffer::from_vec(samples)
+        }
+        DType::U32 => Buffer::from_vec(typed(&bytes, order, u32::swap_bytes)),
+        DType::I32 => Buffer::from_vec(typed(&bytes, order, i32::swap_bytes)),
+        DType::U64 => Buffer::from_vec(typed(&bytes, order, u64::swap_bytes)),
+        DType::I64 => Buffer::from_vec(typed(&bytes, order, i64::swap_bytes)),
+        DType::F32 => Buffer::from_vec(typed::<f32>(&bytes, order, |v| {
+            f32::from_bits(v.to_bits().swap_bytes())
+        })),
+        DType::F64 => Buffer::from_vec(typed::<f64>(&bytes, order, |v| {
+            f64::from_bits(v.to_bits().swap_bytes())
+        })),
         DType::C32 | DType::C64 => return unsupported("complex samples are not supported"),
     })
 }
@@ -453,11 +458,11 @@ impl ChunkedSource {
                     "the pixel data is truncated: {count} bytes at byte {offset} do not fit in a file of {real} bytes"
                 ));
             }
-            // No supported codec expands data by anything like this, so a
-            // chunk claiming to is a corrupt size, not something to
-            // allocate for.
+            // No supported codec expands data anything like 1500 times
+            // (Deflate tops out near 1030, LZW near 1370), so a chunk
+            // claiming to is a corrupt size, not something to allocate for.
             if info.compression != 1
-                && count.saturating_mul(4096).saturating_add(1 << 16) < chunk_bytes
+                && count.saturating_mul(1500).saturating_add(1 << 16) < chunk_bytes
             {
                 return format_err(format!(
                     "a {chunk_w}x{chunk_h} strip or tile cannot be stored in {count} bytes"
