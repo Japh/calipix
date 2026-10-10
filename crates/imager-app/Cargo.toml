@@ -1,0 +1,28 @@
+[package]
+name = "imager-app"
+description = "The imager application: desktop interface and command line"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "imager"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+imager-command.workspace = true
+imager-commands.workspace = true
+imager-core.workspace = true
+imager-io.workspace = true
+imager-render.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+imager-io.workspace = true
+
+[lints]
+workspace = true

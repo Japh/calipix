@@ -1,0 +1,132 @@
+use std::ffi::OsString;
+use std::path::PathBuf;
+use std::process::Command;
+
+use imager_core::Image;
+
+fn temp(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("imager-cli-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir.join(name)
+}
+
+fn imager(args: &[&str]) -> anyhow::Result<String> {
+    let argv = std::iter::once("imager")
+        .chain(args.iter().copied())
+        .map(OsString::from);
+    imager_app::cli::main(argv)
+}
+
+fn gradient(name: &str) -> PathBuf {
+    let path = temp(name);
+    let pixels: Vec<u8> = (0..=255).collect();
+    imager_io::save(&Image::from_vec(16, 16, pixels).unwrap(), &path).unwrap();
+    path
+}
+
+#[test]
+fn lists_and_describes_commands() {
+    let listing = imager(&["commands"]).unwrap();
+    assert!(listing.contains("image.invert"), "{listing}");
+    assert!(listing.contains("file.open"), "{listing}");
+
+    let help = imager(&["commands", "file.save_as"]).unwrap();
+    assert!(help.contains("--input <image file, required>"), "{help}");
+    assert!(help.contains("--path <path, required>"), "{help}");
+    assert!(help.contains("Menu: File > Save As..."), "{help}");
+
+    let json: serde_json::Value =
+        serde_json::from_str(&imager(&["commands", "--json"]).unwrap()).unwrap();
+    let ids: Vec<_> = json
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(ids.contains(&"image.invert"));
+    assert!(json[0]["input_schema"]["type"] == "object");
+}
+
+#[test]
+fn runs_a_command_and_saves_the_result() {
+    let source = gradient("run-source.png");
+    let target = temp("run-inverted.png");
+    let out = imager(&[
+        "run",
+        "image.invert",
+        "--input",
+        source.to_str().unwrap(),
+        "-o",
+        target.to_str().unwrap(),
+    ])
+    .unwrap();
+    assert_eq!(out, "");
+
+    let inverted = imager_io::open(&target).unwrap().read_plane(0).unwrap();
+    let expected: Vec<u8> = (0..=255).rev().collect();
+    assert_eq!(inverted.as_slice::<u8>().unwrap(), expected);
+}
+
+#[test]
+fn prints_outputs_as_text_or_json() {
+    let source = gradient("info-source.png");
+    let text = imager(&["run", "image.info", "--input", source.to_str().unwrap()]).unwrap();
+    assert!(text.contains("width: 16\n"), "{text}");
+    assert!(text.contains("pixel_type: u8\n"), "{text}");
+    assert!(text.contains("name: info-source.png\n"), "{text}");
+
+    let equals_form = format!("--input={}", source.display());
+    let json = imager(&["run", "--json", "image.info", &equals_form]).unwrap();
+    let json: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(json["height"], 16);
+    assert_eq!(json["in_memory"], true);
+}
+
+#[test]
+fn reports_mistakes_clearly() {
+    let source = gradient("errors-source.png");
+    let source = source.to_str().unwrap();
+    let message = |args: &[&str]| format!("{:#}", imager(args).unwrap_err());
+
+    assert!(message(&["run", "image.nope"]).contains("unknown command `image.nope`"));
+    let unknown = message(&["run", "image.invert", "--sigma", "2"]);
+    assert!(unknown.contains("no parameter --sigma"), "{unknown}");
+    assert!(unknown.contains("it takes: --input"), "{unknown}");
+    assert!(message(&["run", "image.invert"]).contains("missing required parameter `input`"));
+    assert!(message(&["run", "image.invert", "--input"]).contains("--input needs a value"));
+    assert!(message(&["run", "image.invert", source]).contains("unexpected argument"));
+    let missing = message(&["run", "image.invert", "--input", "no-such-file.png"]);
+    assert!(missing.contains("--input"), "{missing}");
+    assert!(missing.contains("no-such-file.png"), "{missing}");
+    let unsaveable = message(&["run", "image.invert", "--input", source, "-o", "out.xyz"]);
+    assert!(
+        unsaveable.contains("unrecognised image format"),
+        "{unsaveable}"
+    );
+    assert!(message(&["run", "image.invert", "--input", source, "-o"]).contains("-o needs"));
+}
+
+#[test]
+fn help_and_version_are_not_errors() {
+    assert!(imager(&["--help"]).unwrap().contains("Usage: imager"));
+    assert!(imager(&["--version"]).unwrap().starts_with("imager "));
+    assert!(imager(&["run", "--help"]).unwrap().contains("--name value"));
+}
+
+/// The real binary: exit codes and which stream output goes to.
+#[test]
+fn binary_exit_codes_and_streams() {
+    let exe = env!("CARGO_BIN_EXE_imager");
+    let ok = Command::new(exe).args(["commands"]).output().unwrap();
+    assert!(ok.status.success());
+    assert!(String::from_utf8_lossy(&ok.stdout).contains("image.invert"));
+    assert!(ok.stderr.is_empty());
+
+    let bad = Command::new(exe)
+        .args(["run", "image.nope"])
+        .output()
+        .unwrap();
+    assert_eq!(bad.status.code(), Some(1));
+    assert!(bad.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("error: unknown command"));
+}

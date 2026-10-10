@@ -1,0 +1,27 @@
+imager
+Copyright (c) 2026, Japh
+
+imager is a Rust port of ImageJ2 and reproduces the behaviour of ImageJ.
+Parts of it are derived from, or written with reference to, the following
+works. Their licences are compatible with imager's BSD 2-Clause licence.
+
+ImageJ 1.x  (https://github.com/imagej/ImageJ)
+  Public domain. Developed at the National Institutes of Health by an
+  employee of the US Federal Government in the course of his official duties.
+
+ImageJ2 and ImageJ Common  (https://github.com/imagej)
+  Copyright (c) 2009 - 2026, ImageJ2 developers. BSD 2-Clause.
+
+SciJava Common  (https://github.com/scijava/scijava-common)
+  Copyright (c) 2009 - 2026, SciJava developers. BSD 2-Clause.
+
+ImgLib2  (https://github.com/imglib/imglib2)
+  Copyright (c) 2009 - 2025, Tobias Pietzsch, Stephan Preibisch, Stephan
+  Saalfeld, John Bogovic, Albert Cardona, Barry DeZonia, Christian Dietz,
+  Jan Funke, Aivar Grislis, Jonathan Hale, Grant Harris, Stefan Helfrich,
+  Mark Hiner, Martin Horn, Steffen Jaensch, Lee Kamentsky, Larry Lindsey,
+  Melissa Linkert, Mark Longair, Brian Northan, Nick Perry, Curtis Rueden,
+  Johannes Schindelin, Jean-Yves Tinevez and Michael Zinsmaier. BSD 2-Clause.
+
+SCIFIO  (https://github.com/scifio/scifio)
+  Copyright (c) 2011 - 2026, SCIFIO developers. BSD 2-Clause.
