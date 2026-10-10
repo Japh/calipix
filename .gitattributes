@@ -1,6 +1,5 @@
 * text=auto eol=lf
+# Reference outputs must stay byte-exact.
+fixtures/imagej/out/** -text
 *.png binary
 *.tif binary
-*.tiff binary
-*.zip binary
-*.roi binary
