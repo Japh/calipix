@@ -34,7 +34,30 @@ The exact formulas are in the doc comments of `imager-render`.
 | Brightness and Contrast "Auto", including repeated presses | `ContrastAdjuster.autoAdjust` | verified by calling the method directly (`crates/imager-render/tests/data/BcAuto.java`) |
 | Brightness and Contrast "Reset" | `ContrastAdjuster.reset` | from source |
 
-## File formats
+## TIFF
+
+Read results are checked against all 31 TIFFs ImageJ wrote into
+`fixtures/imagej/out`. Written files were opened in ImageJ 1.54p and compared
+with the source image (14 of 14 cases), and four re-saved little-endian files
+are byte-identical to ImageJ's.
+
+| Behaviour | ImageJ source | Status |
+|---|---|---|
+| ImageJ stacks are read by offset (plane k at first strip offset + k x plane bytes); further IFDs are ignored once `images=N` is present | `TiffDecoder`, `FileOpener.openStack` | verified, including a 4.38 GiB single-IFD stack |
+| channels, slices and frames are used only if their product is the stack size; otherwise a plain Z stack | `FileOpener.setCalibration` | verified |
+| Pixel size from the resolution tags; unit, spacing, frame interval and origins from the description; "um" becomes "µm" | `TiffDecoder.OpenIFD`, `FileOpener.decodeDescriptionString` | verified |
+| Resolution-unit rules for files not written by ImageJ | `TiffDecoder.OpenIFD` | from source |
+| Display ranges, per-channel LUTs and default channel colours | `FileOpener.setCalibration`, `CompositeImage.setupLuts` | verified |
+| Composite, color and grayscale modes | `Opener.makeComposite` | verified |
+| 8-bit images with a colour or inverting LUT are palette TIFFs | `TiffDecoder.getColorMap`, `TiffEncoder.writeColorMap` | verified |
+| WhiteIsZero: samples unchanged, inverting LUT | `FileOpener.createColorModel` | from source |
+| Signed 16-bit is stored unsigned with a calibration function; loaded as true signed values | `Calibration.isSigned16Bit` | verified |
+| Info text, slice labels, image properties, selection and overlay | `TiffDecoder.getMetaData`, `TiffEncoder.writeMetaData` | verified |
+| Multi-page files from other software: a stack if all pages match, else the first image | `Opener.openTiffStack` | from source |
+| Written layout and description string | `TiffEncoder`, `FileSaver.getDescriptionString` | verified |
+| Stacks of 4 GiB or more are written with a single IFD | `TiffEncoder.write` | layout verified in ImageJ at small size; not run at real size |
+
+## Other file formats
 
 | Behaviour | ImageJ source | Status |
 |---|---|---|
@@ -60,6 +83,9 @@ The exact formulas are in the doc comments of `imager-render`.
 | Pixel types | 8-bit, 16-bit unsigned, 32-bit float, RGB | Also signed and 32/64-bit integers, 64-bit float, complex | ImageJ2's data model supports them. Operations on types ImageJ 1.x lacks follow its 16-bit rules (integers) or 32-bit rules (floats). |
 | RGB | A packed pixel type | Three 8-bit channels flagged as RGB | One code path for all kernels; macros will still see packed values. |
 | PNG transparency | Discarded | Discarded | Same. |
+| TIFF pixel types | 32-bit integers become float; 64-bit and signed 8-bit are misread | Kept as stored | No silent conversion |
+| 16-bit RGB TIFF | Composite with three slices | Three channels flagged as RGB | Consistent with 8-bit RGB |
+| TIFF variants | Refuses tiles, BigTIFF, OME-TIFF and the floating-point predictor | Opens them | Wider compatibility |
 | RGB display range | Rewrites the pixel values | Display only | Looking never changes data |
 | Zoom below 100% | Platform-dependent smoothing | Mean of displayed colours over a fixed grid | Deterministic, and the same on CPU and GPU |
 | Composite with the first channel hidden | First pixel keeps a stale colour | Correct colour | ImageJ bug |

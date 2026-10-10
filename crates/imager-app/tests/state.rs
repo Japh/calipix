@@ -90,7 +90,7 @@ fn menus_follow_the_prescribed_order_and_grouping() {
     );
     assert_eq!(
         labels(submenu(state.menu(), "File")),
-        ["Open…", "Open Recent >", "Save As…", "Close"]
+        ["Open…", "Open Recent >", "Save", "Save As…", "Close"]
     );
     assert_eq!(labels(submenu(state.menu(), "Edit")), ["Undo", "Redo"]);
     // A separator wherever the weight crosses into another hundred.
@@ -414,7 +414,7 @@ fn palette_ranks_prefix_and_word_start_matches_first() {
     assert_eq!(ranked(&state, "open")[0], "file.open");
     // A title match beats a summary match of the same kind.
     let save = ranked(&state, "save");
-    assert_eq!(save[0], "file.save_as");
+    assert_eq!(&save[..2], ["file.save", "file.save_as"]);
 
     // No query: everything, by title.
     let all = state.search("");

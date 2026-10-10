@@ -129,15 +129,13 @@ impl ParamSpec {
                 return Err(Error::invalid_arg(&self.name, "not a number"));
             }
             if self.min.is_some_and(|min| n < min) || self.max.is_some_and(|max| n > max) {
-                let bound = |b: Option<f64>| b.map_or("..".to_string(), |b| b.to_string());
-                return Err(Error::invalid_arg(
-                    &self.name,
-                    format!(
-                        "{n} is outside the allowed range {} to {}",
-                        bound(self.min),
-                        bound(self.max)
-                    ),
-                ));
+                let allowed = match (self.min, self.max) {
+                    (Some(min), Some(max)) => format!("must be between {min} and {max}"),
+                    (Some(min), None) => format!("must be at least {min}"),
+                    (None, Some(max)) => format!("must be at most {max}"),
+                    (None, None) => unreachable!("a bound was exceeded"),
+                };
+                return Err(Error::invalid_arg(&self.name, format!("{n} {allowed}")));
             }
         }
         Ok(value)

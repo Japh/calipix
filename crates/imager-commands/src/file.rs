@@ -44,9 +44,30 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
+        CommandSpec::new("file.save", "Save")
+            .summary("Saves an image to the file it was opened from or last saved to.")
+            .menu("File", 20.0)
+            .shortcut("Ctrl+S")
+            .effects(Effects {
+                writes_fs: true,
+                ..Effects::default()
+            }),
+        |ctx, p: InputOnly| {
+            let dataset = ctx.workspace().get(p.input)?;
+            let Some(path) = dataset.path.clone() else {
+                return Err(Error::failed(
+                    "this image has not been saved to a file yet; use Save As",
+                ));
+            };
+            imager_io::save(&dataset.image, &path).map_err(Error::failed)?;
+            Ok(Outputs::new())
+        },
+    ))?;
+
+    registry.register(typed(
         CommandSpec::new("file.save_as", "Save As")
             .summary("Saves an image to a file in the format given by its extension.")
-            .menu("File", 20.0)
+            .menu("File", 21.0)
             .shortcut("Ctrl+Shift+S")
             .effects(Effects {
                 writes_fs: true,

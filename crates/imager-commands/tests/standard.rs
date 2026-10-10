@@ -94,6 +94,36 @@ fn open_invert_save_round_trip() {
 }
 
 #[test]
+fn save_writes_back_to_the_image_file() {
+    let (exec, mut session) = setup();
+    let path = temp("save.png");
+    imager_io::save(&Image::from_vec(2, 1, vec![1u8, 2]).unwrap(), &path).unwrap();
+    exec.run(
+        &mut session,
+        "file.open",
+        &Args::new().with("path", path.clone()),
+    )
+    .unwrap();
+    exec.run(&mut session, "image.invert", &Args::new())
+        .unwrap();
+    exec.run(&mut session, "file.save", &Args::new()).unwrap();
+    let saved = imager_io::open(&path).unwrap().read_plane(0).unwrap();
+    assert_eq!(saved.as_slice::<u8>().unwrap(), &[254, 253]);
+}
+
+#[test]
+fn save_needs_a_file_to_save_to() {
+    let (exec, mut session) = setup();
+    session
+        .workspace
+        .insert(Image::from_vec(1, 1, vec![0u8]).unwrap(), None);
+    let err = exec
+        .run(&mut session, "file.save", &Args::new())
+        .unwrap_err();
+    assert!(err.to_string().contains("use Save As"), "{err}");
+}
+
+#[test]
 fn failures_are_reported_and_change_nothing() {
     let (exec, mut session) = setup();
     let missing = Args::new().with("path", temp("does-not-exist.png"));

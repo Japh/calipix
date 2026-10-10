@@ -131,7 +131,9 @@ impl Executor {
 
     /// Fills in and validates the arguments for a command. Each parameter
     /// takes, in order of preference: the explicit argument, the active
-    /// image (for image parameters), then the spec's default.
+    /// image (for required image parameters), then the spec's default. An
+    /// optional image parameter is left absent unless given, so that
+    /// "no mask" can be expressed.
     pub fn resolve(
         &self,
         spec: &CommandSpec,
@@ -152,7 +154,7 @@ impl Executor {
                 .get(&param.name)
                 .cloned()
                 .or_else(|| {
-                    (param.ty == ParamType::Image)
+                    (param.ty == ParamType::Image && param.required)
                         .then(|| workspace.active().map(Value::Image))
                         .flatten()
                 })

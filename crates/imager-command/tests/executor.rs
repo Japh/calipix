@@ -38,6 +38,13 @@ struct ExportParams {
 }
 
 #[derive(Params)]
+struct MaskParams {
+    #[allow(dead_code)]
+    input: DatasetId,
+    mask: Option<DatasetId>,
+}
+
+#[derive(Params)]
 struct InputOnly {
     input: DatasetId,
 }
@@ -150,6 +157,14 @@ fn registry() -> Registry {
             }
             Ok(Outputs::new().with("steps", 10))
         },
+    ))
+    .unwrap();
+
+    reg.register(typed(
+        CommandSpec::new("test.masked", "Masked")
+            .summary("Reports whether a mask was given.")
+            .output("masked", ParamType::Bool),
+        |_, p: MaskParams| Ok(Outputs::new().with("masked", p.mask.is_some())),
     ))
     .unwrap();
 
@@ -350,6 +365,35 @@ fn undo_and_redo_restore_exact_states() {
         applied,
         ["test.new", "test.scale", "test.count", "test.scale"]
     );
+}
+
+#[test]
+fn optional_image_parameters_are_not_filled_with_the_active_image() {
+    let (exec, mut session) = setup();
+    exec.run(&mut session, "test.new", &Args::new()).unwrap();
+    let id = session.workspace.active().unwrap();
+    let out = exec.run(&mut session, "test.masked", &Args::new()).unwrap();
+    assert_eq!(out.get("masked"), Some(&Value::Bool(false)));
+    let out = exec
+        .run(&mut session, "test.masked", &Args::new().with("mask", id))
+        .unwrap();
+    assert_eq!(out.get("masked"), Some(&Value::Bool(true)));
+}
+
+#[test]
+fn bounds_are_explained_in_words() {
+    let (exec, mut session) = setup();
+    let message = |session: &mut Session, id: &str, args: Args| {
+        exec.run(session, id, &args).unwrap_err().to_string()
+    };
+    let too_wide = message(&mut session, "test.new", Args::new().with("width", 65));
+    assert!(
+        too_wide.contains("65 must be between 1 and 64"),
+        "{too_wide}"
+    );
+    exec.run(&mut session, "test.new", &Args::new()).unwrap();
+    let negative = message(&mut session, "test.scale", Args::new().with("factor", -1));
+    assert!(negative.contains("-1 must be at least 0"), "{negative}");
 }
 
 #[test]

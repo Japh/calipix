@@ -62,6 +62,35 @@ fn invert_rgb_matches_imagej() {
     assert_invert_matches_imagej("rgb");
 }
 
+/// Float images: ImageJ inverts over the display range, which for a
+/// freshly opened file is the data range.
+#[test]
+fn invert_float_matches_imagej() {
+    let expected = imager_io::open(fixture("gray32f_invert.tif")).unwrap();
+    let produced_path = temp("gray32f_invert.tif");
+    let argv = ["imager", "run", "image.invert", "--input"]
+        .into_iter()
+        .map(OsString::from)
+        .chain([
+            fixture("gray32f.tif").into_os_string(),
+            "-o".into(),
+            produced_path.clone().into_os_string(),
+        ]);
+    imager_app::cli::main(argv).unwrap();
+
+    let produced = imager_io::open(&produced_path).unwrap();
+    assert_eq!(produced.meta().shape(), expected.meta().shape());
+    let (got, want) = (
+        produced.read_plane(0).unwrap(),
+        expected.read_plane(0).unwrap(),
+    );
+    assert_eq!(
+        got.as_slice::<f32>().unwrap(),
+        want.as_slice::<f32>().unwrap(),
+        "float inversion must be bit-identical to ImageJ"
+    );
+}
+
 /// Guards against the comparison passing vacuously.
 #[test]
 fn fixtures_are_what_the_tests_assume() {
