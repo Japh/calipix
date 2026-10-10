@@ -138,7 +138,9 @@ fn row(ui: &mut egui::Ui, state: &AppState, spec: &CommandSpec, selected: bool) 
     // Unavailable commands are dimmed and say why; the wording, not the
     // colour, carries the meaning.
     let (strong, weak) = match (&unavailable, selected) {
-        (Some(_), _) => (visuals.weak_text_color(), visuals.weak_text_color()),
+        // Dimmed text would be unreadable on the selection colour.
+        (Some(_), true) => (visuals.text_color(), visuals.text_color()),
+        (Some(_), false) => (visuals.weak_text_color(), visuals.weak_text_color()),
         (None, true) => (
             visuals.selection.stroke.color,
             visuals.selection.stroke.color,
