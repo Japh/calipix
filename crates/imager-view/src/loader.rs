@@ -36,6 +36,10 @@ pub type Waker = Arc<dyn Fn() + Send + Sync>;
 struct Queue {
     wanted: Vec<Work>,
     in_flight: HashSet<Work>,
+    /// Finished work whose result the view has not collected yet. It must
+    /// not be started again just because the view, not having seen the
+    /// result, still lists it as wanted.
+    delivered: HashSet<Work>,
     closed: bool,
 }
 
@@ -93,6 +97,10 @@ impl Loader {
     pub fn set_wanted(&self, wanted: Vec<Work>) {
         let mut queue = self.shared.queue();
         queue.wanted = wanted;
+        let Queue {
+            wanted, delivered, ..
+        } = &mut *queue;
+        wanted.retain(|work| !delivered.contains(work));
         drop(queue);
         self.shared.wake_workers.notify_all();
     }
@@ -100,12 +108,20 @@ impl Loader {
     /// True if `work` is queued or being done.
     pub fn is_pending(&self, work: &Work) -> bool {
         let queue = self.shared.queue();
-        queue.in_flight.contains(work) || queue.wanted.contains(work)
+        queue.in_flight.contains(work)
+            || queue.wanted.contains(work)
+            || queue.delivered.contains(work)
     }
 
     /// The next finished result, if any; never blocks.
     pub fn try_recv(&self) -> Option<Loaded> {
-        self.results.try_recv().ok()
+        let loaded = self.results.try_recv().ok()?;
+        let work = match &loaded {
+            Loaded::Tile(key, _) => Work::Tile(*key),
+            Loaded::Range(plane, _) => Work::Range(*plane),
+        };
+        self.shared.queue().delivered.remove(&work);
+        Some(loaded)
     }
 }
 
@@ -152,11 +168,13 @@ fn worker(shared: &Shared, results: &Sender<Loaded>) {
                 plane_range(&shared.image, plane).map_err(|e| e.to_string()),
             ),
         };
-        // Send before clearing the in-flight mark so the view never sees a
-        // moment at which the work is neither pending nor delivered.
-        let delivered = results.send(loaded).is_ok();
-        shared.queue().in_flight.remove(&work);
-        if !delivered {
+        {
+            let mut queue = shared.queue();
+            queue.in_flight.remove(&work);
+            queue.wanted.retain(|w| *w != work);
+            queue.delivered.insert(work);
+        }
+        if results.send(loaded).is_err() {
             return;
         }
         let waker = shared
@@ -268,6 +286,48 @@ mod tests {
             std::thread::sleep(Duration::from_millis(1));
         }
         assert!(!loader.is_pending(&Work::Tile(key)));
+        assert!(!loader.is_pending(&Work::Range(0)));
+    }
+
+    #[test]
+    fn work_is_done_once_however_often_it_is_asked_for() {
+        use imager_core::{Buffer, ImageMeta, PixelSource};
+        #[derive(Debug)]
+        struct Counting(ImageMeta, Arc<AtomicUsize>);
+        impl PixelSource for Counting {
+            fn meta(&self) -> &ImageMeta {
+                &self.0
+            }
+            fn read_plane(&self, _: usize) -> imager_core::Result<Buffer> {
+                self.1.fetch_add(1, Ordering::SeqCst);
+                std::thread::sleep(Duration::from_millis(20));
+                Ok(Buffer::zeros(self.0.dtype(), self.0.plane_len()))
+            }
+        }
+        let reads = Arc::new(AtomicUsize::new(0));
+        let meta = ImageMeta::plane(imager_core::DType::U8, 8, 8).unwrap();
+        let image = Image::new(Counting(meta, reads.clone()));
+        let loader = Loader::new(image, TileGrid::new(8, 8, 8), 3);
+        let work = Work::Tile(TileKey {
+            plane: 0,
+            level: 0,
+            tx: 0,
+            ty: 0,
+        });
+        // The view asks again every frame until it has collected the result.
+        let start = Instant::now();
+        let mut got = None;
+        while got.is_none() {
+            loader.set_wanted(vec![work]);
+            assert!(start.elapsed() < Duration::from_secs(20));
+            std::thread::sleep(Duration::from_millis(1));
+            got = loader.try_recv();
+        }
+        for _ in 0..50 {
+            std::thread::sleep(Duration::from_millis(1));
+            assert!(loader.try_recv().is_none());
+        }
+        assert_eq!(reads.load(Ordering::SeqCst), 1);
     }
 
     #[test]
