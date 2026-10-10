@@ -12,13 +12,40 @@ Reference files are in `fixtures/imagej/out`, written by ImageJ itself from
 the macros in `fixtures/imagej/gen`. `cargo xtask gen` regenerates them and
 `cargo xtask verify` checks they are reproducible.
 
-## Display mapping
+## Display
+
+All verified rows are checked against values dumped from ImageJ 1.54p
+(`fixtures/imagej/out/{luts,display_levels,composite,histograms,contrast}.csv`).
+The exact formulas are in the doc comments of `imager-render`.
 
 | Behaviour | ImageJ source | Status |
 |---|---|---|
-| Integer samples to display levels: `(int)((v - min) * 256 / (max - min + 1) + 0.5)`, clamped to 0..255 | `ShortProcessor.create8BitImage` | from source |
-| Float samples to display levels: `(int)((v - min) * 255 / (max - min) + 0.5)`, clamped; NaN shows as 0 | `FloatProcessor.create8BitImage` | from source |
-| Default display range of 16-bit and float images is the data minimum and maximum (NaN ignored) | `findMinAndMax` | from source |
+| 8-bit display range rescales the LUT | `ByteProcessor.setMinAndMax` | verified |
+| 16-bit levels, with the range rounded half-up | `ShortProcessor.create8BitImage`, `setMinAndMax` | verified |
+| Float levels; NaN shows as 0; range held in single precision | `FloatProcessor.create8BitImage`, `setMinAndMax` | verified |
+| RGB display range, per component and optionally per channel | `ColorProcessor.setMinAndMax` | verified |
+| Default range: 0 to 255 for 8-bit; data minimum and maximum (NaN ignored) otherwise; (0,0) means default | `resetMinAndMax`, `findMinAndMax` | verified |
+| Built-in LUTs (Fire, Grays, Ice, Spectrum, 3-3-2 RGB, Red, Green, Blue, Cyan, Magenta, Yellow, Red/Green) and Invert LUT | `LutLoader`, `ImageProcessor.invertLut` | verified |
+| Composite display: per-channel LUT and range, summed and clamped; Max and Min projection; channel visibility; color and grayscale modes | `CompositeImage.updateImage` | verified |
+| Default composite channel colours | `CompositeImage.colors` | first three verified, rest from source |
+| Histogram and statistics for 8-bit, RGB, 16-bit and float, including custom bins and ranges | `ByteStatistics`, `ColorStatistics`, `ShortStatistics`, `FloatStatistics` | verified |
+| Stack histogram and statistics | `StackStatistics` | verified with default options except mode; custom bins or range from source |
+| Enhance Contrast range (saturation percentage, stack histogram option) | `ContrastEnhancer.stretchHistogram` | verified |
+| Brightness and Contrast "Auto", including repeated presses | `ContrastAdjuster.autoAdjust` | verified by calling the method directly (`crates/imager-render/tests/data/BcAuto.java`) |
+| Brightness and Contrast "Reset" | `ContrastAdjuster.reset` | from source |
+
+## File formats
+
+| Behaviour | ImageJ source | Status |
+|---|---|---|
+| Palette BMP (1, 4, 8 bits) opens as 8-bit indices with the palette as LUT; 24 and 32 bits as RGB | `BMP_Reader`, `BMPDecoder` | verified |
+| BMP writing | `BMP_Writer` | verified, byte-identical to ImageJ |
+| Single GIF opens as 8-bit indices plus palette LUT; one covering part of the screen opens as RGB on black | `GIF_Reader` | verified |
+| Animated GIF opens as a Z stack of composited frames, reproducing ImageJ's disposal and transparency handling; grey animations become 8-bit | `GifDecoder` | verified |
+| 8-bit GIF writing keeps indices and LUT; stacks become animations | `GifWriter`, `AnimatedGifEncoder2` | verified (decoded pixels) |
+| JPEG: grey opens as 8-bit, colour as RGB, all-grey colour as 8-bit; no EXIF rotation | `Opener.openJpegOrGif` | verified; decoded values within 1 level (grey) and 3 levels (RGB) of ImageJ's decoder |
+| JPEG writing at quality 85 | `JpegWriter` | from source; the encoder differs |
+| NRRD reading and writing | not in ImageJ 1.x | follows the format specification; not compared with other software |
 
 ## Commands
 
@@ -33,4 +60,13 @@ the macros in `fixtures/imagej/gen`. `cargo xtask gen` regenerates them and
 | Pixel types | 8-bit, 16-bit unsigned, 32-bit float, RGB | Also signed and 32/64-bit integers, 64-bit float, complex | ImageJ2's data model supports them. Operations on types ImageJ 1.x lacks follow its 16-bit rules (integers) or 32-bit rules (floats). |
 | RGB | A packed pixel type | Three 8-bit channels flagged as RGB | One code path for all kernels; macros will still see packed values. |
 | PNG transparency | Discarded | Discarded | Same. |
+| RGB display range | Rewrites the pixel values | Display only | Looking never changes data |
+| Zoom below 100% | Platform-dependent smoothing | Mean of displayed colours over a fixed grid | Deterministic, and the same on CPU and GPU |
+| Composite with the first channel hidden | First pixel keeps a stale colour | Correct colour | ImageJ bug |
+| Display range with max below min | Ignored or wrapped | Everything shows as level 0 | One defined result |
+| Saving 16-bit or float as JPEG, GIF or BMP | Saves the 8-bit display rendering | Refused, asks to convert first | No silent data change |
+| Saving with a LUT or display range as JPEG | Burned into the pixels | Sample values saved | Same |
+| RGB GIF with more than 256 colours | Quantised | Refused | Lossy step left explicit |
+| Truncated GIF | Opens partly black | Error | No silent data loss |
+| JPEG chroma | Subsampled below quality 90 | Never subsampled | Encoder limitation; files are larger and closer to the source |
 | Undo | One step, some commands only | Every command, unlimited steps; saving is not undone | Images are immutable snapshots that share unchanged planes. |

@@ -12,6 +12,10 @@ allow = [
     "ISC",
     "MIT",
     "MIT-0",
+    # Licences of the fonts embedded in the interface (via egui). They permit
+    # redistribution inside an application and place no terms on its code.
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
     "Unicode-3.0",
     "Unlicense",
     "Zlib",

@@ -26,6 +26,300 @@ bytes = 493
 macro = "gen/06_measure.ijm"
 
 [[file]]
+path = "composite.csv"
+sha256 = "ef5ebf539bef9b6b5905abe9108e2193d4ddc4ca2aaba72671d12679bc9f2e28"
+bytes = 20510
+macro = "gen/32_composite.ijm"
+
+[[file]]
+path = "contrast.csv"
+sha256 = "57ff8e6092e5a4d7b1b13f02765acbfdb6ccf881928e10afdee954e05acdff2d"
+bytes = 1477
+macro = "gen/34_contrast.ijm"
+
+[[file]]
+path = "crafted_bits1_1.txt"
+sha256 = "58cc47c7dbc81b04b451e8cc2ecffb08cdc57598bb1a60eb1ec33f081ec4ec33"
+bytes = 182
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_bits1_lut.csv"
+sha256 = "69cec5653709c7b4cc3dcf185554fed11c61eb8e8ee0e8ee72896267d29dd932"
+bytes = 18
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_bits24_topdown_1.png"
+sha256 = "f1b6956b3675bb81cae342d219baf0a5e925256d072c4fafec21750758de8c64"
+bytes = 298
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_bits32_1.png"
+sha256 = "f1b6956b3675bb81cae342d219baf0a5e925256d072c4fafec21750758de8c64"
+bytes = 298
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_bits4_1.txt"
+sha256 = "18eca26e1bb0ee9d6625e6b9c9f71297740e8898b4ee10c7237ebe817aaec471"
+bytes = 215
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_bits4_lut.csv"
+sha256 = "0f70667481ad0568fca967d13bbcceed019179edc1d2209e50b5b4f77bc703fd"
+bytes = 166
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_bits8_topdown_1.txt"
+sha256 = "ebf1df760907d0bb365fbb689e28bcc76d12c04ae902eeb7c9d49277a62b0042"
+bytes = 312
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_bits8_topdown_lut.csv"
+sha256 = "e13eb199e9de40407adf531fe418db4cc0ae34044bdcf60d6e50cfcb97cce7c4"
+bytes = 2166
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_dispose_1.png"
+sha256 = "dbc9e9507ad718a80bb4fd7bf04a50871018a2fb612ddc40881d232a4f2513c0"
+bytes = 114
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_dispose_2.png"
+sha256 = "bdf7f4b409742f05571ab3d820bc56e9472cd150e7c392e31a5d3cc89fa9b0e3"
+bytes = 118
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_dispose_3.png"
+sha256 = "f7c58419d26a5100a5f645cb68e32678c0604eb87e4b2a653496df8a29753dcd"
+bytes = 127
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_dispose_4.png"
+sha256 = "bdde5c1094c4321486a4fcc93f8f8805b19df76c8d28d78d509b932efac61976"
+bytes = 146
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_dispose_5.png"
+sha256 = "ced4eca346b5e708ec55e3238d62f8caee86aaa43a05b5564531aafd53f2c2a2"
+bytes = 154
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_dispose_6.png"
+sha256 = "4c7102b3fa1e55f6ad5ff3f18b4d0d99c48a5e96a9fd3b70b57125e5f58de7e0"
+bytes = 168
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_dispose_7.png"
+sha256 = "473309eee42367f1f1ebdac7645531939323651d52e66aa7cdc8dbabe42cf0c0"
+bytes = 100
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_gray_first_1.txt"
+sha256 = "2ec6bccc4bd7b2c2f0fa548f2cb95b55d960a548755636db321520b20dd741ec"
+bytes = 202
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_gray_first_2.txt"
+sha256 = "22f2bcfc529bd889fa44b92ff9a577c204c37d28d876b387cdf68712aaa8aa3f"
+bytes = 244
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_gray_first_3.txt"
+sha256 = "c329ca73536ebe5ca8ac3005b469c91ccff0505d64118bb238ad0bc9f2bf367f"
+bytes = 245
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_gray_first_lut.csv"
+sha256 = "fc1bff2f046d5e5a1c41c51933bf8834ad3a67c4ef0d18b150ff901f9c1fb0ff"
+bytes = 2742
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_info.csv"
+sha256 = "fba19b33ef2135f0f8494a60d8b8bd4d4a0650bf7ae3a851e9203dcd4eb54bb6"
+bytes = 225
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_single_1.png"
+sha256 = "54a21e6ec2e323fceab7cc33697a5bf98dddec53e16cc9a004ea77d2087ea5ae"
+bytes = 155
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_single_full_1.txt"
+sha256 = "893da13d3fe064f060e24b403ef0165734da1f75ddda5e761c751c964e2db49f"
+bytes = 120
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_single_full_lut.csv"
+sha256 = "0aac7b3120693d18b2d62de13065bdc57c0f2e8ad6c6de7bcc3ab0c55e90dcdc"
+bytes = 84
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_single_local_1.txt"
+sha256 = "893da13d3fe064f060e24b403ef0165734da1f75ddda5e761c751c964e2db49f"
+bytes = 120
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_single_local_lut.csv"
+sha256 = "78bbf2b55ee09d63f0dbaa53e1b50e44ffe4debf9e91b48531ad65beb86b61ca"
+bytes = 84
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_single_part_1.png"
+sha256 = "bdc852ff8982f7f7cd9fc2f7beffaa47ba5b1f22cd5063385fc711f24e0f083c"
+bytes = 114
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_single_trans_1.txt"
+sha256 = "893da13d3fe064f060e24b403ef0165734da1f75ddda5e761c751c964e2db49f"
+bytes = 120
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "crafted_single_trans_lut.csv"
+sha256 = "0aac7b3120693d18b2d62de13065bdc57c0f2e8ad6c6de7bcc3ab0c55e90dcdc"
+bytes = 84
+macro = "gen/21_crafted.ijm"
+
+[[file]]
+path = "display_levels.csv"
+sha256 = "ee2016f51bc989e3142b7b2ceb85e19e06f7975b9922f0b8136052316eb30817"
+bytes = 129946
+macro = "gen/31_display.ijm"
+
+[[file]]
+path = "fmt_anim.gif"
+sha256 = "490343ab0207b143ff66ec0a4e8e48f0ec1510109f9fe399773b24269bd83e2c"
+bytes = 7028
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_anim_fire.gif"
+sha256 = "0240c34483de747390609084749b1f01f943e7d6b13440b915b355aabcd96836"
+bytes = 7028
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_anim_fire_1.png"
+sha256 = "d59d3da19b4c5d7041ab78e3affe753c044b00f90d0570d1fbda8f6cc17e5d68"
+bytes = 782
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_anim_fire_2.png"
+sha256 = "59560dd060818240ad7b2251a145a0b8fe63edd20dee436f4d87282dcf718c63"
+bytes = 768
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_anim_fire_3.png"
+sha256 = "93d87761fc3a40a6ac6aff01271e9dfd4050497bc06993b76ddddbf0c8605f6a"
+bytes = 777
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_anim_fire_4.png"
+sha256 = "304a100dc3808790a166ce4b1b68c08ac4876132d874e481ec9ad6db4c66b7f0"
+bytes = 767
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_anim_fire_5.png"
+sha256 = "63a2565a0adfd8793469c0f886ac1cb9802c1d07e562bb93db86c089be554705"
+bytes = 784
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_fire.bmp"
+sha256 = "e0fbea9b7b5636d9ce89dce775f802d7c673257255c918f41d263663466871ad"
+bytes = 4150
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_fire.gif"
+sha256 = "37c206b97525c42eb42927889146112dadded160b1a69f576636e00e47dd2f02"
+bytes = 4983
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_fire_lut.csv"
+sha256 = "8fb82e05814c60c81a86a358c58bda946d2f89d7f4de0c27e2840ed4a0e73b09"
+bytes = 2525
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_gray8.bmp"
+sha256 = "b0e0b1e026d2c96ca6393c620b65016b5ea9290977dceaea832af8c05d669957"
+bytes = 4150
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_gray8.gif"
+sha256 = "78d9bcc83a49d743dfb312a28ff170525bf71be05cdcc908212e168fed2224c2"
+bytes = 4983
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_gray8.jpg"
+sha256 = "e2a4783fc5b1820987709c5abb3afa25f1468205e7bd269743085c6ccc2069e5"
+bytes = 2234
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_gray8_jpg.png"
+sha256 = "6ebad417cdc78655ac9e5e2dd585528ddf6d4afbe138a354d02b2c8935197480"
+bytes = 3188
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_reopened.csv"
+sha256 = "17c9ce1fb9c72d143c347b2a80297ba251c001235b691efed0c6b07ccaf84878"
+bytes = 198
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_rgb.bmp"
+sha256 = "15d0889dff2a8f084ba52db9c6bf35445583baef5d4aecb72683b7ff93f0e4f9"
+bytes = 9270
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_rgb.jpg"
+sha256 = "8834b0fd1efdcb55fabeb86ba52cf841f6cd6f0869117395c4d6d79139347e8b"
+bytes = 1102
+macro = "gen/20_formats.ijm"
+
+[[file]]
+path = "fmt_rgb_jpg.png"
+sha256 = "eac327943e2787790db94dde7391dbff7505dd6f19c6c4dbd44ccce405e5a7a4"
+bytes = 9332
+macro = "gen/20_formats.ijm"
+
+[[file]]
 path = "gray16.png"
 sha256 = "f3263d27a92dc10a1892ec9aa1c7763b2b65932a82ae5f67595ff6898ff388aa"
 bytes = 6087
@@ -170,10 +464,22 @@ bytes = 10950
 macro = "gen/01_planes.ijm"
 
 [[file]]
+path = "histograms.csv"
+sha256 = "1a0b85ebc01fd4799258ca03fdd2b80b1824e9836f39c0428bd7dbe4ddfa40e0"
+bytes = 76244
+macro = "gen/33_histogram.ijm"
+
+[[file]]
 path = "hyperstack_c3z4t5.tif"
 sha256 = "878b66488471a9b3f64d9483f7d640f2571e752e02fb6e96f5d740fdca3e10d0"
 bytes = 105604
 macro = "gen/03_hyperstack.ijm"
+
+[[file]]
+path = "luts.csv"
+sha256 = "bac9a9ed3c227a08474dd65afcade2715a9170ba012e7e442ce1b6682ec7377b"
+bytes = 33139
+macro = "gen/30_luts.ijm"
 
 [[file]]
 path = "measure_oval_gray16.csv"
@@ -255,7 +561,7 @@ macro = "gen/07_rois.ijm"
 
 [[file]]
 path = "roiset.zip"
-sha256 = "afde188bd172b829384333f620760f39158acf5ab328ea13023505f07580303b"
+sha256 = "d38d034edb9085192dd3bbfdcffee206f7abe9ac10168a809d82f13d9ad44f3a"
 bytes = 874
 macro = "gen/07_rois.ijm"
 reproducible = false # embeds zip entry timestamps

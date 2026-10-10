@@ -25,3 +25,8 @@ ImgLib2  (https://github.com/imglib/imglib2)
 
 SCIFIO  (https://github.com/scifio/scifio)
   Copyright (c) 2011 - 2026, SCIFIO developers. BSD 2-Clause.
+
+Fonts
+  The interface embeds the Ubuntu-Light, Hack, Noto Emoji and emoji-icon-font
+  typefaces distributed with egui (https://github.com/emilk/egui), under the
+  Ubuntu Font Licence 1.0, the MIT licence and the SIL Open Font License 1.1.

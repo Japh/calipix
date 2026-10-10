@@ -1258,6 +1258,7 @@ dependencies = [
 name = "imager-io"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "image",
  "imager-core",
  "thiserror 2.0.21",
@@ -1275,6 +1276,7 @@ name = "imager-render"
 version = "0.1.0"
 dependencies = [
  "imager-core",
+ "proptest",
 ]
 
 [[package]]
