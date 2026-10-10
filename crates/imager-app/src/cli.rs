@@ -73,11 +73,19 @@ pub fn main(argv: impl IntoIterator<Item = OsString>) -> Result<String> {
     match cli.command {
         Some(Cmd::Run { json, id, args }) => run_command(registry, &id, &args, json),
         Some(Cmd::Commands { json, id }) => list_commands(&registry, id.as_deref(), json),
-        None => bail!(
-            "the desktop interface is not part of this build yet; \
-             see `imager --help` for headless use"
-        ),
+        None => open_interface(cli.files),
     }
+}
+
+#[cfg(feature = "gui")]
+fn open_interface(files: Vec<PathBuf>) -> Result<String> {
+    crate::gui::run(files)?;
+    Ok(String::new())
+}
+
+#[cfg(not(feature = "gui"))]
+fn open_interface(_files: Vec<PathBuf>) -> Result<String> {
+    bail!("this is a headless build without the desktop interface; see `imager --help`")
 }
 
 fn run_command(registry: Arc<Registry>, id: &str, tokens: &[String], json: bool) -> Result<String> {

@@ -20,6 +20,7 @@ imager-ops = { path = "crates/imager-ops" }
 
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+eframe = { version = "0.36.2", default-features = false, features = ["wgpu", "default_fonts", "x11", "wayland"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 num-complex = "0.4"
 proc-macro2 = "1"

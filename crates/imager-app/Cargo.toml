@@ -14,12 +14,18 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+eframe = { workspace = true, optional = true }
 imager-command.workspace = true
 imager-commands.workspace = true
 imager-core.workspace = true
 imager-io.workspace = true
 imager-render.workspace = true
 serde_json.workspace = true
+
+[features]
+default = ["gui"]
+# The desktop interface. Without it the binary is headless only.
+gui = ["dep:eframe"]
 
 [dev-dependencies]
 imager-io.workspace = true
