@@ -1724,6 +1724,7 @@ dependencies = [
  "imager-core",
  "imager-io",
  "imager-ops",
+ "imager-render",
 ]
 
 [[package]]
