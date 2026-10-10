@@ -44,12 +44,9 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          grep -E "panicked at|^error|^test .* FAILED|^  left:|^ right:|^assertion" test.log | head -40 | while IFS= read -r line; do
+          grep -A3 -E "panicked at|^error|^test .* FAILED" test.log | grep -v "^--$" | head -45 | while IFS= read -r line; do
             echo "::error title=${{ matrix.os }}::${line}"
           done
-          grep -A6 -E "panicked at" test.log | head -60 | tr '
-' '~' | sed 's/~/%0A/g' | sed 's/^/::error title=${{ matrix.os }} detail::/'
-          echo
 
   licences:
     runs-on: ubuntu-latest
