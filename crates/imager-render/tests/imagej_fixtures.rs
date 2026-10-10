@@ -436,3 +436,46 @@ fn enhance_contrast_matches_imagej() {
     }
     assert_eq!(cases, 35);
 }
+
+/// The B&C "Auto" button cannot be pressed from a batch macro, so its
+/// reference is not in `fixtures/imagej/out`: `tests/data/bc_auto.csv` was
+/// written by `tests/data/BcAuto.java`, which calls ImageJ's
+/// `ContrastAdjuster.autoAdjust` directly, twelve presses per image.
+#[test]
+fn auto_contrast_matches_the_bc_auto_button() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/bc_auto.csv");
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let mut click = 0;
+    let mut presses = 0;
+    for line in text.lines() {
+        let fields: Vec<&str> = line.split(',').collect();
+        let (kind, press, how) = (fields[0], fields[1], fields[3]);
+        if press == "1" {
+            click = 0;
+        }
+        click += 1;
+        let threshold: u64 = fields[2].parse().unwrap();
+        assert_eq!(imager_render::auto_threshold(click), threshold, "{line}");
+
+        let image = pattern_image(kind, 1);
+        let ours = imager_render::auto_contrast(&image, &first_plane(&image), click).unwrap();
+        assert_eq!(ours.reset, how == "reset", "{line}");
+        // ImageJ reports the range as its processor stores it: rounded to
+        // whole numbers for 16-bit images and to single precision for float.
+        let stored = match image.meta().dtype() {
+            DType::U16 => ((ours.range.0 + 0.5).floor(), (ours.range.1 + 0.5).floor()),
+            _ => ours.range,
+        };
+        let imagej: (f64, f64) = (fields[4].parse().unwrap(), fields[5].parse().unwrap());
+        assert!(
+            close(stored.0, imagej.0) && close(stored.1, imagej.1),
+            "{line}: {ours:?}"
+        );
+        // A press that falls back to Reset starts the count again.
+        if ours.reset {
+            click = 0;
+        }
+        presses += 1;
+    }
+    assert_eq!(presses, 72);
+}

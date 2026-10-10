@@ -23,7 +23,8 @@ const AUTO_THRESHOLD: u64 = 5000;
 /// press (from 1) on the same image: 5000, then half the previous value
 /// (rounded down) each time until that would be below 10, when it starts
 /// again from 5000. The sequence is 5000, 2500, 1250, 625, 312, 156, 78,
-/// 39, 19, 9 and then repeats. "Reset" starts the count again.
+/// 39, 19, 9 and then repeats. "Reset" starts the count again, and so does
+/// a press that finds no range (see [`AutoContrast::reset`]).
 pub fn auto_threshold(click: u32) -> u64 {
     let mut threshold = 0;
     for _ in 0..click.max(1) {
@@ -92,17 +93,34 @@ pub fn reset_range(image: &Image, position: &[usize]) -> Result<(f64, f64)> {
     default_display_range(&image.read_plane(plane)?)
 }
 
+/// What one press of the B&C "Auto" button does.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AutoContrast {
+    /// The display range to show the plane with.
+    pub range: (f64, f64),
+    /// True if no range was found and the default range was restored
+    /// instead. ImageJ then starts counting presses again, so the next
+    /// press is `click` 1.
+    pub reset: bool,
+}
+
 /// The display range the B&C "Auto" button gives the plane at `position` on
 /// its `click`-th consecutive press: [`auto_range`] of the plane's default
 /// histogram, or [`reset_range`] where that gives none. For an RGB image
 /// the histogram is of its grey values and the range is meant for all three
 /// channels.
-pub fn auto_contrast(image: &Image, position: &[usize], click: u32) -> Result<(f64, f64)> {
+pub fn auto_contrast(image: &Image, position: &[usize], click: u32) -> Result<AutoContrast> {
     let histogram = plane_histogram(image, position, &HistogramOptions::default())?;
-    match auto_range(&histogram, click) {
-        Some(range) => Ok(range),
-        None => reset_range(image, position),
-    }
+    Ok(match auto_range(&histogram, click) {
+        Some(range) => AutoContrast {
+            range,
+            reset: false,
+        },
+        None => AutoContrast {
+            range: reset_range(image, position)?,
+            reset: true,
+        },
+    })
 }
 
 /// `ContrastEnhancer.getMinAndMax`: the positions in a list of counts where
@@ -233,6 +251,10 @@ mod tests {
         assert_eq!(auto_threshold(0), 5000);
     }
 
+    fn auto(image: &Image, position: &[usize], click: u32) -> AutoContrast {
+        auto_contrast(image, position, click).unwrap()
+    }
+
     /// An 8-bit image whose value `v` occurs `counts[v]` times.
     fn with_counts(counts: &[(u8, usize)]) -> Image {
         let samples: Vec<u8> = counts
@@ -251,10 +273,11 @@ mod tests {
         counts.extend((20..=219u8).map(|v| (v, if v < 216 { 20 } else { 19 })));
         let image = with_counts(&counts);
         assert_eq!(image.meta().width(), 10_000);
-        assert_eq!(auto_contrast(&image, &[], 1).unwrap(), (20.0, 219.0));
+        assert_eq!(auto(&image, &[], 1).range, (20.0, 219.0));
         // Sixth press: threshold = 10000 / 156 = 64; nothing qualifies, so
         // hmin = 255 > hmax = 0 and the range is reset.
-        assert_eq!(auto_contrast(&image, &[], 6).unwrap(), (0.0, 255.0));
+        assert_eq!(auto(&image, &[], 6).range, (0.0, 255.0));
+        assert!(auto(&image, &[], 6).reset && !auto(&image, &[], 1).reset);
         // Fifth press: 10000 / 312 = 32, also above every count.
         let histogram = plane_histogram(&image, &[], &Default::default()).unwrap();
         assert_eq!(auto_range(&histogram, 5), None);
@@ -285,7 +308,7 @@ mod tests {
         ];
         let image = with_counts(&counts);
         assert_eq!(image.meta().width(), 20_000);
-        let range = |click| auto_contrast(&image, &[], click).unwrap();
+        let range = |click| auto(&image, &[], click).range;
         assert_eq!(range(1), (10.0, 240.0));
         assert_eq!(range(2), (20.0, 230.0));
         assert_eq!(range(3), (30.0, 220.0));
@@ -297,12 +320,12 @@ mod tests {
         // One value: its bin holds more than a tenth of the samples, so
         // nothing is found and the range is reset.
         let image = Image::from_vec(4, 1, vec![7u8; 4]).unwrap();
-        assert_eq!(auto_contrast(&image, &[], 1).unwrap(), (0.0, 255.0));
+        assert_eq!(auto(&image, &[], 1).range, (0.0, 255.0));
         let image = Image::from_vec(4, 1, vec![700u16; 4]).unwrap();
-        assert_eq!(auto_contrast(&image, &[], 1).unwrap(), (700.0, 700.0));
+        assert_eq!(auto(&image, &[], 1).range, (700.0, 700.0));
         // Fewer than 10 samples: limit 0, so every occupied bin is ignored.
         let image = Image::from_vec(3, 1, vec![1.0f32, 2.0, 3.0]).unwrap();
-        assert_eq!(auto_contrast(&image, &[], 1).unwrap(), (1.0, 3.0));
+        assert_eq!(auto(&image, &[], 1).range, (1.0, 3.0));
     }
 
     #[test]
@@ -314,16 +337,16 @@ mod tests {
         let mut samples: Vec<u16> = (0..100).flat_map(|i| [1000 + i * 10; 20]).collect();
         samples.extend([0, 5119]);
         let image = Image::from_vec(samples.len(), 1, samples.clone()).unwrap();
-        assert_eq!(auto_contrast(&image, &[], 1).unwrap(), (0.0, 5100.0));
+        assert_eq!(auto(&image, &[], 1).range, (0.0, 5100.0));
         // Third press: threshold 2002 / 1250 = 1; the outliers no longer
         // count. Bins are 20 wide and hold 40 samples each (two values):
         // hmin = 50 -> 1000, hmax = (1990 / 20) = 99 -> 1980.
-        assert_eq!(auto_contrast(&image, &[], 3).unwrap(), (1000.0, 1980.0));
+        assert_eq!(auto(&image, &[], 3).range, (1000.0, 1980.0));
 
         // The same values as floats: binSize = 5119 / 256.
         let floats: Vec<f32> = samples.iter().map(|&v| v as f32).collect();
         let image = Image::from_vec(floats.len(), 1, floats).unwrap();
-        let (min, max) = auto_contrast(&image, &[], 3).unwrap();
+        let (min, max) = auto(&image, &[], 3).range;
         let bin = 5119.0 / 256.0;
         // (int)(1000 * 256 / 5119) = 50 and (int)(1990 * 256 / 5119) = 99.
         assert_eq!((min, max), (50.0 * bin, 99.0 * bin));
@@ -432,6 +455,6 @@ mod tests {
         assert_eq!(reset_range(&image, &[1]).unwrap(), (0.0, 255.0));
         // Too few samples for Auto to accept any bin: min == max is not
         // reached either, so it resets.
-        assert_eq!(auto_contrast(&image, &[0], 1).unwrap(), (0.0, 255.0));
+        assert_eq!(auto(&image, &[0], 1).range, (0.0, 255.0));
     }
 }

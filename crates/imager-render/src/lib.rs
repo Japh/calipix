@@ -33,7 +33,8 @@ mod mapping;
 mod render;
 
 pub use contrast::{
-    DEFAULT_SATURATED, auto_contrast, auto_range, auto_threshold, enhance_contrast, reset_range,
+    AutoContrast, DEFAULT_SATURATED, auto_contrast, auto_range, auto_threshold, enhance_contrast,
+    reset_range,
 };
 pub use histogram::{
     Histogram, HistogramOptions, buffer_histogram, plane_histogram, rgb_to_gray, stack_histogram,
