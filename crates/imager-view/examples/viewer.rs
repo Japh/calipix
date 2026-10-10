@@ -24,7 +24,8 @@
 //!   compares the image area with the CPU reference renderer, prints the
 //!   result and statistics to standard error, and exits.
 //! - `IMAGER_VIEW_CPU=1`: draw with the CPU renderer even if a GPU exists.
-//! - `IMAGER_VIEW_SOFTWARE=1`: run egui itself on a software adapter.
+//! - `IMAGER_VIEW_SOFTWARE=1`: run egui itself on a software adapter
+//!   (the viewer then uses the CPU renderer of its own accord).
 //! - `IMAGER_VIEW_DELAY_MS`: delay added to every region read of `--huge`.
 //!
 //! wgpu's own `WGPU_BACKEND` (vulkan, dx12, gl) selects the backend.
@@ -139,7 +140,7 @@ fn huge_value(x: usize, y: usize) -> u16 {
     let base = if (bx + by) % 2 == 0 { 9000 } else { 30000 };
     let gradient = ((x % 1000) * 12 + (y % 1000) * 8) as u32;
     let mut v = base + gradient;
-    if x % 100 == 0 || y % 100 == 0 {
+    if x.is_multiple_of(100) || y.is_multiple_of(100) {
         v = 52000;
     }
     if x.abs_diff(y) < 6 || (x + y).abs_diff(HUGE_SIDE) < 6 {
@@ -372,7 +373,7 @@ impl App {
             height as usize,
         )?;
         let [r, g, b] = self.view.options().background;
-        for (pixel, inside) in out.data.chunks_exact_mut(4).zip(inside) {
+        for (pixel, inside) in out.data.as_chunks_mut::<4>().0.iter_mut().zip(inside) {
             if !inside {
                 pixel.copy_from_slice(&[r, g, b, 255]);
             }
@@ -438,10 +439,11 @@ impl App {
 
     fn unattended(&mut self, ctx: &egui::Context) {
         // One scripted action every third frame, once the window is up.
-        if self.frames >= 5 && self.frames % 3 == 0 {
-            if let Some(action) = self.script.pop() {
-                self.run_action(&action);
-            }
+        if self.frames >= 5
+            && self.frames.is_multiple_of(3)
+            && let Some(action) = self.script.pop()
+        {
+            self.run_action(&action);
         }
         let Some(shot) = &mut self.shot else {
             return;
@@ -661,6 +663,12 @@ fn main() -> eframe::Result {
     if std::env::var("IMAGER_VIEW_SOFTWARE").is_ok_and(|v| !v.is_empty())
         && let egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_options.wgpu_setup
     {
+        // In debug builds wgpu loads the D3D12 debug layer, which crashes
+        // on this path on some machines (docs/spikes/s2-docking.md).
+        setup
+            .instance_descriptor
+            .flags
+            .remove(wgpu::InstanceFlags::DEBUG);
         setup.native_adapter_selector = Some(Arc::new(|adapters, _surface| {
             adapters
                 .iter()

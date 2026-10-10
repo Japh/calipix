@@ -189,7 +189,7 @@ pub struct ImageView {
     cpu_tiles: ByteLru<TileCoord, Rgba8>,
     cpu_plan: Option<DisplayPlan>,
     cpu_generation: u64,
-    composed: Option<(ComposeKey, egui::TextureHandle)>,
+    composed: Option<(ComposeKey, Composed)>,
     last_viewport: Option<Viewport>,
     wheel: f32,
     error: Option<String>,
@@ -762,12 +762,7 @@ impl ImageView {
             gpu.write_display(self.display.as_ref()?, plan);
             self.display_plan = Some(plan.clone());
         }
-        let bounds = [
-            viewport.min[0] as i32,
-            viewport.min[1] as i32,
-            (viewport.min[0] + viewport.size[0]) as i32,
-            (viewport.min[1] + viewport.size[1]) as i32,
-        ];
+        let bounds = pixel_bounds(viewport);
         let t = planned.transform;
         let mut draws = Vec::with_capacity(planned.cover.len());
         for &(area, source) in &planned.cover {
@@ -822,9 +817,12 @@ impl ImageView {
 
     // ------------------------------------------------------ offscreen renders
 
-    /// Draws what the view shows into a `width` x `height` picture on the
-    /// GPU, reading every tile needed before returning. Fails if the image
-    /// cannot be drawn by the shader (see [`crate::mapping::gpu_can_draw`]).
+    /// Draws what the widget would draw with this GPU into a `width` x
+    /// `height` picture, reading every tile needed before returning: by the
+    /// shader where it can draw the image (see
+    /// [`crate::mapping::gpu_can_draw`]; a software adapter is not avoided
+    /// here), otherwise CPU-rendered tiles copied through the GPU.
+    /// [`ViewStats::cpu_renders`] tells which happened.
     pub fn render_gpu(
         &mut self,
         image: &Image,
@@ -837,14 +835,21 @@ impl ImageView {
         if let Some(e) = self.error.clone() {
             return Err(Error::Unsupported(e));
         }
-        if !planned.use_gpu {
-            return Err(Error::Unsupported(
-                "this image and display range are drawn by the CPU renderer".to_string(),
-            ));
-        }
-        let frame = self
-            .gpu_frame(gpu, &planned, &viewport, OFFSCREEN_FORMAT)
-            .ok_or_else(|| Error::Unsupported("the image could not be uploaded".to_string()))?;
+        let not_uploaded = || Error::Unsupported("the image could not be uploaded".to_string());
+        let frame = if planned.use_gpu {
+            self.gpu_frame(gpu, &planned, &viewport, OFFSCREEN_FORMAT)
+                .ok_or_else(not_uploaded)?
+        } else {
+            self.render_cpu_tiles(&planned, None);
+            if let Some(e) = self.error.clone() {
+                return Err(Error::Unsupported(e));
+            }
+            let picture = self.compose_cpu(&planned, &viewport);
+            let texture = gpu
+                .upload_picture(&picture, None)
+                .ok_or_else(not_uploaded)?;
+            GpuFrame::picture(gpu, &texture, OFFSCREEN_FORMAT, pixel_bounds(&viewport))
+        };
         let data = frame.render_offscreen(width, height, self.options.background);
         if data.len() != (width * height * 4) as usize {
             return Err(Error::Unsupported(
@@ -897,7 +902,7 @@ impl ImageView {
         let [r, g, b] = self.options.background;
         let mut data = [r, g, b, 255].repeat((width * height) as usize);
         for (py, row) in data.chunks_exact_mut(width as usize * 4).enumerate() {
-            for (px, out) in row.chunks_exact_mut(4).enumerate() {
+            for (px, out) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
                 if let Some((x, y)) = transform.displayed_pixel(px as f64, py as f64, step, w, h) {
                     let at = (y * w + x) * 4;
                     out.copy_from_slice(&full.data[at..at + 4]);
@@ -1045,7 +1050,7 @@ impl ImageView {
             renderer = Renderer::Gpu;
             painter.add(egui_wgpu::Callback::new_paint_callback(rect, frame));
         } else if planned.plan.is_some() {
-            loading |= self.paint_cpu(ui.ctx(), &painter, &planned, &viewport, ppp);
+            loading |= self.paint_cpu(ui.ctx(), &painter, rect, gpu, &planned, &viewport, ppp);
         }
         if renderer == Renderer::Gpu {
             // CPU-rendered tiles are of no use while the shader draws.
@@ -1322,13 +1327,18 @@ impl ImageView {
         Ok(self.compose_cpu(&planned, &viewport))
     }
 
-    /// Draws the plan through the CPU renderer: one viewport-sized texture,
-    /// reassembled when the view or the tiles change. Returns true if some
-    /// tiles are still to be rendered.
+    /// Draws the plan through the CPU renderer: one viewport-sized picture,
+    /// reassembled when the view or the tiles change. With a [`ViewerGpu`]
+    /// the picture is copied to the screen texel for pixel; without one it
+    /// is an ordinary egui texture. Returns true if some tiles are still to
+    /// be rendered.
+    #[allow(clippy::too_many_arguments)]
     fn paint_cpu(
         &mut self,
         ctx: &egui::Context,
         painter: &egui::Painter,
+        rect: egui::Rect,
+        gpu: Option<&ViewerGpu>,
         planned: &Planned,
         viewport: &Viewport,
         ppp: f32,
@@ -1343,43 +1353,72 @@ impl ImageView {
         if self.composed.as_ref().is_none_or(|(k, _)| *k != key) {
             let start = Instant::now();
             let picture = self.compose_cpu(planned, viewport);
-            let picture = egui::ColorImage::from_rgba_unmultiplied(
-                [picture.width, picture.height],
-                &picture.data,
-            );
-            let options = egui::TextureOptions::NEAREST;
-            let handle = match self.composed.take() {
-                Some((_, mut handle)) => {
-                    handle.set(picture, options);
-                    handle
+            let previous = self.composed.take().map(|(_, composed)| composed);
+            let on_gpu = gpu.and_then(|gpu| {
+                let existing = match &previous {
+                    Some(Composed::Gpu(texture)) => Some(texture.clone()),
+                    _ => None,
+                };
+                gpu.upload_picture(&picture, existing)
+            });
+            let composed = match (on_gpu, previous) {
+                (Some(texture), _) => Composed::Gpu(texture),
+                (None, previous) => {
+                    let picture = egui::ColorImage::from_rgba_unmultiplied(
+                        [picture.width, picture.height],
+                        &picture.data,
+                    );
+                    let options = egui::TextureOptions::NEAREST;
+                    match previous {
+                        Some(Composed::Egui(mut handle)) => {
+                            handle.set(picture, options);
+                            Composed::Egui(handle)
+                        }
+                        _ => Composed::Egui(ctx.load_texture("imager-view", picture, options)),
+                    }
                 }
-                None => ctx.load_texture("imager-view", picture, options),
             };
-            self.composed = Some((key, handle));
+            self.composed = Some((key, composed));
             self.stats.cpu_render_time += start.elapsed();
         }
-        if let Some((_, handle)) = &self.composed {
-            // Exactly the viewport's device pixels, one texel each.
-            let at = |v: f64| (v / ppp as f64) as f32;
-            let rect = egui::Rect::from_min_max(
-                egui::pos2(at(viewport.min[0]), at(viewport.min[1])),
-                egui::pos2(
-                    at(viewport.min[0] + viewport.size[0]),
-                    at(viewport.min[1] + viewport.size[1]),
-                ),
-            );
-            painter.image(
-                handle.id(),
-                rect,
-                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                egui::Color32::WHITE,
-            );
+        match (&self.composed, gpu) {
+            (Some((_, Composed::Gpu(texture))), Some(gpu)) => {
+                let frame =
+                    GpuFrame::picture(gpu, texture, gpu.target_format(), pixel_bounds(viewport));
+                painter.add(egui_wgpu::Callback::new_paint_callback(rect, frame));
+            }
+            (Some((_, Composed::Egui(handle))), _) => {
+                // Exactly the viewport's device pixels, one texel each.
+                let at = |v: f64| (v / ppp as f64) as f32;
+                let rect = egui::Rect::from_min_max(
+                    egui::pos2(at(viewport.min[0]), at(viewport.min[1])),
+                    egui::pos2(
+                        at(viewport.min[0] + viewport.size[0]),
+                        at(viewport.min[1] + viewport.size[1]),
+                    ),
+                );
+                painter.image(
+                    handle.id(),
+                    rect,
+                    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                    egui::Color32::WHITE,
+                );
+            }
+            _ => {}
         }
         if unfinished {
             ctx.request_repaint();
         }
         unfinished
     }
+}
+
+/// The composed viewport picture, as it is handed to the renderer.
+enum Composed {
+    /// Drawn by the viewer's own pipeline, texel for device pixel.
+    Gpu(wgpu::Texture),
+    /// An ordinary egui texture, when there is no [`ViewerGpu`].
+    Egui(egui::TextureHandle),
 }
 
 /// What a composed viewport picture was made from; it is remade when any
@@ -1391,6 +1430,16 @@ struct ComposeKey {
     cover: Vec<(TileCoord, TileCoord)>,
     /// Counts changes to the set of CPU-rendered tiles.
     generation: u64,
+}
+
+/// A viewport as `[x0, y0, x1, y1]` in device pixels, end exclusive.
+fn pixel_bounds(viewport: &Viewport) -> [i32; 4] {
+    [
+        viewport.min[0] as i32,
+        viewport.min[1] as i32,
+        (viewport.min[0] + viewport.size[0]) as i32,
+        (viewport.min[1] + viewport.size[1]) as i32,
+    ]
 }
 
 /// Time the CPU renderer may take per frame once something is on screen.

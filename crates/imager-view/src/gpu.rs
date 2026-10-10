@@ -108,6 +108,20 @@ fn fs_main(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
     src += "    return vec4<f32>(vec3<f32>(min(sum, vec3<u32>(255u))) / 255.0, 1.0);
 }
 ";
+    if kind == SampleKind::Uint {
+        // A finished RGBA picture (CPU-rendered) copied texel for texel.
+        src += "
+@fragment
+fn fs_picture(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
+    let t = params.texel0 + (frag.xy - params.base) * params.texels_per_px;
+    let p = vec2<i32>(floor(t));
+    if (p.x < 0 || p.y < 0 || p.x >= params.size.x || p.y >= params.size.y) {
+        discard;
+    }
+    return vec4<f32>(vec3<f32>(textureLoad(img0, p, 0).rgb) / 255.0, 1.0);
+}
+";
+    }
     src
 }
 
@@ -132,7 +146,7 @@ struct Inner {
     uniform_align: u64,
     layouts: [wgpu::BindGroupLayout; 3],
     shaders: [wgpu::ShaderModule; 3],
-    pipelines: Mutex<HashMap<(usize, wgpu::TextureFormat), wgpu::RenderPipeline>>,
+    pipelines: Mutex<HashMap<(usize, bool, wgpu::TextureFormat), wgpu::RenderPipeline>>,
     /// 1x1 textures bound in place of channels that are not drawn.
     blanks: [wgpu::TextureView; 3],
 }
@@ -272,11 +286,16 @@ impl ViewerGpu {
         self.0.target_format
     }
 
-    fn pipeline(&self, kind: SampleKind, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
+    fn pipeline(
+        &self,
+        kind: SampleKind,
+        picture: bool,
+        format: wgpu::TextureFormat,
+    ) -> wgpu::RenderPipeline {
         let k = kind_index(kind);
         let mut pipelines = self.0.pipelines.lock().unwrap_or_else(|e| e.into_inner());
         pipelines
-            .entry((k, format))
+            .entry((k, picture, format))
             .or_insert_with(|| {
                 let device = &self.0.device;
                 let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -298,7 +317,7 @@ impl ViewerGpu {
                     multisample: wgpu::MultisampleState::default(),
                     fragment: Some(wgpu::FragmentState {
                         module: &self.0.shaders[k],
-                        entry_point: Some("fs_main"),
+                        entry_point: Some(if picture { "fs_picture" } else { "fs_main" }),
                         compilation_options: Default::default(),
                         targets: &[Some(wgpu::ColorTargetState {
                             format,
@@ -341,6 +360,33 @@ impl ViewerGpu {
             height as u32,
             bytes,
         );
+        Some(texture)
+    }
+
+    /// Uploads a finished RGBA picture for [`GpuFrame::picture`], reusing
+    /// `existing` if it has the right size. `None` if the picture is larger
+    /// than the device's textures can be.
+    pub(crate) fn upload_picture(
+        &self,
+        picture: &imager_render::Rgba8,
+        existing: Option<wgpu::Texture>,
+    ) -> Option<wgpu::Texture> {
+        let (width, height) = (picture.width as u32, picture.height as u32);
+        let side = self.0.max_texture_side;
+        if width == 0 || height == 0 || width > side || height > side {
+            return None;
+        }
+        let texture = existing
+            .filter(|t| t.width() == width && t.height() == height)
+            .unwrap_or_else(|| {
+                create_texture(
+                    &self.0.device,
+                    width,
+                    height,
+                    wgpu::TextureFormat::Rgba8Uint,
+                )
+            });
+        write_texture(&self.0.queue, &texture, 0, width, height, &picture.data);
         Some(texture)
     }
 
@@ -484,6 +530,8 @@ struct Prepared {
 pub(crate) struct GpuFrame {
     gpu: ViewerGpu,
     kind: SampleKind,
+    /// Draw a finished RGBA picture instead of mapping samples.
+    picture: bool,
     format: wgpu::TextureFormat,
     levels: wgpu::TextureView,
     lut: wgpu::TextureView,
@@ -518,6 +566,7 @@ impl GpuFrame {
         Some(GpuFrame {
             gpu: gpu.clone(),
             kind,
+            picture: false,
             format,
             levels: display.levels_view.clone(),
             lut: display.lut_view.clone(),
@@ -528,6 +577,39 @@ impl GpuFrame {
             draws,
             prepared: Mutex::new(None),
         })
+    }
+
+    /// A frame that copies a finished RGBA picture (see
+    /// [`ViewerGpu::upload_picture`]) to the device pixels of `bounds`, one
+    /// texel per pixel.
+    pub fn picture(
+        gpu: &ViewerGpu,
+        picture: &wgpu::Texture,
+        format: wgpu::TextureFormat,
+        bounds: [i32; 4],
+    ) -> GpuFrame {
+        let blank = &gpu.0.blanks[kind_index(SampleKind::Uint)];
+        GpuFrame {
+            gpu: gpu.clone(),
+            kind: SampleKind::Uint,
+            picture: true,
+            format,
+            levels: blank.clone(),
+            lut: blank.clone(),
+            table_rows: 0,
+            chan: [[0.0; 4]; MAX_GPU_CHANNELS],
+            n_channels: 1,
+            bounds,
+            draws: vec![TileDraw {
+                textures: vec![picture.clone()],
+                scissor: bounds,
+                base: [bounds[0], bounds[1]],
+                texel0: [0.5, 0.5],
+                size: [picture.width(), picture.height()],
+                texels_per_px: 1.0,
+            }],
+            prepared: Mutex::new(None),
+        }
     }
 
     fn prepare_draws(&self) {
@@ -600,7 +682,7 @@ impl GpuFrame {
             })
             .collect();
         let prepared = Prepared {
-            pipeline: self.gpu.pipeline(self.kind, self.format),
+            pipeline: self.gpu.pipeline(self.kind, self.picture, self.format),
             bind_groups,
             stride: stride as u32,
         };
@@ -785,6 +867,7 @@ mod tests {
             let src = shader_source(kind);
             assert!(src.contains(&format!("var img{}:", MAX_GPU_CHANNELS - 1)));
             assert!(src.contains("fn level("));
+            assert_eq!(src.contains("fn fs_picture("), kind == SampleKind::Uint);
         }
     }
 }

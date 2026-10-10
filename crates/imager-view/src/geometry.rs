@@ -184,13 +184,14 @@ impl ViewState {
     /// image smaller than the viewport is centred, and a larger one always
     /// covers the viewport.
     pub fn clamp(&mut self, image: [usize; 2], viewport: &Viewport) {
-        for axis in 0..2 {
-            let size = image[axis] as f64;
-            let half_view = viewport.size[axis] / (2.0 * self.zoom);
-            self.center[axis] = if size * self.zoom <= viewport.size[axis] {
+        let zoom = self.zoom;
+        for ((center, size), view) in self.center.iter_mut().zip(image).zip(viewport.size) {
+            let size = size as f64;
+            let half_view = view / (2.0 * zoom);
+            *center = if size * zoom <= view {
                 size / 2.0
             } else {
-                self.center[axis].clamp(half_view, size - half_view)
+                center.clamp(half_view, size - half_view)
             };
         }
     }

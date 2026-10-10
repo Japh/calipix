@@ -248,11 +248,12 @@ pub fn float_params(range: (f64, f64)) -> Option<FloatParams> {
     let (min, max) = range;
     let scale = (255.0 / (max - min)) as f32;
     let min_hi = min as f32;
-    (min_hi.is_finite() && max > min && scale.is_finite() && scale > 0.0).then(|| FloatParams {
+    let params = FloatParams {
         min_hi,
         min_lo: (min - min_hi as f64) as f32,
         scale,
-    })
+    };
+    (min_hi.is_finite() && max > min && scale.is_finite() && scale > 0.0).then_some(params)
 }
 
 /// The shader's float rule on the CPU, for tests and documentation.
@@ -331,9 +332,10 @@ pub fn render_tile_cpu(
         }];
         let image = Image::from_planes(meta, vec![samples.clone()])?;
         let layer = render_plane(&image, &[])?;
-        for (sum, add) in out.data.chunks_exact_mut(4).zip(layer.data.chunks_exact(4)) {
-            for c in 0..3 {
-                sum[c] = sum[c].saturating_add(add[c]);
+        let sums = out.data.as_chunks_mut::<4>().0;
+        for (sum, add) in sums.iter_mut().zip(layer.data.as_chunks::<4>().0) {
+            for (s, a) in sum.iter_mut().zip(add).take(3) {
+                *s = s.saturating_add(*a);
             }
         }
     }

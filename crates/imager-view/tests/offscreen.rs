@@ -67,7 +67,13 @@ fn diff(a: &Rgba8, b: &Rgba8) -> Diff {
         pixels: a.width * a.height,
         ..Diff::default()
     };
-    for (p, q) in a.data.chunks_exact(4).zip(b.data.chunks_exact(4)) {
+    for (p, q) in a
+        .data
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.data.as_chunks::<4>().0)
+    {
         let m = (0..4).map(|c| p[c].abs_diff(q[c])).max().unwrap();
         d.differing += (m != 0) as usize;
         d.max = d.max.max(m);
@@ -362,7 +368,13 @@ fn f32_is_within_one_level() {
         vec![f32_plane(w, h, 4, false)],
     )
     .unwrap();
-    assert!(ImageView::default().render_gpu(&base, gpu(), 8, 8).is_err());
+    let mut cpu_drawn = ImageView::new(options(256));
+    let got = cpu_drawn
+        .render_gpu(&base, gpu(), w as u32, h as u32)
+        .unwrap();
+    assert!(cpu_drawn.stats().cpu_renders > 0);
+    let want = render_plane(&base, &[]).unwrap();
+    assert_eq!(diff(&got, &want).differing, 0);
     let ranges = [
         None,
         Some((0.0, 1.0)),
@@ -471,7 +483,13 @@ fn composite_reference(image: &Image, position: &[usize], visible: &[bool]) -> R
         out = Some(match out {
             None => layer,
             Some(mut sum) => {
-                for (s, l) in sum.data.chunks_exact_mut(4).zip(layer.data.chunks_exact(4)) {
+                for (s, l) in sum
+                    .data
+                    .as_chunks_mut::<4>()
+                    .0
+                    .iter_mut()
+                    .zip(layer.data.as_chunks::<4>().0)
+                {
                     for k in 0..3 {
                         s[k] = s[k].saturating_add(l[k]);
                     }
@@ -519,9 +537,13 @@ fn composite_equals_summed_cpu_channels_exactly() {
     let got = view.render_gpu(&seven, gpu(), 96, 64).unwrap();
     let want = composite_reference(&seven, &[0], &[true; 7]);
     assert_eq!(diff(&got, &want).differing, 0);
-    // One more is left to the CPU renderer.
+    assert_eq!(view.stats().cpu_renders, 0);
+    // One more is left to the CPU renderer, and still shown exactly.
     let eight = composite(DType::U8, 96, 64, 8, 1);
-    assert!(view.render_gpu(&eight, gpu(), 96, 64).is_err());
+    let got = view.render_gpu(&eight, gpu(), 96, 64).unwrap();
+    let want = composite_reference(&eight, &[0], &[true; 8]);
+    assert_eq!(diff(&got, &want).differing, 0);
+    assert_eq!(view.stats().cpu_renders, 2);
     no_gpu_errors();
 }
 
