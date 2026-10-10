@@ -26,6 +26,24 @@ bytes = 493
 macro = "gen/06_measure.ijm"
 
 [[file]]
+path = "composite.csv"
+sha256 = "ef5ebf539bef9b6b5905abe9108e2193d4ddc4ca2aaba72671d12679bc9f2e28"
+bytes = 20510
+macro = "gen/32_composite.ijm"
+
+[[file]]
+path = "contrast.csv"
+sha256 = "57ff8e6092e5a4d7b1b13f02765acbfdb6ccf881928e10afdee954e05acdff2d"
+bytes = 1477
+macro = "gen/34_contrast.ijm"
+
+[[file]]
+path = "display_levels.csv"
+sha256 = "1fc97269d2aee8fa1e34705550078e32d5fd759d6feaa8d9a65e0d0f891d16e6"
+bytes = 127662
+macro = "gen/31_display.ijm"
+
+[[file]]
 path = "gray16.png"
 sha256 = "f3263d27a92dc10a1892ec9aa1c7763b2b65932a82ae5f67595ff6898ff388aa"
 bytes = 6087
@@ -170,10 +188,22 @@ bytes = 10950
 macro = "gen/01_planes.ijm"
 
 [[file]]
+path = "histograms.csv"
+sha256 = "1a0b85ebc01fd4799258ca03fdd2b80b1824e9836f39c0428bd7dbe4ddfa40e0"
+bytes = 76244
+macro = "gen/33_histogram.ijm"
+
+[[file]]
 path = "hyperstack_c3z4t5.tif"
 sha256 = "878b66488471a9b3f64d9483f7d640f2571e752e02fb6e96f5d740fdca3e10d0"
 bytes = 105604
 macro = "gen/03_hyperstack.ijm"
+
+[[file]]
+path = "luts.csv"
+sha256 = "bac9a9ed3c227a08474dd65afcade2715a9170ba012e7e442ce1b6682ec7377b"
+bytes = 33139
+macro = "gen/30_luts.ijm"
 
 [[file]]
 path = "measure_oval_gray16.csv"
