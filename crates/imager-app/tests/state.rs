@@ -702,7 +702,7 @@ fn dialogs_mark_invalid_values_and_refuse_them() {
     *draft(&mut dialog, "radius") = Draft::Float(-1.0);
     assert_eq!(
         problem(&mut dialog, &state, "radius").as_deref(),
-        Some("-1 is outside the allowed range 0 to ..")
+        Some("Must be at least 0")
     );
     assert!(!dialog.is_valid(&state.session().workspace));
     assert_eq!(dialog.args(&state.session().workspace), None);
@@ -717,14 +717,14 @@ fn dialogs_mark_invalid_values_and_refuse_them() {
     *draft(&mut dialog, "count") = Draft::Int(11);
     assert_eq!(
         problem(&mut dialog, &state, "count").as_deref(),
-        Some("11 is outside the allowed range 1 to 10")
+        Some("Must be between 1 and 10")
     );
     *draft(&mut dialog, "count") = Draft::Int(10);
 
     *draft(&mut dialog, "weights") = Draft::Text("1, two, 3".into());
     assert_eq!(
         problem(&mut dialog, &state, "weights").as_deref(),
-        Some("Expected float, found `two`")
+        Some("“two” is not a number")
     );
     *draft(&mut dialog, "weights") = Draft::Text(" 1 ,2.5".into());
     assert_eq!(problem(&mut dialog, &state, "weights"), None);

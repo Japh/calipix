@@ -12,10 +12,13 @@
 //! - `more` unfolds the dialog's advanced options
 //! - `accept` presses OK in the open dialog
 //! - `select:<n>` chooses the n-th image tab, counting from 1
+//! - `click:<x>,<y>` clicks at a position in the window, e.g. on a menu
+//! - `hover:<x>,<y>` moves the pointer there
 //! - `wait:<milliseconds>` lets time pass
 //!
 //! `IMAGER_CAPTURE_RUN=<command id>` is short for a single `run` step. The
-//! user's settings are neither read nor written while capturing.
+//! user's settings are neither read nor written while capturing, unless
+//! `IMAGER_CONFIG_DIR` names a folder to keep settings in.
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -38,7 +41,16 @@ enum Step {
     More,
     Accept,
     Select(usize),
+    Click(egui::Pos2),
+    Hover(egui::Pos2),
     Wait(Duration),
+}
+
+fn position(text: &str) -> Result<egui::Pos2> {
+    let (x, y) = text
+        .split_once(',')
+        .ok_or_else(|| anyhow!("`{text}` should be <x>,<y>"))?;
+    Ok(egui::pos2(x.trim().parse()?, y.trim().parse()?))
 }
 
 impl Step {
@@ -57,6 +69,8 @@ impl Step {
             "more" => Step::More,
             "accept" => Step::Accept,
             "select" => Step::Select(rest.parse().context("select needs a tab number")?),
+            "click" => Step::Click(position(rest)?),
+            "hover" => Step::Hover(position(rest)?),
             "wait" => Step::Wait(Duration::from_millis(
                 rest.parse().context("wait needs milliseconds")?,
             )),
@@ -76,6 +90,8 @@ pub struct Capture {
     /// mid-run: what follows does not wait for the command to finish.
     mid_run: bool,
     requested: bool,
+    /// Pointer events to feed in, one batch per frame.
+    pointer: VecDeque<Vec<egui::Event>>,
 }
 
 /// Frames to let the interface settle after each step.
@@ -102,6 +118,7 @@ impl Capture {
             hold_until: None,
             mid_run: false,
             requested: false,
+            pointer: VecDeque::new(),
         }))
     }
 
@@ -145,8 +162,28 @@ impl Capture {
         false
     }
 
+    /// Adds this frame's share of the scripted pointer events to the
+    /// window's input, as if a person had moved and clicked the mouse.
+    pub fn inject(&mut self, raw_input: &mut egui::RawInput) {
+        if let Some(events) = self.pointer.pop_front() {
+            raw_input.events.extend(events);
+        }
+    }
+
     fn apply(&mut self, step: Step, shell: &mut Shell) {
         match step {
+            Step::Hover(at) => self.pointer.push_back(vec![egui::Event::PointerMoved(at)]),
+            Step::Click(at) => {
+                let button = |pressed| egui::Event::PointerButton {
+                    pos: at,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                };
+                self.pointer.push_back(vec![egui::Event::PointerMoved(at)]);
+                self.pointer.push_back(vec![button(true)]);
+                self.pointer.push_back(vec![button(false)]);
+            }
             Step::Open(path) => shell.state.open_files([path]),
             Step::Run(id) => shell.invoke(&id, &Args::new()),
             Step::Palette(query) => {

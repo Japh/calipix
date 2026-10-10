@@ -1,8 +1,10 @@
 //! Parameter dialogs. One function draws the dialog of any command from
 //! its [`Dialog`] model; no command has dialog code of its own.
 
+use std::path::{Path, PathBuf};
+
 use eframe::egui::{self, Key};
-use imager_command::{DatasetId, ParamType, Workspace};
+use imager_command::{Args, DatasetId, ParamType, PathMode, Workspace};
 
 use super::{FilePicker, ui};
 use crate::state::{AppState, Dialog, Draft, Field};
@@ -17,7 +19,10 @@ pub enum Outcome {
     Cancelled,
 }
 
-const WIDTH: f32 = 420.0;
+const WIDTH: f32 = 430.0;
+
+/// Asks the person for a path, starting from the one in the field.
+type Browse<'a> = dyn FnMut(PathMode, &str) -> Option<PathBuf> + 'a;
 
 pub fn show(
     ctx: &egui::Context,
@@ -27,121 +32,122 @@ pub fn show(
 ) -> Outcome {
     let workspace = &state.session().workspace;
     let mut outcome = Outcome::Open;
-    let modal = egui::Modal::new(egui::Id::new("command_dialog")).show(ctx, |ui| {
-        ui.set_width(WIDTH);
-        ui.heading(&dialog.spec.title);
-        if !dialog.spec.summary.is_empty() {
-            ui::weak(ui, dialog.spec.summary.clone());
-        }
-        ui.add_space(ui::GAP);
+    let frame = ui::modal_frame(&ctx.global_style());
+    let modal = egui::Modal::new(egui::Id::new("command_dialog"))
+        .frame(frame)
+        .show(ctx, |ui| {
+            ui.set_width(WIDTH);
+            ui.heading(&dialog.spec.title);
+            if !dialog.spec.summary.is_empty() {
+                ui::weak(ui, dialog.spec.summary.clone());
+            }
+            ui.add_space(ui::GAP);
 
-        let spec = dialog.spec.clone();
-        let mut rows = |ui: &mut egui::Ui, advanced: bool, fields: &mut [Field]| {
-            egui::Grid::new(("fields", advanced))
-                .num_columns(2)
-                .spacing([ui::GAP * 1.5, 8.0])
-                .show(ui, |ui| {
-                    for field in fields.iter_mut().filter(|f| f.param.advanced == advanced) {
-                        row(ui, field, workspace, &mut |mode, current| {
-                            let mut request = state.path_request(&spec, mode, &Default::default());
-                            let current = std::path::Path::new(current);
-                            if let Some(dir) = current.parent().filter(|d| d.is_dir()) {
-                                request.directory = Some(dir.to_path_buf());
-                            }
-                            picker.pick(&request)
-                        });
-                        ui.end_row();
+            let spec = dialog.spec.clone();
+            let mut browse = |mode: PathMode, current: &str| {
+                let mut request = state.path_request(&spec, mode, &Args::new());
+                if let Some(folder) = Path::new(current).parent().filter(|d| d.is_dir()) {
+                    request.directory = Some(folder.to_path_buf());
+                }
+                picker.pick(&request)
+            };
+            rows(ui, workspace, &mut dialog.fields, false, &mut browse);
+            if dialog.has_advanced() {
+                ui.add_space(ui::GAP / 2.0);
+                let section = egui::CollapsingHeader::new("More options")
+                    .id_salt("advanced")
+                    .open(Some(dialog.show_advanced))
+                    .show(ui, |ui| {
+                        rows(ui, workspace, &mut dialog.fields, true, &mut browse);
+                    });
+                if section.header_response.clicked() {
+                    dialog.show_advanced = !dialog.show_advanced;
+                }
+            }
+
+            ui.add_space(ui::GAP);
+            ui.separator();
+            ui.add_space(ui::GAP / 2.0);
+            let valid = dialog.is_valid(workspace);
+            ui.horizontal(|ui| {
+                if ui::button(ui, "Reset")
+                    .on_hover_text("Restore the default values")
+                    .clicked()
+                {
+                    dialog.reset(workspace);
+                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let ok = ui::primary_button(ui, "OK", valid)
+                        .on_disabled_hover_text("Fix the marked values first");
+                    if ok.clicked() {
+                        outcome = Outcome::Accepted;
+                    }
+                    if ui::button(ui, "Cancel").clicked() {
+                        outcome = Outcome::Cancelled;
                     }
                 });
-        };
-        rows(ui, false, &mut dialog.fields);
-        if dialog.has_advanced() {
-            ui.add_space(ui::GAP / 2.0);
-            let section = egui::CollapsingHeader::new("More options")
-                .id_salt("advanced")
-                .open(Some(dialog.show_advanced))
-                .show(ui, |ui| rows(ui, true, &mut dialog.fields));
-            if section.header_response.clicked() {
-                dialog.show_advanced = !dialog.show_advanced;
-            }
-        }
-
-        ui.add_space(ui::GAP);
-        ui.separator();
-        let valid = dialog.is_valid(workspace);
-        ui.horizontal(|ui| {
-            if ui::button(ui, "Reset")
-                .on_hover_text("Restore the default values")
-                .clicked()
-            {
-                dialog.reset(workspace);
-            }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let ok = ui::primary_button(ui, "OK", valid)
-                    .on_disabled_hover_text("Fix the marked values first");
-                if ok.clicked() {
-                    outcome = Outcome::Accepted;
-                }
-                if ui::button(ui, "Cancel").clicked() {
-                    outcome = Outcome::Cancelled;
-                }
             });
+            // Read after the fields have been drawn, so a number being typed
+            // is committed by the same Enter that accepts the dialog.
+            if valid && ui.input(|i| i.key_pressed(Key::Enter)) {
+                outcome = Outcome::Accepted;
+            }
         });
-        // Read after the fields have been drawn, so a number being typed
-        // is committed by the same Enter that accepts the dialog.
-        if valid && ui.input(|i| i.key_pressed(Key::Enter)) {
-            outcome = Outcome::Accepted;
-        }
-    });
     if modal.should_close() && outcome == Outcome::Open {
         outcome = Outcome::Cancelled;
     }
     outcome
 }
 
-/// One parameter: its label, its control with the unit after it, and under
-/// the control whatever is wrong with the value.
-fn row(
+/// The basic or the advanced parameters, one row each: label, then the
+/// control with its unit. Whatever is wrong with a value goes on a row of
+/// its own directly under the control.
+fn rows(
     ui: &mut egui::Ui,
-    field: &mut Field,
     workspace: &Workspace,
-    browse: &mut dyn FnMut(imager_command::PathMode, &str) -> Option<std::path::PathBuf>,
+    fields: &mut [Field],
+    advanced: bool,
+    browse: &mut Browse<'_>,
 ) {
-    let param = field.param.clone();
-    let is_bool = matches!(field.draft, Draft::Bool(_));
-    // A checkbox carries its own label.
-    let label = ui.label(if is_bool { "" } else { param.label.as_str() });
-    let label = if param.doc.is_empty() {
-        label
-    } else {
-        label.on_hover_text(&param.doc)
-    };
-
-    ui.vertical(|ui| {
-        let control = ui
-            .horizontal(|ui| {
-                let control = control(ui, field, workspace, browse);
-                if let Some(unit) = &param.unit {
-                    ui::weak(ui, unit.clone());
+    egui::Grid::new(("fields", advanced))
+        .num_columns(2)
+        .spacing([ui::GAP * 1.5, 7.0])
+        .show(ui, |ui| {
+            for field in fields.iter_mut().filter(|f| f.param.advanced == advanced) {
+                let param = field.param.clone();
+                // A checkbox carries its own label.
+                let is_bool = matches!(field.draft, Draft::Bool(_));
+                let label = ui.label(if is_bool { "" } else { param.label.as_str() });
+                let control = ui
+                    .horizontal(|ui| {
+                        let control = control(ui, field, workspace, browse);
+                        if let Some(unit) = &param.unit {
+                            ui::weak(ui, unit.clone());
+                        }
+                        control
+                    })
+                    .inner
+                    .labelled_by(label.id);
+                if !param.doc.is_empty() {
+                    label.on_hover_text(&param.doc);
+                    control.on_hover_text(&param.doc);
                 }
-                control
-            })
-            .inner
-            .labelled_by(label.id);
-        if !param.doc.is_empty() {
-            control.on_hover_text(&param.doc);
-        }
-        if let Some(problem) = field.problem(workspace) {
-            ui::problem(ui, &problem);
-        }
-    });
+                ui.end_row();
+
+                if let Some(problem) = field.problem(workspace) {
+                    ui.label("");
+                    ui::problem(ui, &problem);
+                    ui.end_row();
+                }
+            }
+        });
 }
 
 fn control(
     ui: &mut egui::Ui,
     field: &mut Field,
     workspace: &Workspace,
-    browse: &mut dyn FnMut(imager_command::PathMode, &str) -> Option<std::path::PathBuf>,
+    browse: &mut Browse<'_>,
 ) -> egui::Response {
     let param = &field.param;
     let range = |integer| ui::NumberRange {
@@ -163,7 +169,7 @@ fn control(
         (Draft::Text(text), ParamType::Choice(choices)) => {
             egui::ComboBox::from_id_salt(&param.name)
                 .selected_text(text.as_str())
-                .width(180.0)
+                .width(ui::FIELD_WIDTH)
                 .show_ui(ui, |ui| {
                     for choice in choices {
                         ui.selectable_value(text, choice.clone(), choice);
@@ -172,8 +178,12 @@ fn control(
                 .response
         }
         (Draft::Text(text), ParamType::Path(mode)) => {
-            let edit = ui.add(egui::TextEdit::singleline(text).desired_width(230.0));
-            if ui.button("Browse…").clicked()
+            // The field and its button together are as wide as other fields.
+            let button = 76.0;
+            let width = ui::FIELD_WIDTH - button - ui.spacing().item_spacing.x;
+            let edit = ui.add(egui::TextEdit::singleline(text).desired_width(width));
+            let browse_button = egui::Button::new("Browse…").min_size(egui::vec2(button, 0.0));
+            if ui.add(browse_button).clicked()
                 && let Some(path) = browse(*mode, text)
             {
                 *text = path.display().to_string();
@@ -181,7 +191,7 @@ fn control(
             edit
         }
         (Draft::Text(text), ty) => {
-            let mut edit = egui::TextEdit::singleline(text).desired_width(230.0);
+            let mut edit = egui::TextEdit::singleline(text).desired_width(ui::FIELD_WIDTH);
             if matches!(ty, ParamType::List(_)) {
                 edit = edit.hint_text("Values separated by commas");
             }
@@ -215,7 +225,7 @@ fn image_choice(
     };
     egui::ComboBox::from_id_salt(salt)
         .selected_text(chosen.map_or_else(|| "No image".to_string(), name))
-        .width(180.0)
+        .width(ui::FIELD_WIDTH)
         .show_ui(ui, |ui| {
             for dataset in workspace.datasets() {
                 ui.selectable_value(chosen, Some(dataset.id), name(dataset.id));

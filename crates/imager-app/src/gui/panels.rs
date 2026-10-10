@@ -11,7 +11,7 @@ use crate::state::{AppState, LogLevel, Panel};
 /// Draws a panel's contents.
 pub fn show(ui: &mut egui::Ui, panel: Panel, state: &AppState) {
     ui::panel_frame().show(ui, |ui| {
-        egui::ScrollArea::both()
+        egui::ScrollArea::vertical()
             .id_salt(panel)
             .auto_shrink(false)
             .stick_to_bottom(panel == Panel::Log)
@@ -29,6 +29,10 @@ fn info(ui: &mut egui::Ui, state: &AppState) {
     };
     let meta = dataset.image.meta();
     ui.label(RichText::new(&meta.name).strong());
+    if let Some(path) = &dataset.path {
+        // Paths are long: wrapped under the name rather than cut off.
+        ui.add(egui::Label::new(RichText::new(path.display().to_string()).weak().small()).wrap());
+    }
     ui.add_space(ui::GAP / 2.0);
     ui::properties(ui, "info", |ui| {
         ui::property(
@@ -56,9 +60,6 @@ fn info(ui: &mut egui::Ui, state: &AppState) {
                 "Loaded on demand"
             },
         );
-        if let Some(path) = &dataset.path {
-            ui::property(ui, "File", path.display().to_string());
-        }
     });
 }
 
@@ -83,19 +84,37 @@ fn history(ui: &mut egui::Ui, state: &AppState) {
     }
     let applied = history.applied().len();
     egui::Grid::new("history")
-        .num_columns(4)
+        .num_columns(3)
         .spacing([ui::GAP, 3.0])
         .show(ui, |ui| {
             for (index, entry) in entries.iter().enumerate() {
                 let undone = index >= applied;
-                // The arrow marks the undo position: the last step in effect.
-                ui.label(if index + 1 == applied { "▶" } else { "" });
                 let title = RichText::new(format!("{}. {}", index + 1, entry.title));
+                ui.horizontal(|ui| {
+                    // The arrow marks the undo position: the last step in
+                    // effect. Every row leaves room for it.
+                    let (slot, _) = ui.allocate_exact_size(
+                        egui::vec2(10.0, ui.spacing().interact_size.y),
+                        egui::Sense::hover(),
+                    );
+                    if index + 1 == applied {
+                        ui.painter().text(
+                            slot.center(),
+                            egui::Align2::CENTER_CENTER,
+                            "▶",
+                            egui::TextStyle::Small.resolve(ui.style()),
+                            ui.visuals().text_color(),
+                        );
+                    }
+                    if undone {
+                        ui.label(title.weak().strikethrough());
+                    } else {
+                        ui.label(title);
+                    }
+                });
                 if undone {
-                    ui.label(title.weak().strikethrough());
                     ui::weak(ui, "undone");
                 } else {
-                    ui.label(title);
                     ui::weak(ui, arguments(state, entry));
                 }
                 ui::weak(ui, format!("{:.0?}", entry.duration));

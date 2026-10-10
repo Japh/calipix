@@ -22,6 +22,9 @@ pub struct ViewerResponse {
     pub scale: Option<f32>,
 }
 
+/// Space left around an image that is fitted to its tab.
+const FIT_MARGIN: f32 = 8.0;
+
 struct View {
     /// The image the texture was made from. Images are immutable
     /// snapshots, so a pointer comparison detects every change.
@@ -82,7 +85,9 @@ impl Viewer {
             }
         };
         let size = texture.size_vec2();
-        let fit = (area.width() / size.x).min(area.height() / size.y);
+        // Fitted images keep a little clear of the edges of the tab.
+        let room = (area.size() - egui::Vec2::splat(2.0 * FIT_MARGIN)).max(egui::Vec2::splat(1.0));
+        let fit = (room.x / size.x).min(room.y / size.y);
         let scale = view.zoom.unwrap_or(fit).max(f32::MIN_POSITIVE);
         view.shown_scale = scale;
         let shown = egui::Rect::from_center_size(area.center(), size * scale);

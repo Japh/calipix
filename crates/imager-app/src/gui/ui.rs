@@ -12,8 +12,13 @@ pub const ON_IMAGE_BACKGROUND: Color32 = Color32::from_gray(205);
 
 /// Space between unrelated groups of controls.
 pub const GAP: f32 = 10.0;
-/// Margin inside panels and dialogs.
+/// Margin inside panels.
 pub const MARGIN: i8 = 8;
+/// Width of the text fields and drop-downs in dialogs.
+pub const FIELD_WIDTH: f32 = 240.0;
+/// Fill of the button that carries out a dialog's purpose; white text
+/// reads on it in both themes.
+const ACCENT: Color32 = Color32::from_rgb(0, 102, 184);
 
 /// Sets the spacing and text sizes shared by both themes. Call once.
 pub fn apply_style(ctx: &egui::Context) {
@@ -61,14 +66,19 @@ pub fn panel_frame() -> egui::Frame {
     egui::Frame::new().inner_margin(MARGIN)
 }
 
+/// Frame of dialogs and other boxes shown over the window.
+pub fn modal_frame(style: &egui::Style) -> egui::Frame {
+    egui::Frame::popup(style).inner_margin(16)
+}
+
 /// The button that carries out a dialog's purpose.
 pub fn primary_button(ui: &mut egui::Ui, text: &str, enabled: bool) -> egui::Response {
-    let fill = ui.visuals().selection.bg_fill;
-    let color = ui.visuals().selection.stroke.color;
-    let button = egui::Button::new(RichText::new(text).color(color))
-        .fill(fill)
-        .min_size(egui::vec2(72.0, 0.0));
-    ui.add_enabled(enabled, button)
+    let button = if enabled {
+        egui::Button::new(RichText::new(text).color(Color32::WHITE)).fill(ACCENT)
+    } else {
+        egui::Button::new(text)
+    };
+    ui.add_enabled(enabled, button.min_size(egui::vec2(72.0, 0.0)))
 }
 
 /// Any other dialog button.

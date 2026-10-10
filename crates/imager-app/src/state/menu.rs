@@ -1,7 +1,7 @@
 //! The menu bar as the interface draws it: the registry's menu tree put in
 //! the order and grouping `docs/ux.md` prescribes, with recent files added.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use imager_command::{Args, CommandSpec, MenuItem, ParamSpec, ParamType, Registry, menu_tree};
 
@@ -95,7 +95,7 @@ pub fn build(registry: &Registry, recent: &[PathBuf]) -> Vec<MenuEntry> {
         && let Some(items) = submenu_mut(items, RECENT_MENU)
         && !recent.is_empty()
     {
-        let mut entries: Vec<MenuEntry> = recent.iter().map(recent_entry).collect();
+        let mut entries: Vec<MenuEntry> = recent.iter().map(|path| recent_entry(path)).collect();
         entries.push(MenuEntry::Separator);
         entries.append(items);
         *items = entries;
@@ -110,7 +110,7 @@ fn submenu_mut<'a>(entries: &'a mut [MenuEntry], name: &str) -> Option<&'a mut V
     })
 }
 
-fn recent_entry(path: &PathBuf) -> MenuEntry {
+fn recent_entry(path: &Path) -> MenuEntry {
     let name = path.file_name().map_or_else(
         || path.display().to_string(),
         |n| n.to_string_lossy().into_owned(),
@@ -118,7 +118,7 @@ fn recent_entry(path: &PathBuf) -> MenuEntry {
     MenuEntry::Command(MenuCommand {
         id: "file.open".to_string(),
         label: name,
-        args: Args::new().with("path", path.clone()),
+        args: Args::new().with("path", path.to_path_buf()),
         hint: Some(path.display().to_string()),
     })
 }

@@ -285,7 +285,7 @@ impl Shell {
             chosen: None,
         };
         let events = egui::CentralPanel::default()
-            .frame(egui::Frame::new())
+            .frame(egui::Frame::new().fill(ui.visuals().extreme_bg_color))
             .show(ui, |ui| self.layout.ui(ui, &mut host))
             .inner;
         let (clicked_image, chosen) = (host.clicked_image, host.chosen);
@@ -313,7 +313,9 @@ impl Shell {
             }
         }
         if self.about_open {
-            let modal = egui::Modal::new(egui::Id::new("about")).show(ctx, |ui| {
+            let frame = ui::modal_frame(&ctx.global_style());
+            let about = egui::Modal::new(egui::Id::new("about")).frame(frame);
+            let modal = about.show(ctx, |ui| {
                 ui.set_width(320.0);
                 ui.heading("imager");
                 ui::weak(ui, concat!("Version ", env!("CARGO_PKG_VERSION")));
@@ -370,10 +372,12 @@ impl PaneHost for Host<'_> {
             Pane::Image(id) => {
                 let workspace = &self.state.session().workspace;
                 match workspace.get(DatasetId(id)) {
-                    // The active image stands out by weight, not colour.
+                    // The active image is underlined, so that it can be told
+                    // apart when several images are side by side.
                     Ok(dataset) if workspace.active() == Some(dataset.id) => {
                         egui::RichText::new(&dataset.image.meta().name)
                             .strong()
+                            .underline()
                             .into()
                     }
                     Ok(dataset) => dataset.image.meta().name.as_str().into(),
@@ -443,6 +447,12 @@ impl eframe::App for Window {
         }
     }
 
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        if let Some(capture) = &mut self.capture {
+            capture.inject(raw_input);
+        }
+    }
+
     fn on_exit(&mut self) {
         self.shell.persist();
     }
@@ -456,8 +466,9 @@ pub fn run(files: Vec<PathBuf>) -> Result<()> {
         crate::demo::register(&mut registry)?;
     }
     // A capture must look the same on every machine, so it leaves the
-    // person's settings alone.
-    let settings_path = settings::default_path().filter(|_| capture.is_none());
+    // person's settings alone unless told where to keep its own.
+    let own_settings = std::env::var_os("IMAGER_CONFIG_DIR").is_some();
+    let settings_path = settings::default_path().filter(|_| capture.is_none() || own_settings);
     let (loaded, problem) = match &settings_path {
         Some(path) => Settings::load(path),
         None => (Settings::default(), None),

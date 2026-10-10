@@ -64,11 +64,15 @@ impl Palette {
 
         let id = egui::Id::new("command_palette");
         let area = egui::Modal::default_area(id).anchor(egui::Align2::CENTER_TOP, [0.0, 72.0]);
-        let modal = egui::Modal::new(id).area(area).show(ctx, |ui| {
+        let frame = egui::Frame::popup(&ctx.global_style()).inner_margin(10);
+        let palette = egui::Modal::new(id).area(area).frame(frame);
+        let modal = palette.show(ctx, |ui| {
             ui.set_width(WIDTH);
             let search = ui.add(
                 egui::TextEdit::singleline(&mut self.query)
-                    .hint_text("Search commands")
+                    .hint_text("Search commands by name")
+                    .font(egui::TextStyle::Heading)
+                    .margin(egui::vec2(8.0, 6.0))
                     .desired_width(f32::INFINITY),
             );
             if search.changed() {

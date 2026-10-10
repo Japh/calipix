@@ -28,7 +28,11 @@ fn entries(
                 ui.separator();
             }
             MenuEntry::Submenu { title, items } => {
-                ui.menu_button(title, |ui| entries(ui, state, items, chosen));
+                ui.menu_button(title, |ui| {
+                    // Room between the longest label and its shortcut.
+                    ui.set_min_width(190.0);
+                    entries(ui, state, items, chosen);
+                });
             }
             MenuEntry::Command(command) => {
                 if item_clicked(ui, state, command) {

@@ -76,6 +76,11 @@ impl Field {
                     return Ok(None);
                 }
                 let items: Vec<&str> = text.split(',').map(str::trim).collect();
+                if let ParamType::List(inner) = &param.ty
+                    && let Some(problem) = items.iter().find_map(|item| not_a_number(inner, item))
+                {
+                    return Err(problem);
+                }
                 Value::parse_text(&param.ty, &items.join(",")).map_err(|e| sentence(&e))?
             }
             (Draft::Text(text), ParamType::Str) if text.is_empty() && !param.required => {
@@ -83,6 +88,9 @@ impl Field {
             }
             (Draft::Text(text), _) => Value::Str(text.clone()),
         };
+        if let Some(problem) = out_of_range(param, &value) {
+            return Err(problem);
+        }
         match param.check(value) {
             Ok(value) => Ok(Some(value)),
             Err(Error::InvalidArg { reason, .. }) => Err(sentence(&reason)),
@@ -93,6 +101,37 @@ impl Field {
     /// Why the entry cannot be used, if it cannot.
     pub fn problem(&self, workspace: &Workspace) -> Option<String> {
         self.value(workspace).err()
+    }
+}
+
+/// Why `item` cannot be an element of a list of numbers, if it cannot.
+fn not_a_number(inner: &ParamType, item: &str) -> Option<String> {
+    let kind = match inner {
+        ParamType::Int => "a whole number",
+        ParamType::Float => "a number",
+        _ => return None,
+    };
+    Value::parse_text(inner, item).is_err().then(|| match item {
+        "" => format!("Each value must be {kind}; one is missing"),
+        _ => format!("“{item}” is not {kind}"),
+    })
+}
+
+/// Says which bound a number breaks, in the words of someone correcting it.
+fn out_of_range(param: &ParamSpec, value: &Value) -> Option<String> {
+    let number = match value {
+        Value::Int(i) => *i as f64,
+        Value::Float(f) => *f,
+        _ => return None,
+    };
+    let below = param.min.is_some_and(|min| number < min);
+    let above = param.max.is_some_and(|max| number > max);
+    match (param.min, param.max) {
+        _ if !below && !above => None,
+        (Some(min), Some(max)) => Some(format!("Must be between {min} and {max}")),
+        (Some(min), None) => Some(format!("Must be at least {min}")),
+        (None, Some(max)) => Some(format!("Must be at most {max}")),
+        (None, None) => None,
     }
 }
 

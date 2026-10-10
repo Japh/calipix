@@ -79,15 +79,11 @@ fn readouts(ui: &mut egui::Ui, state: &AppState, view: &ViewerResponse) {
     if let Some(scale) = view.scale {
         let percent = scale * 100.0;
         let digits = if percent < 10.0 { 1 } else { 0 };
-        ui.add_sized(
-            [44.0, 0.0],
-            egui::Label::new(format!("{percent:.digits$}%")),
-        );
+        ui.label(format!("{percent:.digits$}%"));
         ui.separator();
     }
-    let position = view
-        .cursor
-        .map_or_else(String::new, |(x, y)| format!("x {x}, y {y}"));
-    ui.add_sized([96.0, 0.0], egui::Label::new(position));
-    ui.separator();
+    if let Some((x, y)) = view.cursor {
+        ui.label(format!("x {x}, y {y}"));
+        ui.separator();
+    }
 }

@@ -53,6 +53,8 @@ struct TilesBehavior<'a> {
 
 impl Behavior<Pane> for TilesBehavior<'_> {
     fn pane_ui(&mut self, ui: &mut egui::Ui, _tile: TileId, pane: &mut Pane) -> UiResponse {
+        ui.painter()
+            .rect_filled(ui.max_rect(), 0.0, ui.visuals().panel_fill);
         self.host.show(ui, *pane);
         // Panes are moved by dragging their tab, not their contents.
         UiResponse::None
