@@ -42,3 +42,46 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check licenses bans sources
+
+  # Unsigned release binaries, kept as workflow artefacts. Runs on main, on
+  # version tags, and on any commit whose message contains [package].
+  package:
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      contains(github.event.head_commit.message, '[package]')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x86_64
+            binary: imager
+          - os: windows-latest
+            name: windows-x86_64
+            binary: imager.exe
+          - os: macos-latest
+            name: macos-arm64
+            binary: imager
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev
+      - run: cargo build --release -p imager-app
+      - name: Check the binary runs
+        run: target/release/${{ matrix.binary }} commands
+      - name: Collect files
+        shell: bash
+        run: |
+          mkdir dist
+          cp target/release/${{ matrix.binary }} LICENSE NOTICE README.md dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: imager-${{ matrix.name }}
+          path: dist
+          if-no-files-found: error
