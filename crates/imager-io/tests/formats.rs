@@ -155,6 +155,65 @@ fn bmp_refuses_what_it_cannot_hold() {
     assert!(err.to_string().contains("2 separate channels"), "{err}");
 }
 
+/// A BMP file header and 40-byte info header.
+fn bmp_header(
+    width: i32,
+    height: i32,
+    bits: u16,
+    compression: u32,
+    palette: &[[u8; 3]],
+    data: &[u8],
+) -> Vec<u8> {
+    let offset = 54 + palette.len() * 4;
+    let mut out = b"BM".to_vec();
+    out.extend(((offset + data.len()) as u32).to_le_bytes());
+    out.extend([0; 4]);
+    out.extend((offset as u32).to_le_bytes());
+    out.extend(40u32.to_le_bytes());
+    out.extend(width.to_le_bytes());
+    out.extend(height.to_le_bytes());
+    out.extend(1u16.to_le_bytes());
+    out.extend(bits.to_le_bytes());
+    out.extend(compression.to_le_bytes());
+    out.extend([0; 12]);
+    out.extend((palette.len() as u32).to_le_bytes());
+    out.extend([0; 4]);
+    for [r, g, b] in palette {
+        out.extend([*b, *g, *r, 0]);
+    }
+    out.extend(data);
+    out
+}
+
+#[test]
+fn bmp_kinds_imagej_does_not_decode_itself_open_as_rgb() {
+    // Run-length encoded, 8 bits per pixel: bottom row four of colour 1,
+    // top row two of colour 2 and two of colour 3.
+    let palette = [[0, 0, 0], [200, 10, 20], [30, 210, 40], [50, 60, 220]];
+    let rle = [4, 1, 0, 0, 2, 2, 2, 3, 0, 0, 0, 1];
+    let path = temp("rle8.bmp");
+    std::fs::write(&path, bmp_header(4, 2, 8, 1, &palette, &rle)).unwrap();
+    let image = open(&path).unwrap();
+    assert_eq!(image.meta().shape(), &[4, 2, 3]);
+    assert_eq!(image.meta().color, ColorModel::Rgb);
+    let red = image.read_plane(0).unwrap();
+    assert_eq!(
+        red.try_slice::<u8>().unwrap(),
+        [30, 30, 50, 50, 200, 200, 200, 200]
+    );
+
+    // 16 bits per pixel, five bits per colour: red then white.
+    let pixels = [0x00, 0x7c, 0xff, 0x7f];
+    let path = temp("rgb555.bmp");
+    std::fs::write(&path, bmp_header(2, 1, 16, 0, &[], &pixels)).unwrap();
+    let image = open(&path).unwrap();
+    assert_eq!(image.meta().shape(), &[2, 1, 3]);
+    let channels: Vec<Buffer> = (0..3).map(|c| image.read_plane(c).unwrap()).collect();
+    assert_eq!(channels[0].try_slice::<u8>().unwrap(), [255, 255]);
+    assert_eq!(channels[1].try_slice::<u8>().unwrap(), [0, 255]);
+    assert_eq!(channels[2].try_slice::<u8>().unwrap(), [0, 255]);
+}
+
 // GIF
 
 #[test]
