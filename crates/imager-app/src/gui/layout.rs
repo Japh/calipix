@@ -141,18 +141,21 @@ impl Layout {
         let welcome = tiles.insert_pane(Pane::Welcome);
         let images = tiles.insert_tab_tile(vec![welcome]);
 
-        let docked = |tiles: &mut Tiles<Pane>, dock: Dock| -> Vec<TileId> {
+        let docked = |tiles: &mut Tiles<Pane>, dock: Dock| -> Vec<(Panel, TileId)> {
             Panel::ALL
                 .into_iter()
                 .filter(|panel| panel.dock() == dock)
-                .map(|panel| tiles.insert_pane(Pane::Panel(panel)))
+                .map(|panel| (panel, tiles.insert_pane(Pane::Panel(panel))))
                 .collect()
         };
         let right: Vec<(TileId, f32)> = docked(&mut tiles, Dock::Right)
             .into_iter()
-            .map(|pane| (tiles.insert_tab_tile(vec![pane]), 1.0))
+            .map(|(panel, pane)| (tiles.insert_tab_tile(vec![pane]), panel.share()))
             .collect();
-        let bottom = docked(&mut tiles, Dock::Bottom);
+        let bottom: Vec<TileId> = docked(&mut tiles, Dock::Bottom)
+            .into_iter()
+            .map(|(_, pane)| pane)
+            .collect();
 
         let mut top = images;
         if !right.is_empty() {
@@ -160,7 +163,7 @@ impl Layout {
             top = split(
                 &mut tiles,
                 LinearDir::Horizontal,
-                &[(images, 0.78), (column, 0.22)],
+                &[(images, 0.74), (column, 0.26)],
             );
         }
         let mut root = top;
@@ -169,7 +172,7 @@ impl Layout {
             root = split(
                 &mut tiles,
                 LinearDir::Vertical,
-                &[(top, 0.76), (strip, 0.24)],
+                &[(top, 0.8), (strip, 0.2)],
             );
         }
         Layout {
@@ -254,6 +257,57 @@ impl Layout {
             .find(Pane::Welcome)
             .unwrap_or_else(|| self.add_beside(Pane::Welcome, None));
         self.tree.tiles.set_visible(welcome, open.is_empty());
+    }
+
+    /// Gives each open image a tab group of its own, side by side where
+    /// the image tabs are. Returns false if that place is not a row any
+    /// more (the person has rearranged it), in which case nothing moves.
+    pub fn tile_images(&mut self) -> bool {
+        let mut images = self.image_tiles();
+        images.sort_by_key(|(_, id)| *id);
+        let Some(&(first, _)) = images.first() else {
+            return false;
+        };
+        let tiles = &mut self.tree.tiles;
+        let Some(group) = tiles.parent_of(first) else {
+            return false;
+        };
+        let Some(row) = tiles.parent_of(group) else {
+            return false;
+        };
+        let together: Vec<TileId> = images[1..]
+            .iter()
+            .map(|(tile, _)| *tile)
+            .filter(|tile| tiles.parent_of(*tile) == Some(group))
+            .collect();
+        let count = together.len() + 1;
+        let mut previous = group;
+        for tile in together {
+            let beside = self.tree.tiles.insert_tab_tile(Vec::new());
+            let Some(Tile::Container(Container::Linear(linear))) = self.tree.tiles.get_mut(row)
+            else {
+                self.tree.tiles.remove(beside);
+                return false;
+            };
+            if linear.dir != LinearDir::Horizontal {
+                self.tree.tiles.remove(beside);
+                return false;
+            }
+            // The images share the width the one group had.
+            let at = linear.children.iter().position(|c| *c == previous);
+            let share = linear.shares[group];
+            let each = if previous == group {
+                share / count as f32
+            } else {
+                share
+            };
+            linear.children.insert(at.map_or(0, |i| i + 1), beside);
+            linear.shares.set_share(group, each);
+            linear.shares.set_share(beside, each);
+            self.tree.move_tile_to_container(tile, beside, 0, false);
+            previous = beside;
+        }
+        true
     }
 
     /// Brings a pane's tab to the front of its group.

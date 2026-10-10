@@ -1,155 +1,201 @@
-//! The contents of an image tab. This is a stand-in that renders the first
-//! plane on the CPU; the GPU viewer replaces it behind the same interface:
-//! [`Viewer::show`], [`Viewer::zoom`] and [`Viewer::retain`].
+//! The contents of an image tab: the viewer widget of `imager-view`, one
+//! per open image, kept in step with the application state.
+//!
+//! The state says what to show (which image, plane and channels); the
+//! widget owns how it is shown (zoom, pan, loaded tiles) and reports back
+//! what its own controls changed. Without a GPU, as in the tests, the
+//! widget draws through the CPU renderer; nothing here differs.
 
 use std::collections::HashMap;
 
 use eframe::egui;
-use imager_command::{Dataset, DatasetId};
+use imager_command::DatasetId;
 use imager_core::Image;
+use imager_render::DisplayOptions;
+use imager_view::{ImageView, Probe, Renderer, ViewOptions, ViewerGpu};
 
 use super::ui;
-use crate::state::Zoom;
+use crate::state::{AppState, Zoom};
 
 /// What the viewer reports back for the status bar and tab handling.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ViewerResponse {
     /// The image area was clicked, which makes its image the active one.
     pub clicked: bool,
-    /// Pixel under the pointer, as (x, y) from the top-left corner.
-    pub cursor: Option<(usize, usize)>,
-    /// Screen pixels per image pixel.
-    pub scale: Option<f32>,
+    /// What is under the pointer.
+    pub probe: Option<Probe>,
+    /// Magnification: 1.0 is one image pixel per screen pixel.
+    pub zoom: Option<f64>,
+    /// Parts of the picture are still being read.
+    pub loading: bool,
+    /// True if the CPU renderer drew the picture rather than the GPU.
+    pub on_cpu: bool,
 }
 
-/// Space left around an image that is fitted to its tab.
-const FIT_MARGIN: f32 = 8.0;
-
-struct View {
-    /// The image the texture was made from. Images are immutable
-    /// snapshots, so a pointer comparison detects every change.
-    image: Image,
-    texture: Result<egui::TextureHandle, String>,
-    /// Screen pixels per image pixel, or `None` to fit the tab.
-    zoom: Option<f32>,
-    /// The scale last drawn at, which zooming in and out start from.
-    shown_scale: f32,
+struct Slot {
+    view: ImageView,
+    /// The image last handed to the widget, and the version of its
+    /// samples, to tell a change of display from a change of data.
+    shown: Option<(Image, u64)>,
+    /// The last problem passed on to the status bar, so that it is
+    /// reported once rather than every frame.
+    reported: Option<String>,
 }
 
 /// Views of the open images, one per dataset.
-#[derive(Default)]
 pub struct Viewer {
-    views: HashMap<DatasetId, View>,
+    gpu: Option<ViewerGpu>,
+    options: ViewOptions,
+    views: HashMap<DatasetId, Slot>,
 }
 
 impl Viewer {
-    pub fn new() -> Viewer {
-        Viewer::default()
+    /// A viewer drawing with `gpu`, or through the CPU renderer without
+    /// one. `force_cpu` keeps to the CPU renderer even with a GPU.
+    pub fn new(gpu: Option<ViewerGpu>, force_cpu: bool) -> Viewer {
+        let [r, g, b, _] = ui::IMAGE_BACKGROUND.to_array();
+        Viewer {
+            gpu,
+            options: ViewOptions {
+                force_cpu,
+                background: [r, g, b],
+                ..ViewOptions::default()
+            },
+            views: HashMap::new(),
+        }
     }
 
-    /// Draws `dataset` filling the available space of `ui`.
-    pub fn show(&mut self, ui: &mut egui::Ui, dataset: &Dataset) -> ViewerResponse {
-        let view = self.views.entry(dataset.id).or_insert_with(|| View {
-            image: dataset.image.clone(),
-            texture: upload(ui.ctx(), dataset),
-            zoom: None,
-            shown_scale: 1.0,
+    /// What the pictures are drawn with, for the About box.
+    pub fn renderer_description(&self) -> String {
+        match &self.gpu {
+            Some(gpu) if self.options.force_cpu => {
+                format!(
+                    "CPU renderer (by request; {} is available)",
+                    gpu.adapter_name()
+                )
+            }
+            Some(gpu) if gpu.is_software() => format!(
+                "CPU renderer ({} is a software adapter)",
+                gpu.adapter_name()
+            ),
+            Some(gpu) => format!("{} ({})", gpu.adapter_name(), gpu.backend()),
+            None => "CPU renderer (no GPU)".to_string(),
+        }
+    }
+
+    /// Draws image `id` filling the available space of `ui`, with its
+    /// position controls underneath.
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        state: &mut AppState,
+        id: DatasetId,
+    ) -> ViewerResponse {
+        let Some(image) = state.displayed(id) else {
+            return ViewerResponse::default();
+        };
+        let version = state.samples_version(id);
+        let options = self.options.clone();
+        let slot = self.views.entry(id).or_insert_with(|| Slot {
+            view: ImageView::new(options),
+            shown: None,
+            reported: None,
         });
-        if !view.image.ptr_eq(&dataset.image) {
-            view.image = dataset.image.clone();
-            view.texture = upload(ui.ctx(), dataset);
+        // New metadata over the same samples keeps everything loaded.
+        if let Some((shown, shown_version)) = &slot.shown
+            && !shown.ptr_eq(&image)
+            && *shown_version == version
+        {
+            slot.view.metadata_changed(&image);
+        }
+        slot.shown = Some((image.clone(), version));
+
+        let meta = image.meta();
+        let view_state = state.view(id);
+        let position = view_state.position_in(meta);
+        if slot.view.position() != position {
+            slot.view.set_position(&position);
+        }
+        let wanted = DisplayOptions {
+            mode: imager_commands::view::channel_mode(meta),
+            visible: view_state.visible.clone(),
+            ..slot.view.display_options().clone()
+        };
+        if slot.view.display_options() != &wanted {
+            slot.view.set_display_options(wanted);
         }
 
-        let (area, response) = ui.allocate_exact_size(ui.available_size(), egui::Sense::click());
-        let name = &dataset.image.meta().name;
-        response.widget_info(|| {
+        // The image fills the tab, above a row of position controls for
+        // images that have planes or channels to choose between.
+        let gpu = self.gpu.as_ref();
+        let shown = ui
+            .with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+                if imager_view::controls::has_controls(meta) {
+                    egui::Frame::new()
+                        .inner_margin(egui::Margin::symmetric(ui::MARGIN, 4))
+                        .show(ui, |ui| slot.view.position_controls(ui, &image));
+                }
+                slot.view.ui(ui, &image, gpu)
+            })
+            .inner;
+        let name = &meta.name;
+        shown.response.widget_info(|| {
             egui::WidgetInfo::labeled(egui::WidgetType::Image, true, format!("View of {name}"))
         });
-        let painter = ui.painter_at(area);
-        painter.rect_filled(area, 0.0, ui::IMAGE_BACKGROUND);
 
-        let texture = match &view.texture {
-            Ok(texture) => texture,
-            Err(problem) => {
-                painter.text(
-                    area.center(),
-                    egui::Align2::CENTER_CENTER,
-                    format!("⚠ {problem}"),
-                    egui::TextStyle::Body.resolve(ui.style()),
-                    ui::ON_IMAGE_BACKGROUND,
-                );
-                return ViewerResponse {
-                    clicked: response.clicked(),
-                    ..ViewerResponse::default()
-                };
+        // The sliders and channel buttons under the image are the
+        // widget's; what they changed goes back to the state.
+        if slot.view.position() != position {
+            state.set_position(id, slot.view.position());
+        }
+        let visible = &slot.view.display_options().visible;
+        for (channel, &on) in visible.iter().enumerate() {
+            if state.channel_visible(id, channel) != on {
+                state.set_channel_visible(id, channel, on);
             }
-        };
-        let size = texture.size_vec2();
-        // Fitted images keep a little clear of the edges of the tab.
-        let room = (area.size() - egui::Vec2::splat(2.0 * FIT_MARGIN)).max(egui::Vec2::splat(1.0));
-        let fit = (room.x / size.x).min(room.y / size.y);
-        let scale = view.zoom.unwrap_or(fit).max(f32::MIN_POSITIVE);
-        view.shown_scale = scale;
-        let shown = egui::Rect::from_center_size(area.center(), size * scale);
-        let whole = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-        painter.image(texture.id(), shown, whole, egui::Color32::WHITE);
+        }
 
-        let cursor = response
-            .hover_pos()
-            .filter(|pos| shown.contains(*pos))
-            .map(|pos| {
-                let at = (pos - shown.min) / scale;
-                let clamp = |v: f32, len: f32| (v.floor().max(0.0) as usize).min(len as usize - 1);
-                (clamp(at.x, size.x), clamp(at.y, size.y))
-            });
+        if shown.error != slot.reported {
+            if let Some(problem) = &shown.error {
+                state.report_problem(format!("{name}: {problem}"));
+            }
+            slot.reported = shown.error.clone();
+        }
         ViewerResponse {
-            clicked: response.clicked(),
-            cursor,
-            scale: Some(scale),
+            clicked: shown.response.clicked(),
+            probe: shown.probe,
+            zoom: Some(shown.zoom),
+            loading: shown.loading,
+            on_cpu: shown.renderer == Renderer::Cpu,
         }
     }
 
     /// Changes the magnification of one image's view.
     pub fn zoom(&mut self, id: DatasetId, zoom: Zoom) {
-        let Some(view) = self.views.get_mut(&id) else {
+        let Some(slot) = self.views.get_mut(&id) else {
             return;
         };
-        view.zoom = match zoom {
-            Zoom::Fit => None,
-            Zoom::Actual => Some(1.0),
-            Zoom::In => Some((view.shown_scale * 2.0).min(64.0)),
-            Zoom::Out => Some((view.shown_scale / 2.0).max(1.0 / 64.0)),
+        match zoom {
+            Zoom::Fit => slot.view.fit(),
+            Zoom::Actual => slot.view.actual_size(),
+            Zoom::In => slot.view.zoom_in(),
+            Zoom::Out => slot.view.zoom_out(),
+        }
+    }
+
+    /// Steps one image's view along the slider used last. Returns false
+    /// if it was already at the end.
+    pub fn step(&mut self, state: &mut AppState, id: DatasetId, delta: i64) -> bool {
+        let Some(slot) = self.views.get_mut(&id) else {
+            return false;
         };
+        let moved = slot.view.step_last_axis(delta);
+        state.set_position(id, slot.view.position());
+        moved
     }
 
     /// Frees the views of images that are no longer open.
     pub fn retain(&mut self, open: impl Fn(DatasetId) -> bool) {
         self.views.retain(|id, _| open(*id));
     }
-}
-
-/// Renders the first plane of the image on the CPU and uploads it.
-fn upload(ctx: &egui::Context, dataset: &Dataset) -> Result<egui::TextureHandle, String> {
-    let image = &dataset.image;
-    let meta = image.meta();
-    let limit = ctx.input(|i| i.max_texture_side);
-    if meta.width() > limit || meta.height() > limit {
-        return Err(format!(
-            "{} is {} x {}, larger than this build can display ({limit} pixels a side)",
-            meta.name,
-            meta.width(),
-            meta.height()
-        ));
-    }
-    let position = vec![0; meta.ndim() - 2];
-    let rendered = imager_render::render_plane(image, &position)
-        .map_err(|e| format!("{} could not be displayed: {e}", meta.name))?;
-    let pixels =
-        egui::ColorImage::from_rgba_unmultiplied([rendered.width, rendered.height], &rendered.data);
-    // Nearest-neighbour sampling: scientific images must show real pixels.
-    Ok(ctx.load_texture(
-        format!("image-{}", dataset.id),
-        pixels,
-        egui::TextureOptions::NEAREST,
-    ))
 }

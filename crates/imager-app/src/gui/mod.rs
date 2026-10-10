@@ -2,8 +2,8 @@
 //! here only draw it and forward input.
 //!
 //! - [`layout`]: the dockable workspace (the only user of the docking crate)
-//! - [`viewer`]: what an image tab shows
-//! - [`panels`]: the Info, History and Log panels
+//! - [`viewer`]: what an image tab shows (the only user of `imager-view`)
+//! - [`panels`], [`display`], [`histogram`]: the panels around the images
 //! - [`menu`], [`palette`], [`shortcuts`]: the three ways to choose a command
 //! - [`dialog`]: parameter dialogs generated from command specs
 //! - [`status`]: the status bar
@@ -11,6 +11,8 @@
 
 mod capture;
 pub mod dialog;
+pub mod display;
+pub mod histogram;
 pub mod layout;
 pub mod menu;
 pub mod palette;
@@ -21,14 +23,16 @@ pub mod ui;
 pub mod viewer;
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::mpsc::{Receiver, TryRecvError, channel};
+
+use std::sync::{Arc, Mutex};
 
 use anyhow::{Result, anyhow};
 use eframe::egui;
 use imager_command::{Args, DatasetId, PathMode};
 
 use crate::state::{
-    AppState, Dialog, Invocation, Panel, PathRequest, Settings, UiAction, settings,
+    AppState, Dialog, Draft, Invocation, Panel, PathRequest, Settings, Status, UiAction, settings,
 };
 use layout::{Layout, Pane, PaneHost};
 use palette::Palette;
@@ -38,37 +42,76 @@ use viewer::{Viewer, ViewerResponse};
 pub trait FilePicker {
     /// The chosen path, or `None` if they changed their mind.
     fn pick(&mut self, request: &PathRequest) -> Option<PathBuf>;
+
+    /// Starts asking and returns where the answer will arrive, so that
+    /// the window keeps drawing while the person chooses. A picker that
+    /// answers at once need only implement [`pick`](Self::pick).
+    fn begin(&mut self, request: &PathRequest) -> Receiver<Option<PathBuf>> {
+        let (sender, answer) = channel();
+        // The receiver is right here, so this cannot fail.
+        let _ = sender.send(self.pick(request));
+        answer
+    }
 }
 
 /// The operating system's file dialog.
 struct NativePicker;
 
-impl FilePicker for NativePicker {
-    fn pick(&mut self, request: &PathRequest) -> Option<PathBuf> {
-        let mut dialog = rfd::FileDialog::new().set_title(&request.title);
-        if let Some(directory) = request.directory.as_deref().filter(|d| d.is_dir()) {
-            dialog = dialog.set_directory(directory);
-        }
-        if let Some(name) = &request.file_name {
-            dialog = dialog.set_file_name(name);
-        }
-        for (name, extensions) in &request.filters {
-            dialog = dialog.add_filter(name, extensions);
-        }
-        match request.mode {
-            PathMode::Open => dialog.pick_file(),
-            PathMode::Save => dialog.save_file(),
-            PathMode::Directory => dialog.pick_folder(),
-        }
+fn native_dialog(request: &PathRequest) -> Option<PathBuf> {
+    let mut dialog = rfd::FileDialog::new().set_title(&request.title);
+    if let Some(directory) = request.directory.as_deref().filter(|d| d.is_dir()) {
+        dialog = dialog.set_directory(directory);
+    }
+    if let Some(name) = &request.file_name {
+        dialog = dialog.set_file_name(name);
+    }
+    for (name, extensions) in &request.filters {
+        dialog = dialog.add_filter(name, extensions);
+    }
+    match request.mode {
+        PathMode::Open => dialog.pick_file(),
+        PathMode::Save => dialog.save_file(),
+        PathMode::Directory => dialog.pick_folder(),
     }
 }
 
-/// A command waiting for the person to pick a path.
-struct PendingPick {
-    request: PathRequest,
-    command: String,
-    param: String,
-    args: Args,
+impl FilePicker for NativePicker {
+    fn pick(&mut self, request: &PathRequest) -> Option<PathBuf> {
+        native_dialog(request)
+    }
+
+    /// The system's dialog blocks whoever shows it until it is answered,
+    /// so it is shown from a thread of its own: the window goes on
+    /// drawing, and a dialog that fails takes only that thread with it
+    /// (the dropped sender is how the interface finds out).
+    fn begin(&mut self, request: &PathRequest) -> Receiver<Option<PathBuf>> {
+        let (sender, answer) = channel();
+        let request = request.clone();
+        let _ = std::thread::Builder::new()
+            .name("imager file dialog".to_string())
+            .spawn(move || {
+                let _ = sender.send(native_dialog(&request));
+            });
+        answer
+    }
+}
+
+/// What a picked path is for.
+enum PickFor {
+    /// The one missing parameter of a command, which then runs.
+    Command {
+        command: String,
+        param: String,
+        args: Args,
+    },
+    /// A path field of the open dialog.
+    DialogField(String),
+}
+
+/// A file dialog that is open, and what its answer is for.
+struct Picking {
+    purpose: PickFor,
+    answer: Receiver<Option<PathBuf>>,
 }
 
 /// The whole interface inside the window. It draws into any `egui::Ui`,
@@ -82,13 +125,17 @@ pub struct Shell {
     pub about_open: bool,
     viewer: Viewer,
     picker: Box<dyn FilePicker>,
-    pending_pick: Option<PendingPick>,
+    /// A path to ask for once this frame is drawn.
+    wanted_pick: Option<(PickFor, PathRequest)>,
+    picking: Option<Picking>,
     /// What the viewer reported for the active image last frame.
     view: ViewerResponse,
     /// The active image the tabs were last arranged for.
     shown_active: Option<DatasetId>,
     prepared: bool,
     layout_changed: bool,
+    /// Errors the GPU reported since the last frame.
+    gpu_errors: Arc<Mutex<Vec<String>>>,
 }
 
 impl Shell {
@@ -112,14 +159,29 @@ impl Shell {
             palette: Palette::default(),
             dialog: None,
             about_open: false,
-            viewer: Viewer::new(),
+            // Without a GPU the viewer draws through the CPU renderer,
+            // which is also how the tests run it.
+            viewer: Viewer::new(None, false),
             picker,
-            pending_pick: None,
+            wanted_pick: None,
+            picking: None,
             view: ViewerResponse::default(),
             shown_active: None,
             prepared: false,
             layout_changed: false,
+            gpu_errors: Arc::default(),
         }
+    }
+
+    /// Gives the image viewer a GPU to draw with. `force_cpu` keeps it to
+    /// the CPU renderer all the same.
+    pub fn use_gpu(&mut self, gpu: Option<imager_view::ViewerGpu>, force_cpu: bool) {
+        self.viewer = Viewer::new(gpu, force_cpu);
+    }
+
+    /// What the viewer reported for the active image on the last frame.
+    pub fn view(&self) -> &ViewerResponse {
+        &self.view
     }
 
     /// Chooses a command as a menu item does: it runs at once, or asks for
@@ -134,13 +196,13 @@ impl Shell {
                 param,
                 args,
             } => {
-                // Shown once this frame is drawn; see `ui`.
-                self.pending_pick = Some(PendingPick {
-                    request,
+                // Shown once this frame is drawn; see `file_dialog`.
+                let purpose = PickFor::Command {
                     command,
                     param,
                     args,
-                });
+                };
+                self.wanted_pick = Some((purpose, request));
             }
         }
     }
@@ -156,7 +218,7 @@ impl Shell {
     }
 
     fn modal_open(&self) -> bool {
-        self.palette.open || self.dialog.is_some() || self.about_open
+        self.palette.open || self.dialog.is_some() || self.about_open || self.picking.is_some()
     }
 
     /// Draws one frame of the interface and handles its input.
@@ -171,6 +233,11 @@ impl Shell {
         }
         ui::apply_theme(&ctx, self.state.settings().theme);
         self.state.poll();
+        let gpu_errors = std::mem::take(&mut *self.gpu_errors.lock().expect("errors poisoned"));
+        for error in gpu_errors {
+            self.state
+                .report_problem(format!("The GPU reported a problem: {error}"));
+        }
 
         let dropped: Vec<PathBuf> = ctx.input(|i| {
             i.raw
@@ -196,25 +263,20 @@ impl Shell {
         if let Some((id, args)) = chosen {
             self.invoke(&id, &args);
         }
-        let cancel = egui::Panel::bottom("status")
+        let status = egui::Panel::bottom("status")
             .show(ui, |ui| status::show(ui, &self.state, &self.view))
             .inner;
-        if cancel {
+        if status.cancel {
             self.state.cancel();
+        }
+        if status.fit {
+            self.invoke("view.zoom_fit", &Args::new());
         }
 
         self.apply_ui_actions();
         self.workspace(ui);
         self.dialogs(&ctx);
-
-        // The file dialog blocks until it is answered, so it comes last,
-        // when the frame it interrupts is complete.
-        if let Some(pick) = self.pending_pick.take()
-            && let Some(path) = self.picker.pick(&pick.request)
-        {
-            self.state
-                .picked(&pick.command, &pick.param, &pick.args, path);
-        }
+        self.file_dialog(&ctx);
 
         self.remember_layout(&ctx);
         self.state.save_settings();
@@ -228,10 +290,16 @@ impl Shell {
     /// ran since the last frame.
     fn apply_ui_actions(&mut self) {
         for action in self.state.take_ui_actions() {
+            let active = self.state.active().map(|dataset| dataset.id);
             match action {
                 UiAction::Zoom(zoom) => {
-                    if let Some(dataset) = self.state.active() {
-                        self.viewer.zoom(dataset.id, zoom);
+                    if let Some(id) = active {
+                        self.viewer.zoom(id, zoom);
+                    }
+                }
+                UiAction::Step(delta) => {
+                    if let Some(id) = active {
+                        self.viewer.step(&mut self.state, id, delta.into());
                     }
                 }
                 UiAction::TogglePanel(panel) => {
@@ -244,6 +312,17 @@ impl Shell {
                 UiAction::ResetLayout => {
                     self.layout = Layout::new();
                     self.shown_active = None;
+                }
+                UiAction::TileImages => {
+                    self.state.status = if self.layout.tile_images() {
+                        Status::Done("Images shown side by side".to_string())
+                    } else {
+                        Status::Done(
+                            "Show Images Side by Side: the image tabs have been rearranged; \
+                             use Window > Reset Layout first"
+                                .to_string(),
+                        )
+                    };
                 }
                 UiAction::OpenPalette => self.palette.open(),
                 UiAction::About => self.about_open = true,
@@ -278,7 +357,7 @@ impl Shell {
 
         self.view = ViewerResponse::default();
         let mut host = Host {
-            state: &self.state,
+            state: &mut self.state,
             viewer: &mut self.viewer,
             view: &mut self.view,
             clicked_image: None,
@@ -306,23 +385,30 @@ impl Shell {
 
     fn dialogs(&mut self, ctx: &egui::Context) {
         if let Some(dialog) = &mut self.dialog {
-            match dialog::show(ctx, dialog, &self.state, self.picker.as_mut()) {
+            let mut browse = None;
+            match dialog::show(ctx, dialog, &self.state, &mut browse) {
                 dialog::Outcome::Open => {}
                 dialog::Outcome::Accepted => self.accept_dialog(),
                 dialog::Outcome::Cancelled => self.dialog = None,
+            }
+            if let Some((field, request)) = browse {
+                self.wanted_pick = Some((PickFor::DialogField(field), request));
             }
         }
         if self.about_open {
             let frame = ui::modal_frame(&ctx.global_style());
             let about = egui::Modal::new(egui::Id::new("about")).frame(frame);
+            let renderer = self.viewer.renderer_description();
             let modal = about.show(ctx, |ui| {
-                ui.set_width(320.0);
+                ui.set_width(340.0);
                 ui.heading("imager");
                 ui::weak(ui, concat!("Version ", env!("CARGO_PKG_VERSION")));
                 ui.add_space(ui::GAP);
                 ui.label("Scientific image processing: a Rust port of ImageJ.");
                 ui.label(concat!("Licence: ", env!("CARGO_PKG_LICENSE")));
                 ui.hyperlink(env!("CARGO_PKG_REPOSITORY"));
+                ui.add_space(ui::GAP / 2.0);
+                ui::weak(ui, format!("Images are drawn by: {renderer}"));
                 ui.add_space(ui::GAP);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui::primary_button(ui, "Close", true).clicked()
@@ -331,6 +417,65 @@ impl Shell {
             });
             if modal.inner || modal.should_close() {
                 self.about_open = false;
+            }
+        }
+    }
+
+    /// Opens the file dialog asked for this frame, and takes the answer of
+    /// the one that is open.
+    ///
+    /// The system's dialog runs on its own thread (see [`NativePicker`]),
+    /// so this never waits: while the person is choosing, the window keeps
+    /// drawing and says what it is waiting for.
+    fn file_dialog(&mut self, ctx: &egui::Context) {
+        if let Some((purpose, request)) = self.wanted_pick.take()
+            && self.picking.is_none()
+        {
+            let answer = self.picker.begin(&request);
+            self.picking = Some(Picking { purpose, answer });
+        }
+        let Some(picking) = &self.picking else {
+            return;
+        };
+        let answer = match picking.answer.try_recv() {
+            Ok(answer) => answer,
+            Err(TryRecvError::Empty) => {
+                let frame = ui::modal_frame(&ctx.global_style());
+                egui::Modal::new(egui::Id::new("file_dialog_wait"))
+                    .frame(frame)
+                    .show(ctx, |ui| {
+                        ui.label("Choose a file in the dialog that has opened.");
+                        ui::weak(ui, "It may be behind this window.");
+                    });
+                ctx.request_repaint_after(std::time::Duration::from_millis(50));
+                return;
+            }
+            Err(TryRecvError::Disconnected) => {
+                self.picking = None;
+                self.state.report_problem(
+                    "The system's file dialog could not be shown, so no file was chosen",
+                );
+                return;
+            }
+        };
+        let Some(picking) = self.picking.take() else {
+            return;
+        };
+        let Some(path) = answer else {
+            return;
+        };
+        match picking.purpose {
+            PickFor::Command {
+                command,
+                param,
+                args,
+            } => self.state.picked(&command, &param, &args, path),
+            PickFor::DialogField(name) => {
+                self.state.remember_dir(&path);
+                let field = self.dialog.as_mut().and_then(|d| d.field_mut(&name));
+                if let Some(field) = field {
+                    field.draft = Draft::Text(path.display().to_string());
+                }
             }
         }
     }
@@ -355,7 +500,7 @@ impl Shell {
 
 /// Lends the layout what it needs to fill its tabs.
 struct Host<'a> {
-    state: &'a AppState,
+    state: &'a mut AppState,
     viewer: &'a mut Viewer,
     view: &'a mut ViewerResponse,
     /// An image whose view was clicked.
@@ -392,15 +537,15 @@ impl PaneHost for Host<'_> {
             Pane::Welcome => self.welcome(ui),
             Pane::Panel(panel) => panels::show(ui, panel, self.state),
             Pane::Image(id) => {
-                let workspace = &self.state.session().workspace;
-                let Ok(dataset) = workspace.get(DatasetId(id)) else {
+                let id = DatasetId(id);
+                if self.state.session().workspace.get(id).is_err() {
                     return;
-                };
-                let response = self.viewer.show(ui, dataset);
-                if response.clicked {
-                    self.clicked_image = Some(dataset.id);
                 }
-                if workspace.active() == Some(dataset.id) {
+                let response = self.viewer.show(ui, self.state, id);
+                if response.clicked {
+                    self.clicked_image = Some(id);
+                }
+                if self.state.session().workspace.active() == Some(id) {
                     *self.view = response;
                 }
             }
@@ -416,17 +561,18 @@ impl Host<'_> {
         let Some(open) = self.state.spec("file.open") else {
             return;
         };
+        let open_id = open.id.clone();
+        let mut label = crate::state::menu::label(open);
+        if let Some(shortcut) = self.state.shortcut_text(&open_id) {
+            label = format!("{label}   {shortcut}");
+        }
         ui.vertical_centered(|ui| {
             ui.add_space((area.height() / 2.0 - 40.0).max(0.0));
             let hint = "Drop image files here to open them";
             ui.label(egui::RichText::new(hint).color(ui::ON_IMAGE_BACKGROUND));
             ui.add_space(ui::GAP);
-            let mut label = crate::state::menu::label(open);
-            if let Some(shortcut) = self.state.shortcut_text(&open.id) {
-                label = format!("{label}   {shortcut}");
-            }
             if ui.button(label).clicked() {
-                self.chosen = Some(open.id.clone());
+                self.chosen = Some(open_id);
             }
         });
     }
@@ -458,11 +604,53 @@ impl eframe::App for Window {
     }
 }
 
+/// True if the environment variable is set to something.
+fn flag(name: &str) -> bool {
+    std::env::var_os(name).is_some_and(|value| !value.is_empty())
+}
+
+/// How the window's renderer is set up.
+///
+/// - wgpu's debug layer is left out. In debug builds wgpu asks for it,
+///   and the Direct3D 12 one crashes on software adapters on some
+///   machines; nothing here relies on it.
+/// - `IMAGER_SOFTWARE_ADAPTER=1` picks a software adapter, to try what a
+///   machine without a usable GPU would get. The viewer then draws
+///   through the CPU renderer of its own accord.
+fn native_options(size: [f32; 2]) -> eframe::NativeOptions {
+    use eframe::{egui_wgpu, wgpu};
+    let mut options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_title("imager")
+            .with_inner_size(size)
+            .with_min_inner_size([640.0, 420.0])
+            .with_drag_and_drop(true),
+        renderer: eframe::Renderer::Wgpu,
+        ..Default::default()
+    };
+    if let egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_options.wgpu_setup {
+        setup
+            .instance_descriptor
+            .flags
+            .remove(wgpu::InstanceFlags::DEBUG);
+        if flag("IMAGER_SOFTWARE_ADAPTER") {
+            setup.native_adapter_selector = Some(Arc::new(|adapters, _surface| {
+                adapters
+                    .iter()
+                    .find(|a| a.get_info().device_type == wgpu::DeviceType::Cpu)
+                    .cloned()
+                    .ok_or_else(|| "no software adapter is available".to_string())
+            }));
+        }
+    }
+    options
+}
+
 /// Opens the application window and blocks until it is closed.
 pub fn run(files: Vec<PathBuf>) -> Result<()> {
     let capture = capture::Capture::from_env()?;
     let mut registry = imager_commands::standard_registry();
-    if std::env::var_os("IMAGER_DEMO_COMMANDS").is_some() {
+    if flag("IMAGER_DEMO_COMMANDS") {
         crate::demo::register(&mut registry)?;
     }
     // A capture must look the same on every machine, so it leaves the
@@ -485,19 +673,34 @@ pub fn run(files: Vec<PathBuf>) -> Result<()> {
             let (width, height) = text.split_once('x')?;
             Some([width.parse().ok()?, height.parse().ok()?])
         })
-        .unwrap_or([1180.0, 780.0]);
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("imager")
-            .with_inner_size(size)
-            .with_min_inner_size([640.0, 420.0])
-            .with_drag_and_drop(true),
-        ..Default::default()
-    };
-    let window = Window {
+        .unwrap_or([1280.0, 840.0]);
+    let mut window = Window {
         shell: Shell::new(state),
         capture,
     };
-    eframe::run_native("imager", options, Box::new(move |_cc| Ok(Box::new(window))))
-        .map_err(|e| anyhow!("could not start the desktop interface: {e}"))
+    let force_cpu = flag("IMAGER_CPU_RENDERER");
+    eframe::run_native(
+        "imager",
+        native_options(size),
+        Box::new(move |cc| {
+            // The viewer shares the renderer egui itself draws with.
+            let render_state = cc.wgpu_render_state.as_ref();
+            if let Some(render_state) = render_state {
+                // A GPU error is a problem to report, not a reason to stop.
+                let (errors, ctx) = (window.shell.gpu_errors.clone(), cc.egui_ctx.clone());
+                render_state
+                    .device
+                    .on_uncaptured_error(Arc::new(move |error| {
+                        if let Ok(mut errors) = errors.lock() {
+                            errors.push(error.to_string());
+                        }
+                        ctx.request_repaint();
+                    }));
+            }
+            let gpu = render_state.map(imager_view::ViewerGpu::from_render_state);
+            window.shell.use_gpu(gpu, force_cpu);
+            Ok(Box::new(window))
+        }),
+    )
+    .map_err(|e| anyhow!("could not start the desktop interface: {e}"))
 }

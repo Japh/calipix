@@ -22,6 +22,7 @@ imager-commands.workspace = true
 imager-core.workspace = true
 imager-io.workspace = true
 imager-render.workspace = true
+imager-view = { workspace = true, optional = true }
 rfd = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
@@ -29,7 +30,7 @@ serde_json.workspace = true
 [features]
 default = ["gui"]
 # The desktop interface. Without it the binary is headless only.
-gui = ["dep:eframe", "dep:egui_tiles", "dep:rfd"]
+gui = ["dep:eframe", "dep:egui_tiles", "dep:imager-view", "dep:rfd"]
 
 [dev-dependencies]
 egui_kittest.workspace = true

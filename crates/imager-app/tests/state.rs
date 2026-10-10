@@ -102,6 +102,19 @@ fn menus_follow_the_prescribed_order_and_grouping() {
             "Fit to Window",
             "Zoom to 100%",
             "-",
+            "Previous Plane",
+            "Next Plane",
+            "-",
+            "Set Display Range…",
+            "Auto Contrast",
+            "Enhance Contrast…",
+            "Reset Display Range",
+            "-",
+            "Set Lookup Table…",
+            "Invert Lookup Table",
+            "-",
+            "Set Channel Mode…",
+            "-",
             "Theme >"
         ]
     );
@@ -113,6 +126,8 @@ fn menus_follow_the_prescribed_order_and_grouping() {
         labels(submenu(state.menu(), "Window")),
         [
             "Info Panel",
+            "Display Panel",
+            "Histogram Panel",
             "History Panel",
             "Log Panel",
             "-",

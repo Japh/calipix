@@ -66,8 +66,11 @@ fn item_clicked(ui: &mut egui::Ui, state: &AppState, command: &MenuCommand) -> b
         })
         .inner;
     let clicked = response.clicked();
-    let summary = state.spec(&command.id).map(|spec| spec.summary.as_str());
-    match (unavailable, command.hint.as_deref().or(summary)) {
+    // A menu is scanned, not studied: a tooltip on every item would cover
+    // the items next to it. Only what the label cannot say gets one: why
+    // an item is unavailable, and where a recent file is. What a command
+    // does is in the command palette.
+    match (unavailable, command.hint.as_deref()) {
         (Some(reason), _) => {
             response.on_disabled_hover_text(reason);
         }

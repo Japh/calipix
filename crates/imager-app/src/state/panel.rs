@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Panel {
     Info,
+    Display,
+    Histogram,
     History,
     Log,
 }
@@ -25,11 +27,19 @@ pub enum Dock {
 
 impl Panel {
     /// Every panel, in Window menu order.
-    pub const ALL: [Panel; 3] = [Panel::Info, Panel::History, Panel::Log];
+    pub const ALL: [Panel; 5] = [
+        Panel::Info,
+        Panel::Display,
+        Panel::Histogram,
+        Panel::History,
+        Panel::Log,
+    ];
 
     pub fn title(self) -> &'static str {
         match self {
             Panel::Info => "Info",
+            Panel::Display => "Display",
+            Panel::Histogram => "Histogram",
             Panel::History => "History",
             Panel::Log => "Log",
         }
@@ -39,6 +49,8 @@ impl Panel {
     pub fn key(self) -> &'static str {
         match self {
             Panel::Info => "info",
+            Panel::Display => "display",
+            Panel::Histogram => "histogram",
             Panel::History => "history",
             Panel::Log => "log",
         }
@@ -46,8 +58,27 @@ impl Panel {
 
     pub fn dock(self) -> Dock {
         match self {
-            Panel::Info => Dock::Right,
+            Panel::Info | Panel::Display | Panel::Histogram => Dock::Right,
             Panel::History | Panel::Log => Dock::Bottom,
+        }
+    }
+
+    /// Share of its dock's length the panel gets in the default layout.
+    pub fn share(self) -> f32 {
+        match self {
+            Panel::Display => 1.3,
+            Panel::Histogram => 1.2,
+            Panel::Info => 1.0,
+            Panel::History | Panel::Log => 1.0,
+        }
+    }
+
+    /// What ImageJ calls its nearest equivalent, as a search alias.
+    pub fn ijm_name(self) -> Option<&'static str> {
+        match self {
+            // Its B&C window is where display ranges are adjusted.
+            Panel::Display => Some("Brightness/Contrast..."),
+            _ => None,
         }
     }
 

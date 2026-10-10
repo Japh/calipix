@@ -169,3 +169,231 @@ pub fn number(ui: &mut egui::Ui, value: &mut f64, range: NumberRange) -> egui::R
     })
     .inner
 }
+
+/// A small heading that starts a group of controls within a panel.
+pub fn section(ui: &mut egui::Ui, text: &str) -> egui::Response {
+    ui.label(RichText::new(text).strong())
+}
+
+/// A number as panels show it: whole numbers without decimals, others to
+/// three decimals or four significant digits, whichever is more.
+pub fn number_text(value: f64) -> String {
+    if !value.is_finite() {
+        return "–".to_string();
+    }
+    if value == value.trunc() && value.abs() < 1e15 {
+        return format!("{value:.0}");
+    }
+    let magnitude = value.abs().log10().floor() as i32;
+    if !(-4..9).contains(&magnitude) {
+        return format!("{value:.3e}");
+    }
+    // Three decimals, or enough to show four digits of a small number.
+    let decimals = (3 - magnitude).clamp(3, 8) as usize;
+    let text = format!("{value:.decimals$}");
+    if text.contains('.') {
+        text.trim_end_matches('0').trim_end_matches('.').to_string()
+    } else {
+        text
+    }
+}
+
+/// A lookup table drawn as a strip from its first entry to its last.
+pub fn lut_strip(ui: &mut egui::Ui, table: &[[u8; 3]; 256], size: egui::Vec2) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
+    if ui.is_rect_visible(rect) {
+        let painter = ui.painter();
+        let steps = (rect.width().round() as usize).clamp(2, 256);
+        for step in 0..steps {
+            let [r, g, b] = table[step * 255 / (steps - 1)];
+            let left = rect.left() + rect.width() * step as f32 / steps as f32;
+            // Overlapping its neighbour, so that no gap shows between
+            // steps that do not land on whole pixels.
+            let right = (rect.left() + rect.width() * (step + 1) as f32 / steps as f32 + 0.5)
+                .min(rect.right());
+            painter.rect_filled(
+                egui::Rect::from_min_max(
+                    egui::pos2(left, rect.top()),
+                    egui::pos2(right, rect.bottom()),
+                ),
+                0.0,
+                Color32::from_rgb(r, g, b),
+            );
+        }
+        let outline = ui.visuals().widgets.noninteractive.bg_stroke;
+        painter.rect_stroke(rect, 1.0, outline, egui::StrokeKind::Outside);
+    }
+    response
+}
+
+/// The colour that stands for a lookup table in a chart: its brighter
+/// end, moved towards the text colour so that it reads on the panel in
+/// either theme. Grey tables take the text colour itself.
+pub fn series_color(ui: &egui::Ui, table: &[[u8; 3]; 256]) -> Color32 {
+    let luminance = |[r, g, b]: [u8; 3]| 0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32;
+    let end = if luminance(table[255]) >= luminance(table[0]) {
+        table[255]
+    } else {
+        table[0]
+    };
+    let text = ui.visuals().text_color();
+    let [r, g, b] = end;
+    if r.abs_diff(g) < 24 && g.abs_diff(b) < 24 {
+        return text;
+    }
+    let mix = |c: u8, t: u8| (c as f32 * 0.78 + t as f32 * 0.22).round() as u8;
+    Color32::from_rgb(mix(r, text.r()), mix(g, text.g()), mix(b, text.b()))
+}
+
+/// One histogram in a [`histogram_plot`].
+pub struct Series<'a> {
+    pub histogram: &'a imager_render::Histogram,
+    pub color: Color32,
+}
+
+/// Where a histogram plot ended up, for drawing over it and reading
+/// positions off it.
+pub struct Plot {
+    pub response: egui::Response,
+    /// The area the bars occupy.
+    pub rect: egui::Rect,
+    /// The sample values at the left and right edges.
+    pub span: (f64, f64),
+}
+
+impl Plot {
+    /// The screen x of a sample value.
+    pub fn x_of(&self, value: f64) -> f32 {
+        let (low, high) = self.span;
+        let t = if high > low {
+            ((value - low) / (high - low)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        self.rect.left() + self.rect.width() * t as f32
+    }
+
+    /// The sample value at a screen x.
+    pub fn value_at(&self, x: f32) -> f64 {
+        let (low, high) = self.span;
+        let t = ((x - self.rect.left()) / self.rect.width().max(1.0)).clamp(0.0, 1.0);
+        low + (high - low) * t as f64
+    }
+}
+
+/// The value range a histogram's bins cover.
+pub fn histogram_span(histogram: &imager_render::Histogram) -> (f64, f64) {
+    let low = histogram.hist_min;
+    (
+        low,
+        low + histogram.counts.len() as f64 * histogram.bin_width,
+    )
+}
+
+/// Draws histograms over one shared value axis and one shared count axis,
+/// `height` tall and as wide as there is room. `span` widens the value
+/// axis beyond the histograms' own range. A single very full bin (a black
+/// background, say) is cut off rather than allowed to flatten the rest, as
+/// ImageJ does; `log` shows counts on a logarithmic scale instead.
+pub fn histogram_plot(
+    ui: &mut egui::Ui,
+    height: f32,
+    series: &[Series<'_>],
+    log: bool,
+    span: Option<(f64, f64)>,
+    sense: egui::Sense,
+) -> Plot {
+    let width = ui.available_width().max(40.0);
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(width, height), sense);
+    let mut low = span.map_or(f64::INFINITY, |s| s.0);
+    let mut high = span.map_or(f64::NEG_INFINITY, |s| s.1);
+    for one in series {
+        let (start, end) = histogram_span(one.histogram);
+        low = low.min(start);
+        high = high.max(end);
+    }
+    if !(low.is_finite() && high.is_finite()) || high <= low {
+        (low, high) = (0.0, 1.0);
+    }
+    let plot = Plot {
+        response,
+        rect: rect.shrink(1.0),
+        span: (low, high),
+    };
+    if !ui.is_rect_visible(rect) {
+        return plot;
+    }
+    let visuals = ui.visuals();
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 2.0, visuals.extreme_bg_color);
+    painter.rect_stroke(
+        rect,
+        2.0,
+        visuals.widgets.noninteractive.bg_stroke,
+        egui::StrokeKind::Inside,
+    );
+
+    // One count axis for every series.
+    let mut top = 0u64;
+    for one in series {
+        let counts = &one.histogram.counts;
+        let fullest = counts.iter().copied().max().unwrap_or(0);
+        let second = counts
+            .iter()
+            .copied()
+            .filter(|&c| c != fullest)
+            .max()
+            .unwrap_or(0);
+        // `HistogramWindow`: a bin more than 1.5 times the next fullest
+        // is drawn cut off at that height.
+        let limit = if !log && second > 0 && fullest as f64 > second as f64 * 1.5 {
+            (second as f64 * 1.5) as u64
+        } else {
+            fullest
+        };
+        top = top.max(limit);
+    }
+    let scale = |count: u64| -> f32 {
+        if top == 0 || count == 0 {
+            return 0.0;
+        }
+        let t = if log {
+            (count as f64).ln_1p() / (top as f64).ln_1p()
+        } else {
+            count as f64 / top as f64
+        };
+        t.min(1.0) as f32
+    };
+    let area = plot.rect;
+    let overlaid = series.len() > 1;
+    for one in series {
+        let histogram = one.histogram;
+        let fill = if overlaid {
+            one.color.gamma_multiply(0.45)
+        } else {
+            one.color.gamma_multiply(0.85)
+        };
+        let mut outline = Vec::with_capacity(histogram.counts.len() * 2);
+        for (bin, &count) in histogram.counts.iter().enumerate() {
+            let left = plot.x_of(histogram.bin_start(bin));
+            let right = plot.x_of(histogram.bin_start(bin + 1)).max(left + 1.0);
+            let y = area.bottom() - area.height() * scale(count);
+            if count > 0 {
+                painter.rect_filled(
+                    egui::Rect::from_min_max(egui::pos2(left, y), egui::pos2(right, area.bottom())),
+                    0.0,
+                    fill,
+                );
+            }
+            outline.push(egui::pos2(left, y));
+            outline.push(egui::pos2(right, y));
+        }
+        if overlaid {
+            painter.add(egui::Shape::line(
+                outline,
+                egui::Stroke::new(1.0, one.color),
+            ));
+        }
+    }
+    plot
+}

@@ -1,13 +1,13 @@
 //! Parameter dialogs. One function draws the dialog of any command from
 //! its [`Dialog`] model; no command has dialog code of its own.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use eframe::egui::{self, Key};
 use imager_command::{Args, DatasetId, ParamType, PathMode, Workspace};
 
-use super::{FilePicker, ui};
-use crate::state::{AppState, Dialog, Draft, Field};
+use super::ui;
+use crate::state::{AppState, Dialog, Draft, Field, PathRequest};
 
 /// What the person did with the dialog this frame.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,14 +21,17 @@ pub enum Outcome {
 
 const WIDTH: f32 = 430.0;
 
-/// Asks the person for a path, starting from the one in the field.
-type Browse<'a> = dyn FnMut(PathMode, &str) -> Option<PathBuf> + 'a;
+/// Notes that the person wants to browse for the path of the named
+/// parameter, starting from the one in its field.
+type Browse<'a> = dyn FnMut(PathMode, &str, &str) + 'a;
 
+/// Draws the dialog. If a Browse button was pressed, `browse_for` is set
+/// to the parameter it belongs to and what the file dialog should ask.
 pub fn show(
     ctx: &egui::Context,
     dialog: &mut Dialog,
     state: &AppState,
-    picker: &mut dyn FilePicker,
+    browse_for: &mut Option<(String, PathRequest)>,
 ) -> Outcome {
     let workspace = &state.session().workspace;
     let mut outcome = Outcome::Open;
@@ -44,12 +47,12 @@ pub fn show(
             ui.add_space(ui::GAP);
 
             let spec = dialog.spec.clone();
-            let mut browse = |mode: PathMode, current: &str| {
+            let mut browse = |mode: PathMode, current: &str, param: &str| {
                 let mut request = state.path_request(&spec, mode, &Args::new());
                 if let Some(folder) = Path::new(current).parent().filter(|d| d.is_dir()) {
                     request.directory = Some(folder.to_path_buf());
                 }
-                picker.pick(&request)
+                *browse_for = Some((param.to_string(), request));
             };
             rows(ui, workspace, &mut dialog.fields, false, &mut browse);
             if dialog.has_advanced() {
@@ -183,10 +186,8 @@ fn control(
             let width = ui::FIELD_WIDTH - button - ui.spacing().item_spacing.x;
             let edit = ui.add(egui::TextEdit::singleline(text).desired_width(width));
             let browse_button = egui::Button::new("Browse…").min_size(egui::vec2(button, 0.0));
-            if ui.add(browse_button).clicked()
-                && let Some(path) = browse(*mode, text)
-            {
-                *text = path.display().to_string();
+            if ui.add(browse_button).clicked() {
+                browse(*mode, text, &param.name);
             }
             edit
         }
