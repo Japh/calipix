@@ -1,0 +1,207 @@
+//! Unattended capture of the window, for checking the interface without a
+//! person at the screen.
+//!
+//! Setting `IMAGER_CAPTURE` to a PNG path makes the application carry out
+//! the steps in `IMAGER_CAPTURE_STEPS`, save a picture of its window there
+//! and exit. Steps are separated by `;`:
+//!
+//! - `open:<path>` opens an image file
+//! - `run:<command id>` chooses a command as from a menu
+//! - `palette:<query>` opens the command palette and types a query
+//! - `set:<parameter>=<value>` types a value into the open dialog
+//! - `more` unfolds the dialog's advanced options
+//! - `accept` presses OK in the open dialog
+//! - `select:<n>` chooses the n-th image tab, counting from 1
+//! - `wait:<milliseconds>` lets time pass
+//!
+//! `IMAGER_CAPTURE_RUN=<command id>` is short for a single `run` step. The
+//! user's settings are neither read nor written while capturing.
+
+use std::collections::VecDeque;
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
+
+use anyhow::{Context as _, Result, anyhow, bail};
+use eframe::egui;
+use imager_command::Args;
+use imager_core::{Buffer, ColorModel, DType, Image, ImageMeta};
+
+use super::Shell;
+use crate::state::Draft;
+
+#[derive(Clone, Debug, PartialEq)]
+enum Step {
+    Open(PathBuf),
+    Run(String),
+    Palette(String),
+    Set(String, String),
+    More,
+    Accept,
+    Select(usize),
+    Wait(Duration),
+}
+
+impl Step {
+    fn parse(text: &str) -> Result<Step> {
+        let (verb, rest) = text.split_once(':').unwrap_or((text, ""));
+        Ok(match verb.trim() {
+            "open" => Step::Open(rest.into()),
+            "run" => Step::Run(rest.to_string()),
+            "palette" => Step::Palette(rest.to_string()),
+            "set" => {
+                let (name, value) = rest
+                    .split_once('=')
+                    .ok_or_else(|| anyhow!("`{text}` should be set:<parameter>=<value>"))?;
+                Step::Set(name.to_string(), value.to_string())
+            }
+            "more" => Step::More,
+            "accept" => Step::Accept,
+            "select" => Step::Select(rest.parse().context("select needs a tab number")?),
+            "wait" => Step::Wait(Duration::from_millis(
+                rest.parse().context("wait needs milliseconds")?,
+            )),
+            other => bail!("unknown capture step `{other}`"),
+        })
+    }
+}
+
+pub struct Capture {
+    path: PathBuf,
+    steps: VecDeque<Step>,
+    /// Frames drawn since the last step, so each step's effect is on
+    /// screen before the next one or the picture.
+    settled: u32,
+    hold_until: Option<Instant>,
+    /// Set by a `wait`, which is how a script looks at a command in
+    /// mid-run: what follows does not wait for the command to finish.
+    mid_run: bool,
+    requested: bool,
+}
+
+/// Frames to let the interface settle after each step.
+const SETTLE: u32 = 12;
+
+impl Capture {
+    pub fn from_env() -> Result<Option<Capture>> {
+        let Some(path) = std::env::var_os("IMAGER_CAPTURE") else {
+            return Ok(None);
+        };
+        let mut steps = VecDeque::new();
+        if let Ok(id) = std::env::var("IMAGER_CAPTURE_RUN") {
+            steps.push_back(Step::Run(id));
+        }
+        if let Ok(script) = std::env::var("IMAGER_CAPTURE_STEPS") {
+            for text in script.split(';').filter(|s| !s.trim().is_empty()) {
+                steps.push_back(Step::parse(text.trim())?);
+            }
+        }
+        Ok(Some(Capture {
+            path: path.into(),
+            steps,
+            settled: 0,
+            hold_until: None,
+            mid_run: false,
+            requested: false,
+        }))
+    }
+
+    /// Advances the script by at most one step. Returns true once the
+    /// picture has been saved and the window asked to close.
+    pub fn drive(&mut self, ctx: &egui::Context, shell: &mut Shell) -> bool {
+        ctx.request_repaint();
+        let shot = ctx.input(|i| {
+            i.events.iter().find_map(|e| match e {
+                egui::Event::Screenshot { image, .. } => Some(image.clone()),
+                _ => None,
+            })
+        });
+        if let Some(shot) = shot {
+            if let Err(e) = save_screenshot(&shot, &self.path) {
+                eprintln!("error: could not save capture: {e:#}");
+            }
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return true;
+        }
+
+        self.settled += 1;
+        let holding = self.hold_until.is_some_and(|until| Instant::now() < until);
+        let next_waits = matches!(self.steps.front(), Some(Step::Wait(_)));
+        let busy = shell.state.running().is_some() && !self.mid_run && !next_waits;
+        if self.settled < SETTLE || holding || busy || self.requested {
+            return false;
+        }
+        self.settled = 0;
+        self.hold_until = None;
+        match self.steps.pop_front() {
+            Some(step) => {
+                self.mid_run = matches!(step, Step::Wait(_));
+                self.apply(step, shell);
+            }
+            None => {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                self.requested = true;
+            }
+        }
+        false
+    }
+
+    fn apply(&mut self, step: Step, shell: &mut Shell) {
+        match step {
+            Step::Open(path) => shell.state.open_files([path]),
+            Step::Run(id) => shell.invoke(&id, &Args::new()),
+            Step::Palette(query) => {
+                shell.palette.open();
+                shell.palette.query = query;
+            }
+            Step::Set(name, value) => {
+                let field = shell.dialog.as_mut().and_then(|d| d.field_mut(&name));
+                match field.map(|f| &mut f.draft) {
+                    Some(Draft::Bool(on)) => *on = value == "true",
+                    Some(Draft::Int(number)) => *number = value.parse().unwrap_or(*number),
+                    Some(Draft::Float(number)) => *number = value.parse().unwrap_or(*number),
+                    Some(Draft::Text(text)) => *text = value,
+                    Some(Draft::Image(_)) | None => {
+                        eprintln!("warning: capture step set:{name} had nothing to set");
+                    }
+                }
+            }
+            Step::More => {
+                if let Some(dialog) = &mut shell.dialog {
+                    dialog.show_advanced = true;
+                }
+            }
+            Step::Accept => shell.accept_dialog(),
+            Step::Select(n) => {
+                let id = shell
+                    .state
+                    .session()
+                    .workspace
+                    .datasets()
+                    .nth(n.saturating_sub(1))
+                    .map(|dataset| dataset.id);
+                if let Some(id) = id {
+                    shell.state.set_active(id);
+                }
+            }
+            Step::Wait(time) => self.hold_until = Some(Instant::now() + time),
+        }
+    }
+}
+
+fn save_screenshot(shot: &egui::ColorImage, path: &std::path::Path) -> Result<()> {
+    let [width, height] = shot.size;
+    let mut meta = ImageMeta::xyczt(DType::U8, width, height, 3, 1, 1)?;
+    meta.color = ColorModel::Rgb;
+    let planes = (0..3)
+        .map(|c| {
+            Buffer::from_vec(
+                shot.pixels
+                    .iter()
+                    .map(|p| p.to_array()[c])
+                    .collect::<Vec<u8>>(),
+            )
+        })
+        .collect();
+    imager_io::save(&Image::from_planes(meta, planes)?, path)?;
+    Ok(())
+}
