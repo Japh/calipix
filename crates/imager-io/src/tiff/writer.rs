@@ -148,9 +148,37 @@ fn plan(meta: &ImageMeta) -> Result<Plan<'_>, WriteError> {
     })
 }
 
+/// XResolution and YResolution for the given pixel sizes, as
+/// (pixels, units) fractions.
+///
+/// `TiffEncoder.writeScale` stores `1e6 / size` over `1e6`, truncated to
+/// integers. Where that reads back as exactly the same size we write the
+/// same numbers as ImageJ; where it would lose digits (a size of 0.3 comes
+/// back as 0.30000003) we store the nearest fraction instead.
+fn resolutions(width: f64, height: f64) -> Option<[(u32, u32); 2]> {
+    let (exact_x, exact_y) = (resolution(width)?, resolution(height)?);
+    let (x_scale, y_scale) = (1.0 / width, 1.0 / height);
+    let max = f64::from(i32::MAX);
+    let mut scale = 1_000_000.0;
+    if x_scale * scale > max || y_scale * scale > max {
+        scale = (max / x_scale.max(y_scale)).trunc();
+    }
+    let imagej = |per_unit: f64, size: f64, exact: (u32, u32)| {
+        let (pixels, units) = ((per_unit * scale) as u32, scale as u32);
+        if pixels > 0 && f64::from(units) / f64::from(pixels) == size {
+            (pixels, units)
+        } else {
+            exact
+        }
+    };
+    Some([
+        imagej(x_scale, width, exact_x),
+        imagej(y_scale, height, exact_y),
+    ])
+}
+
 /// The smallest-termed fraction `pixels / units` equal (or as near as
-/// 32-bit terms allow) to `1 / size`. ImageJ writes `1e6 / size` over `1e6`,
-/// which loses digits; a continued fraction keeps sizes such as 0.3 exact.
+/// 32-bit terms allow) to `1 / size`.
 fn resolution(size: f64) -> Option<(u32, u32)> {
     if !(size.is_finite() && size > 0.0) {
         return None;
@@ -468,10 +496,10 @@ pub(crate) fn write<W: Write>(
         .flatten();
     let (x, y) = (&meta.axes()[0], &meta.axes()[1]);
     let scaled = x.scale != 1.0 || y.scale != 1.0 || x.unit.is_some();
-    let ratios = match (scaled, resolution(x.scale), resolution(y.scale)) {
-        (true, Some(rx), Some(ry)) => Some((rx, ry)),
-        _ => None,
-    };
+    let ratios = scaled
+        .then(|| resolutions(x.scale, y.scale))
+        .flatten()
+        .map(|[rx, ry]| (rx, ry));
     let mut text = description(&plan).into_bytes();
     text.push(0);
     let blocks = ij_meta(&plan).build(ORDER, images);
@@ -706,6 +734,20 @@ mod tests {
         }
         let (pixels, units) = resolution(std::f64::consts::PI).unwrap();
         assert!((f64::from(units) / f64::from(pixels) - std::f64::consts::PI).abs() < 1e-12);
+        // ImageJ's own numbers where they are exact, ours where not.
+        assert_eq!(
+            resolutions(0.1, 0.25),
+            Some([(10_000_000, 1_000_000), (4_000_000, 1_000_000)])
+        );
+        assert_eq!(
+            resolutions(0.3, 0.5),
+            Some([(10, 3), (2_000_000, 1_000_000)])
+        );
+        assert_eq!(
+            resolutions(1e-9, 1.0).map(|r| r[0]),
+            Some((1_000_000_000, 1))
+        );
+        assert_eq!(resolutions(0.0, 1.0), None);
         assert_eq!(resolution(0.0), None);
         assert_eq!(resolution(f64::NAN), None);
         assert_eq!(resolution(-1.0), None);

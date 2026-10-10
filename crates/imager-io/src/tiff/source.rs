@@ -303,6 +303,8 @@ struct Chunks {
     across: usize,
     /// Samples per pixel inside a chunk.
     samples: usize,
+    /// Tiles always decode at full size; the last strip holds fewer rows.
+    tiled: bool,
 }
 
 struct Pooled {
@@ -343,6 +345,17 @@ fn crate_error(error: CrateError) -> TiffError {
         CrateError::IoError(e) => TiffError::Io(e),
         CrateError::UnsupportedError(e) => TiffError::Unsupported(e.to_string()),
         other => TiffError::Format(other.to_string()),
+    }
+}
+
+/// Runs a call into the `tiff` crate. The crate asserts some invariants of
+/// the data it decodes instead of returning errors; a damaged file must
+/// never take the application down, so such a panic becomes an error (and
+/// the decoder involved is discarded by the caller).
+fn guarded<T>(call: impl FnOnce() -> Result<T, CrateError>) -> TiffResult<T> {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(call)) {
+        Ok(result) => result.map_err(crate_error),
+        Err(_) => format_err("the pixel data could not be decoded (the file is probably damaged)"),
     }
 }
 
@@ -443,17 +456,42 @@ impl ChunkedSource {
             // No supported codec expands data by anything like this, so a
             // chunk claiming to is a corrupt size, not something to
             // allocate for.
-            if count.saturating_mul(4096).saturating_add(1 << 16) < chunk_bytes
-                && (info.compression != 1 || per_plane > 1)
+            if info.compression != 1
+                && count.saturating_mul(4096).saturating_add(1 << 16) < chunk_bytes
             {
                 return format_err(format!(
                     "a {chunk_w}x{chunk_h} strip or tile cannot be stored in {count} bytes"
                 ));
             }
         }
+        if info.compression == 1 {
+            // Uncompressed data must all be there; this also bounds what a
+            // corrupt size can make us allocate by the size of the file.
+            let needed = match info.tile {
+                Some(_) => chunk_bytes.saturating_mul(per_plane as u64),
+                None => width * height * (chunk_samples * g.bytes_per_sample) as u64,
+            };
+            let present = counts.iter().fold(0u64, |sum, &c| sum.saturating_add(c));
+            if present < needed {
+                return format_err(format!(
+                    "the pixel data is truncated: {needed} bytes are needed but the strips or tiles hold {present}"
+                ));
+            }
+        }
 
         // The directory handed to the crate. Photometric is always
-        // BlackIsZero, so samples come back exactly as stored.
+        // BlackIsZero, so samples come back exactly as stored. A tiled image
+        // is declared as large as its whole tiles: the crate then decodes
+        // every tile in full and we crop, which avoids its row-by-row path
+        // for edge tiles (that path fails with "no lzw end code found" on
+        // LZW tiles whose padding compresses well).
+        let (coded_width, coded_height) = match info.tile {
+            Some(_) => (across * chunk_w, height.div_ceil(chunk_h) * chunk_h),
+            None => (width, height),
+        };
+        if coded_width > u64::from(u32::MAX) || coded_height > u64::from(u32::MAX) {
+            return format_err("the tiles extend beyond the largest possible image");
+        }
         let order = file.order;
         let wide = file.big;
         let long = |v: &[u64]| -> (u16, Vec<u8>) {
@@ -476,8 +514,8 @@ impl ChunkedSource {
             )
         };
         let mut entries: Vec<(u16, u64, (u16, Vec<u8>))> = vec![
-            (tag::IMAGE_WIDTH, 1, long(&[width])),
-            (tag::IMAGE_LENGTH, 1, long(&[height])),
+            (tag::IMAGE_WIDTH, 1, long(&[coded_width])),
+            (tag::IMAGE_LENGTH, 1, long(&[coded_height])),
             (
                 tag::BITS_PER_SAMPLE,
                 chunk_samples as u64,
@@ -567,9 +605,7 @@ impl ChunkedSource {
         let mut limits = Limits::default();
         limits.decoding_buffer_size = usize::MAX;
         limits.ifd_value_size = usize::MAX;
-        let decoder = Decoder::new(reader)
-            .map_err(crate_error)?
-            .with_limits(limits);
+        let decoder = guarded(|| Decoder::new(reader))?.with_limits(limits);
         Ok(Pooled {
             image,
             plane,
@@ -579,6 +615,7 @@ impl ChunkedSource {
                 height: chunk_h as usize,
                 across: across as usize,
                 samples: chunk_samples,
+                tiled: info.tile.is_some(),
             },
         })
     }
@@ -626,17 +663,17 @@ impl ChunkedSource {
         for cy in r.y / c.height..=(r.y + r.h - 1) / c.height {
             for cx in r.x / c.width..=(r.x + r.w - 1) / c.width {
                 let (x0, y0) = (cx * c.width, cy * c.height);
-                // Edge chunks are returned cropped to the image.
-                let data_w = c.width.min(g.width - x0);
-                let data_h = c.height.min(g.height - y0);
+                let (data_w, data_h) = if c.tiled {
+                    (c.width, c.height)
+                } else {
+                    (c.width, c.height.min(g.height - y0))
+                };
                 let len = data_w * data_h * pixel;
                 if chunk.len() < len {
                     chunk = alloc(len)?;
                 }
-                pooled
-                    .decoder
-                    .read_chunk_bytes((cy * c.across + cx) as u32, &mut chunk[..len])
-                    .map_err(crate_error)?;
+                let index = (cy * c.across + cx) as u32;
+                guarded(|| pooled.decoder.read_chunk_bytes(index, &mut chunk[..len]))?;
                 let (xa, xb) = (x0.max(r.x), (x0 + data_w).min(r.x + r.w));
                 for y in y0.max(r.y)..(y0 + data_h).min(r.y + r.h) {
                     let from = ((y - y0) * data_w + (xa - x0)) * pixel;
