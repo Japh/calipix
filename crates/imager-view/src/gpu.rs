@@ -39,7 +39,7 @@ struct Params {
     n_channels: u32,
     table_rows: u32,
     _pad: [u32; 3],
-    /// Float mapping per channel: `(min_hi, min_lo, scale, unused)`.
+    /// Float mapping per channel: `(min, scale, unused, unused)`.
     chan: [[f32; 4]; MAX_GPU_CHANNELS],
 }
 
@@ -428,7 +428,7 @@ impl ViewerGpu {
                 .collect();
             write_texture(&self.0.queue, &display.lut, c as u32, 256, 1, &rgba);
             if rows > 0
-                && let Ok(table) = level_table(plan.dtype, channel.range)
+                && let Ok(table) = level_table(plan.dtype, plan.rgb, channel.range)
             {
                 write_texture(
                     &self.0.queue,
@@ -560,7 +560,7 @@ impl GpuFrame {
         if kind == SampleKind::Float {
             for (slot, channel) in chan.iter_mut().zip(&plan.channels) {
                 let p = float_params(channel.range)?;
-                *slot = [p.min_hi, p.min_lo, p.scale, 0.0];
+                *slot = [p.min, p.scale, 0.0, 0.0];
             }
         }
         Some(GpuFrame {

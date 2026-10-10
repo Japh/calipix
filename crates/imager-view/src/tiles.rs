@@ -48,10 +48,11 @@ impl TileCoord {
 
 /// The tile layout of a `width` x `height` plane.
 ///
-/// Level `l` holds every `2^l`-th sample of every `2^l`-th row (the samples
-/// at image coordinates that are multiples of `2^l`; no averaging, as in
-/// ImageJ's reduced views). Each level is cut into tiles of `tile` x `tile`
-/// samples, smaller at the right and bottom edges.
+/// Level `l` holds one sample for every `2^l` x `2^l` block of the plane:
+/// the sample in the middle of the block ([`TileGrid::sample_position`]),
+/// with no averaging, as in ImageJ's reduced views and
+/// `imager_render::Reduction::Nearest`. Each level is cut into tiles of
+/// `tile` x `tile` samples, smaller at the right and bottom edges.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TileGrid {
     pub width: usize,
@@ -71,6 +72,15 @@ impl TileGrid {
     /// Distance in image pixels between samples at `level`.
     pub fn step(level: u8) -> usize {
         1usize << level.min(MAX_LEVEL)
+    }
+
+    /// The full-resolution coordinate that sample `index` of `level` is
+    /// taken from, along an axis of `size` pixels: the middle of its block
+    /// of `2^level` pixels, `index * 2^level + 2^level / 2`, or the last
+    /// pixel if the block is cut short by the edge of the plane.
+    pub fn sample_position(level: u8, index: usize, size: usize) -> usize {
+        let step = TileGrid::step(level);
+        (index * step + step / 2).min(size.saturating_sub(1))
     }
 
     /// Samples per row and rows at `level`.
@@ -141,10 +151,11 @@ const BAND_SAMPLES: usize = 4 << 20;
 /// Reads the samples of one tile.
 ///
 /// At level 0 this is a single region read. At coarser levels the kept
-/// samples are picked from full-resolution rows without ever holding more
-/// than a band of the plane: an in-memory plane is indexed directly, a
-/// source with a natural tile height is read one row of its tiles at a
-/// time, and any other source is read one needed row at a time.
+/// samples ([`TileGrid::sample_position`]) are picked from full-resolution
+/// rows without ever holding more than a band of the plane: an in-memory
+/// plane is indexed directly, a source with a natural tile height is read
+/// one row of its tiles at a time, and any other source is read one needed
+/// row at a time.
 pub fn read_tile(image: &Image, grid: &TileGrid, key: TileKey) -> Result<Buffer> {
     let coord = TileCoord {
         level: key.level,
@@ -157,27 +168,23 @@ pub fn read_tile(image: &Image, grid: &TileGrid, key: TileKey) -> Result<Buffer>
             grid.width, grid.height
         ))
     })?;
-    let step = TileGrid::step(key.level);
-    if step == 1 {
+    if key.level == 0 {
         return image.read_region(key.plane, rect);
     }
-    // Full-resolution columns x0, x0 + step, ... and rows likewise.
-    let x0 = rect.x * step;
-    let span_w = (rect.w - 1) * step + 1;
+    // The full-resolution columns and rows the tile's samples come from.
+    let xs: Vec<usize> = (rect.x..rect.x + rect.w)
+        .map(|i| TileGrid::sample_position(key.level, i, grid.width))
+        .collect();
+    let ys: Vec<usize> = (rect.y..rect.y + rect.h)
+        .map(|j| TileGrid::sample_position(key.level, j, grid.height))
+        .collect();
     if image.is_in_memory() {
         let plane = image.read_plane(key.plane)?;
-        return Ok(pick(
-            &plane,
-            grid.width,
-            x0,
-            rect.y * step,
-            step,
-            step,
-            rect.w,
-            rect.h,
-        ));
+        return Ok(pick(&plane, grid.width, &xs, &ys));
     }
-
+    let x0 = xs[0];
+    let span_w = xs[xs.len() - 1] - x0 + 1;
+    let columns: Vec<usize> = xs.iter().map(|x| x - x0).collect();
     let band_rows = match image.tile_size() {
         Some((_, th)) if th > 1 => {
             // Whole rows of source tiles, as many as fit the band budget.
@@ -187,58 +194,36 @@ pub fn read_tile(image: &Image, grid: &TileGrid, key: TileKey) -> Result<Buffer>
         _ => 1,
     };
     let mut parts: Vec<Buffer> = Vec::new();
-    let mut row = 0; // index of the next output row
-    while row < rect.h {
-        let y = (rect.y + row) * step;
-        if band_rows == 1 {
-            let line = image.read_region(key.plane, Rect::new(x0, y, span_w, 1))?;
-            parts.push(pick(&line, span_w, 0, 0, step, 1, rect.w, 1));
-            row += 1;
-        } else {
-            // The band ends at the next source-tile boundary multiple.
-            let band_end = ((y / band_rows + 1) * band_rows).min(grid.height);
-            let rows_here = (band_end - y).div_ceil(step).min(rect.h - row);
-            let band_h = (rows_here - 1) * step + 1;
-            let band = image.read_region(key.plane, Rect::new(x0, y, span_w, band_h))?;
-            parts.push(pick(&band, span_w, 0, 0, step, step, rect.w, rows_here));
-            row += rows_here;
-        }
+    let mut next = 0; // index into `ys` of the next output row
+    while next < ys.len() {
+        // The needed rows that fall in the same band as the next one.
+        let top = ys[next];
+        let band = top / band_rows;
+        let count = ys[next..]
+            .iter()
+            .take_while(|y| *y / band_rows == band)
+            .count();
+        let rows: Vec<usize> = ys[next..next + count].iter().map(|y| y - top).collect();
+        let height = rows[rows.len() - 1] + 1;
+        let region = image.read_region(key.plane, Rect::new(x0, top, span_w, height))?;
+        parts.push(pick(&region, span_w, &columns, &rows));
+        next += count;
     }
     Ok(concat(&parts))
 }
 
-/// Picks an `out_w` x `out_h` grid of samples from a row-major buffer
-/// `src_w` wide, starting at `(x0, y0)` and stepping by `(step_x, step_y)`.
-#[allow(clippy::too_many_arguments)]
-fn pick(
-    src: &Buffer,
-    src_w: usize,
-    x0: usize,
-    y0: usize,
-    step_x: usize,
-    step_y: usize,
-    out_w: usize,
-    out_h: usize,
-) -> Buffer {
-    #[allow(clippy::too_many_arguments)]
-    fn go<T: Pixel>(
-        src: &[T],
-        src_w: usize,
-        x0: usize,
-        y0: usize,
-        step_x: usize,
-        step_y: usize,
-        out_w: usize,
-        out_h: usize,
-    ) -> Buffer {
-        let mut out = Vec::with_capacity(out_w * out_h);
-        for j in 0..out_h {
-            let row = &src[(y0 + j * step_y) * src_w..];
-            out.extend((0..out_w).map(|i| row[x0 + i * step_x]));
+/// Picks the samples at the given columns of the given rows from a
+/// row-major buffer `src_w` wide.
+fn pick(src: &Buffer, src_w: usize, columns: &[usize], rows: &[usize]) -> Buffer {
+    fn go<T: Pixel>(src: &[T], src_w: usize, columns: &[usize], rows: &[usize]) -> Buffer {
+        let mut out = Vec::with_capacity(columns.len() * rows.len());
+        for &y in rows {
+            let row = &src[y * src_w..(y + 1) * src_w];
+            out.extend(columns.iter().map(|&x| row[x]));
         }
         Buffer::from_vec(out)
     }
-    dispatch!(src, |s| go(s, src_w, x0, y0, step_x, step_y, out_w, out_h))
+    dispatch!(src, |s| go(s, src_w, columns, rows))
 }
 
 /// Joins one or more buffers of one pixel type end to end.
@@ -542,10 +527,12 @@ mod tests {
                 ty: key.ty,
             })
             .unwrap();
-        let step = TileGrid::step(key.level);
+        let at = |i: usize, size: usize| TileGrid::sample_position(key.level, i, size);
         let mut v = Vec::new();
         for y in rect.y..rect.y + rect.h {
-            v.extend((rect.x..rect.x + rect.w).map(|x| value(x * step, y * step)));
+            v.extend(
+                (rect.x..rect.x + rect.w).map(|x| value(at(x, grid.width), at(y, grid.height))),
+            );
         }
         v
     }
@@ -569,6 +556,8 @@ mod tests {
         };
         let tile = read_tile(&image, &grid, key).unwrap();
         assert_eq!(tile.as_slice::<u16>().unwrap(), &expected(&grid, key)[..]);
+        assert_eq!(TileGrid::sample_position(4, 0, w), 8);
+        assert_eq!(TileGrid::sample_position(4, 562, w), 8999);
         // 512 samples 16 apart span 8177 columns; only single rows are read.
         assert_eq!(*largest.lock().unwrap(), 8177);
         // With 64-row source tiles, bands are whole tile rows within budget.

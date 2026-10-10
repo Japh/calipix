@@ -10,7 +10,10 @@ use egui_wgpu::wgpu;
 use imager_core::{
     Buffer, ChannelMeta, ColorModel, DType, Image, ImageMeta, Lut, PixelSource, Rect,
 };
-use imager_render::{Rgba8, render_plane};
+use imager_render::{
+    Blend, ChannelMode, DisplayOptions, Reduction, Rgba8, render_plane, render_plane_with,
+    render_region,
+};
 use imager_view::{ImageView, OFFSCREEN_FORMAT, ViewOptions, ViewerGpu};
 
 static ERRORS: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -471,42 +474,17 @@ fn composite(dtype: DType, w: usize, h: usize, channels: usize, slices: usize) -
     Image::from_planes(meta, planes).unwrap()
 }
 
-/// The composite the viewer is specified to draw: each channel through
-/// `render_plane` on its own, added and clamped.
+/// The composite as the CPU renderer draws it.
 fn composite_reference(image: &Image, position: &[usize], visible: &[bool]) -> Rgba8 {
-    let meta = image.meta();
-    let mut out: Option<Rgba8> = None;
-    for (c, _) in visible.iter().enumerate().filter(|(_, v)| **v) {
-        let mut p = position.to_vec();
-        p[0] = c;
-        let layer = render_plane(image, &p).unwrap();
-        out = Some(match out {
-            None => layer,
-            Some(mut sum) => {
-                for (s, l) in sum
-                    .data
-                    .as_chunks_mut::<4>()
-                    .0
-                    .iter_mut()
-                    .zip(layer.data.as_chunks::<4>().0)
-                {
-                    for k in 0..3 {
-                        s[k] = s[k].saturating_add(l[k]);
-                    }
-                }
-                sum
-            }
-        });
-    }
-    out.unwrap_or(Rgba8 {
-        width: meta.width(),
-        height: meta.height(),
-        data: [0, 0, 0, 255].repeat(meta.plane_len()),
-    })
+    let options = DisplayOptions {
+        visible: visible.to_vec(),
+        ..DisplayOptions::default()
+    };
+    render_plane_with(image, position, &options).unwrap()
 }
 
 #[test]
-fn composite_equals_summed_cpu_channels_exactly() {
+fn composite_equals_the_cpu_renderer_exactly() {
     let (w, h) = (280, 210);
     let image = composite(DType::U16, w, h, 3, 2);
     for (position, visible) in [
@@ -591,7 +569,7 @@ fn a_plane_larger_than_one_tile() {
     let cpu = start.elapsed();
     println!(
         "LARGE {w}x{h} u16: first GPU render (read + upload + draw + read back) {first:?}, \
-         of which reading tiles {:?} and upload {:?} for {} tiles; redraw + read back {second:?};          CPU render_plane {cpu:?}",
+         of which reading tiles {:?} and upload {:?} for {} tiles; redraw + read back {second:?}; CPU render_plane {cpu:?}",
         stats.read_time, stats.upload_time, stats.uploads
     );
     assert_eq!(stats.uploads, 6);
@@ -734,5 +712,163 @@ fn a_lazy_image_is_read_by_region_and_decimated() {
         largest <= 512 * 512,
         "largest region read: {largest} samples"
     );
+    no_gpu_errors();
+}
+
+#[test]
+fn display_options_follow_the_cpu_renderer() {
+    let (w, h) = (150, 110);
+    let composite = composite(DType::U16, w, h, 3, 2);
+    let mut gray = composite.meta().clone();
+    gray.color = ColorModel::Grayscale;
+    // Channel 1 loses its table, to exercise the default channel colours.
+    gray.channels[1].lut = None;
+    let gray = composite.with_meta(gray).unwrap();
+
+    let mut cases = Vec::new();
+    for image in [&composite, &gray] {
+        for mode in [
+            ChannelMode::Auto,
+            ChannelMode::Composite,
+            ChannelMode::Color,
+            ChannelMode::Grayscale,
+        ] {
+            for blend in [Blend::Sum, Blend::Max, Blend::Min] {
+                for visible in [vec![], vec![true, false, true], vec![false; 3]] {
+                    cases.push((
+                        image,
+                        DisplayOptions {
+                            mode,
+                            visible,
+                            blend,
+                            ..DisplayOptions::default()
+                        },
+                    ));
+                }
+            }
+        }
+    }
+    let (mut shader, mut cpu) = (0, 0);
+    for (image, options) in cases {
+        let mut view = ImageView::new(self::options(64));
+        view.set_position(&[1, 1]);
+        view.set_display_options(options.clone());
+        let got = view.render_gpu(image, gpu(), w as u32, h as u32).unwrap();
+        let want = render_plane_with(image, &[1, 1], &options).unwrap();
+        let d = diff(&got, &want);
+        assert_eq!(d.differing, 0, "{options:?}: {d:?}");
+        if view.stats().cpu_renders == 0 {
+            shader += 1;
+        } else {
+            cpu += 1;
+        }
+    }
+    // Sums and single channels are drawn by the shader, the rest by the CPU.
+    println!("DISPLAY OPTIONS: {shader} cases drawn by the shader, {cpu} by the CPU renderer");
+    assert!(shader > 0 && cpu > 0);
+    no_gpu_errors();
+}
+
+#[test]
+fn eight_bit_rules_and_the_zero_range() {
+    let (w, h) = (128, 96);
+    // u8, non-RGB: the byte rule, including ranges with fractions.
+    let base = Image::from_planes(
+        ImageMeta::plane(DType::U8, w, h).unwrap(),
+        vec![u8_plane(w, h, 60)],
+    )
+    .unwrap();
+    for range in [
+        (50.0, 200.0),
+        (10.4, 99.6),
+        (10.5, 99.5),
+        (-20.0, 300.0),
+        (0.0, 0.0),
+        (200.0, 100.0),
+    ] {
+        let image = with_display(&base, Some(range), Some(fire()));
+        let d = against_render_plane(&image, &[], 64);
+        assert_eq!(d.differing, 0, "u8 {range:?}: {d:?}");
+    }
+    // u8 RGB components: the colour rule, which truncates the minimum.
+    let rgb = rgb_image(w, h);
+    let mut meta = rgb.meta().clone();
+    meta.channels = [(40.7, 180.2), (0.0, 0.0), (50.0, 200.0)]
+        .iter()
+        .map(|&range| ChannelMeta {
+            name: None,
+            lut: None,
+            display_range: Some(range),
+        })
+        .collect();
+    let d = against_render_plane(&rgb.with_meta(meta).unwrap(), &[0], 64);
+    assert_eq!(d.differing, 0, "rgb ranges: {d:?}");
+    // On 16-bit and float data (0, 0) means the plane's own range.
+    let sixteen = Image::from_planes(
+        ImageMeta::plane(DType::U16, w, h).unwrap(),
+        vec![u16_plane(w, h, 61)],
+    )
+    .unwrap();
+    let d = against_render_plane(&with_display(&sixteen, Some((0.0, 0.0)), None), &[], 64);
+    assert_eq!(d.differing, 0, "u16 zero range: {d:?}");
+    let float = Image::from_planes(
+        ImageMeta::plane(DType::F32, w, h).unwrap(),
+        vec![f32_plane(w, h, 62, false)],
+    )
+    .unwrap();
+    let d = against_render_plane(&with_display(&float, Some((0.0, 0.0)), None), &[], 64);
+    assert!(d.max <= 1, "f32 zero range: {d:?}");
+    no_gpu_errors();
+}
+
+#[test]
+fn reduced_views_match_nearest_reduction() {
+    // Zoomed out, the view shows one sample per device pixel, unaveraged.
+    // Where a view is a whole-image reduction it equals the CPU renderer's
+    // `Reduction::Nearest`: at any zoom from 50% up, and at exact powers of
+    // two below that.
+    let (w, h) = (480, 320);
+    let image = Image::from_planes(
+        ImageMeta::plane(DType::U16, w, h).unwrap(),
+        vec![u16_plane(w, h, 70)],
+    )
+    .unwrap();
+    let image = with_display(&image, Some((0.0, 65535.0)), Some(fire()));
+    let options = DisplayOptions {
+        reduction: Reduction::Nearest,
+        ..DisplayOptions::default()
+    };
+    for (zoom, exact) in [
+        (0.75, true),
+        (0.5, true),
+        (0.625, true),
+        (0.25, true),
+        (0.125, true),
+        // Between powers of two below 50% the nearest kept sample is shown,
+        // which is not always the nearest pixel.
+        (0.375, false),
+    ] {
+        let (ow, oh) = ((w as f64 * zoom) as u32, (h as f64 * zoom) as u32);
+        let mut view = ImageView::new(self::options(128));
+        view.set_zoom(zoom);
+        let got = view.render_gpu(&image, gpu(), ow, oh).unwrap();
+        let region = Rect::new(0, 0, w, h);
+        let want = render_region(&image, &[], region, ow as usize, oh as usize, &options).unwrap();
+        let d = diff(&got, &want);
+        println!("REDUCED zoom {zoom}: {d:?}");
+        if exact {
+            assert_eq!(d.differing, 0, "zoom {zoom}: {d:?}");
+        }
+        // Magnified, both are plain nearest neighbour.
+    }
+    for zoom in [2.0, 3.0, 1.5] {
+        let (ow, oh) = ((w as f64 * zoom) as u32, (h as f64 * zoom) as u32);
+        let mut view = ImageView::new(self::options(128));
+        view.set_zoom(zoom);
+        let got = view.render_gpu(&image, gpu(), ow, oh).unwrap();
+        let region = Rect::new(0, 0, w, h);
+        let want = render_region(&image, &[], region, ow as usize, oh as usize, &options).unwrap();
+        assert_eq!(diff(&got, &want).differing, 0, "zoom {zoom}");
+    }
     no_gpu_errors();
 }

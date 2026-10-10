@@ -2,30 +2,33 @@
 //! mapping from sample values to display levels and colours is in this
 //! file, so that it can be checked against `imager-render` in one place.
 //!
-//! The definition is `imager_render`: a sample maps to a display level
-//! 0..=255 with [`imager_render::to_levels`], and the level indexes the
-//! channel's 256-entry lookup table. Several channels are added together
-//! per colour component and clamped to 255.
+//! The definition is `imager-render`: a sample maps to a display level
+//! 0..=255 by [`imager_render::LevelMap`], the level indexes the channel's
+//! 256-entry lookup table ([`imager_render::channel_lut`]), and in
+//! composite mode the colours of the visible channels are combined
+//! ([`imager_render::Blend`]). Which channels are drawn, with which range
+//! and table, follows `imager_render::render_plane_with`; see
+//! [`channel_requests`].
 //!
 //! # Integer planes (u8, u16, i16) on the GPU
 //!
-//! ImageJ's rule for integers (`ShortProcessor.create8BitImage`) is
+//! The level rules for integers (`LevelRule::Byte`, `Integer`, `RgbByte`)
+//! are evaluated in double precision and cannot be reproduced in a shader,
+//! which has neither doubles nor 64-bit integers. Exact integer arithmetic
+//! does not reproduce them either: for the 16-bit rule
 //!
 //! ```text
-//! level = min((int)((v - min) * (256.0 / (max - min + 1)) + 0.5), 255),  v - min clamped at 0
+//! level = min((int)(max(v - min, 0) * (256.0 / (max - min + 1)) + 0.5), 255)
 //! ```
 //!
-//! evaluated in double precision. The shader has neither doubles nor 64-bit
-//! integers, and the rule cannot be reproduced with exact integer
-//! arithmetic either: where `(v - min) * 256 / (max - min + 1) + 0.5` is a
-//! whole number the double-precision product sometimes falls just short.
-//! For example with the range 0..=25087 the sample 147 maps to level 1,
-//! although `147 * 256 / 25088 + 0.5` is exactly 2.
+//! with the range 0..=25087 the sample 147 gets level 1, although
+//! `147 * 256 / 25088 + 0.5` is exactly 2: the double-precision product
+//! falls just short.
 //!
-//! So the shader does no arithmetic on integer samples at all. For each
-//! channel the viewer evaluates `to_levels` once for every value the pixel
-//! type can hold (256 or 65536 values) and uploads the result as a table;
-//! the shader looks the sample up in it:
+//! So the shader does no arithmetic on integer samples. For each channel
+//! the viewer asks `LevelMap::level` for the level of every value the pixel
+//! type can hold (256 or 65536 values) and uploads the answers as a table,
+//! which the shader indexes:
 //!
 //! ```text
 //! index = v                 (u8, u16)
@@ -33,31 +36,40 @@
 //! level = table[channel][index]
 //! ```
 //!
-//! This is identical to the CPU renderer by construction, for any display
-//! range, and stays identical if `to_levels` changes. The table is rebuilt
-//! only when a display range changes.
+//! This is identical to the CPU renderer by construction, whatever the
+//! rule and the display range. The table is rebuilt only when a display
+//! range changes.
 //!
 //! # Float planes (f32) on the GPU
 //!
-//! ImageJ's rule (`FloatProcessor.create8BitImage`) is evaluated directly,
-//! in single precision:
+//! `LevelRule::Float` is evaluated directly, in single precision:
 //!
 //! ```text
-//! t = ((v - min_hi) - min_lo) * (255 / (max - min)) + 0.5
+//! t = (v - min) * scale + 0.5        scale = 255 / (max - min)
 //! level = 0 if t < 1 or t is NaN, else min((int)t, 255)
 //! ```
 //!
-//! where `min_hi` is `min` rounded to single precision and `min_lo` the
-//! remainder, so that a minimum that is not a single-precision number (a
-//! range typed by the user, say) is still subtracted accurately.
-//! `to_levels` evaluates the same expression in double precision, so the
-//! two can differ by one level for samples that land within rounding error
-//! of a level boundary.
+//! `min` and `max` are the range rounded to single precision, exactly as
+//! `LevelMap` rounds it for 32-bit samples (`LevelMap::range`), and `scale`
+//! is computed in double precision and then rounded. `LevelMap` evaluates
+//! the same expression in double precision, so the two can differ by one
+//! level for samples within rounding error of a level boundary. Ranges that
+//! are not finite with `max > min` are left to the CPU renderer.
+//!
+//! # Channels on the GPU
+//!
+//! Up to [`MAX_GPU_CHANNELS`] channels are added per colour component and
+//! clamped to 255 (`Blend::Sum`). An RGB image is three channels through
+//! red, green and blue ramps, which is the same thing as taking the three
+//! levels as the colour. `Blend::Max` and `Blend::Min` with more than one
+//! channel are left to the CPU renderer.
 
 use imager_core::{
     AxisKind, Buffer, ChannelMeta, ColorModel, DType, Error, Image, ImageMeta, Lut, Result,
 };
-use imager_render::{Rgba8, render_plane, to_levels};
+use imager_render::{
+    Blend, ChannelMode, DisplayOptions, LevelMap, LevelRule, Rgba8, channel_lut, render_plane_with,
+};
 
 /// Most channels blended by the shader. More than this are drawn by the
 /// CPU renderer. ImageJ's composite images have at most 7 channels.
@@ -75,10 +87,14 @@ pub struct ChannelDisplay {
 }
 
 /// How the planes at one position are turned into a picture: the listed
-/// channels, each through its range and lookup table, added together.
+/// channels, each through its range and lookup table, combined by `blend`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DisplayPlan {
     pub dtype: DType,
+    /// The image is RGB: `channels` are its three components and their
+    /// lookup tables are red, green and blue ramps.
+    pub rgb: bool,
+    pub blend: Blend,
     pub channels: Vec<ChannelDisplay>,
 }
 
@@ -102,81 +118,72 @@ fn primary(component: usize) -> Lut {
     })
 }
 
-/// The channels to draw for `position`, following
-/// `imager_render::render_plane`:
+/// The display range of `channel` if it can be known without reading
+/// samples; `None` means the smallest and largest sample of the plane.
 ///
-/// - RGB: the three channels through red, green and blue ramps, each with
-///   its display range or else the full range of the pixel type (0..1 for
-///   floats).
-/// - Composite: every channel marked in `visible`, through its lookup
-///   table (grays if it has none).
-/// - Grayscale: the single plane at `position`.
+/// This is `imager_render::effective_display_range` without its read: the
+/// channel's range if set (for anything but unsigned 8-bit, exactly
+/// `(0, 0)` counts as not set); otherwise for RGB images the full range of
+/// the type (0 to 1 for floats), and 0 to 255 for unsigned 8-bit.
+pub fn known_range(meta: &ImageMeta, channel: usize) -> Result<Option<(f64, f64)>> {
+    let rgb = meta.color == ColorModel::Rgb;
+    let rule = LevelRule::for_dtype(meta.dtype(), rgb)?;
+    let auto = matches!(rule, LevelRule::Integer | LevelRule::Float);
+    Ok(
+        match meta.channels.get(channel).and_then(|c| c.display_range) {
+            Some(range) if !(auto && range == (0.0, 0.0)) => Some(range),
+            _ if rgb => Some(meta.dtype().integer_range().unwrap_or((0.0, 1.0))),
+            _ if !auto => Some((0.0, 255.0)),
+            _ => None,
+        },
+    )
+}
+
+/// The channels to draw for `position`, as
+/// `imager_render::render_plane_with` chooses them:
 ///
-/// A channel without a display range uses the full range for 8-bit data
-/// and otherwise the smallest and largest sample of its plane, reported
-/// here as `None`.
+/// - RGB images: the three channels, as red, green and blue.
+/// - Composite mode: every visible channel.
+/// - Otherwise the single plane at `position`.
+///
+/// Lookup tables come from `imager_render::channel_lut`. Only
+/// `options.mode` and `options.visible` are used here.
 pub fn channel_requests(
-    meta: &ImageMeta,
+    image: &Image,
     position: &[usize],
-    visible: &[bool],
+    options: &DisplayOptions,
 ) -> Result<Vec<ChannelRequest>> {
-    let channel_axis = meta.axis_index(&AxisKind::Channel);
+    let meta = image.meta();
+    let index = meta.plane_index(position)?;
+    let mode = options.resolved_mode(image);
     let plane_of = |c: usize| -> Result<usize> {
-        let mut p = position.to_vec();
-        if let Some(axis) = channel_axis {
-            *p.get_mut(axis - 2)
-                .ok_or_else(|| Error::Shape("position is too short".to_string()))? = c;
+        match meta.axis_index(&AxisKind::Channel) {
+            Some(axis) => {
+                let mut p = position.to_vec();
+                p[axis - 2] = c;
+                meta.plane_index(&p)
+            }
+            None => Ok(index),
         }
-        meta.plane_index(&p)
     };
-    let stored = |c: usize| meta.channels.get(c).cloned().unwrap_or_default();
-    let auto = |range: Option<(f64, f64)>| match (range, meta.dtype()) {
-        (None, DType::U8) => Some((0.0, 255.0)),
-        (range, _) => range,
+    let request = |c: usize, lut: Lut| -> Result<ChannelRequest> {
+        Ok(ChannelRequest {
+            plane: plane_of(c)?,
+            channel: c,
+            range: known_range(meta, c)?,
+            lut,
+        })
     };
-    match meta.color {
-        ColorModel::Rgb => {
-            let full = meta.dtype().integer_range().unwrap_or((0.0, 1.0));
-            (0..3)
-                .map(|c| {
-                    Ok(ChannelRequest {
-                        plane: plane_of(c)?,
-                        channel: c,
-                        range: Some(stored(c).display_range.unwrap_or(full)),
-                        lut: primary(c),
-                    })
-                })
-                .collect()
-        }
-        ColorModel::Composite => (0..meta.size(&AxisKind::Channel))
-            .filter(|&c| visible.get(c).copied().unwrap_or(true))
-            .map(|c| {
-                let ChannelMeta {
-                    lut, display_range, ..
-                } = stored(c);
-                Ok(ChannelRequest {
-                    plane: plane_of(c)?,
-                    channel: c,
-                    range: auto(display_range),
-                    lut: lut.unwrap_or_else(Lut::grays),
-                })
-            })
-            .collect(),
-        // `ColorModel` is non-exhaustive; anything unknown is shown one
-        // channel at a time.
-        _ => {
-            let plane = meta.plane_index(position)?;
-            let channel = meta.plane_channel(plane)?;
-            let ChannelMeta {
-                lut, display_range, ..
-            } = stored(channel);
-            Ok(vec![ChannelRequest {
-                plane,
-                channel,
-                range: auto(display_range),
-                lut: lut.unwrap_or_else(Lut::grays),
-            }])
-        }
+    if meta.color == ColorModel::Rgb {
+        (0..3).map(|c| request(c, primary(c))).collect()
+    } else if mode == ChannelMode::Composite {
+        (0..meta.size(&AxisKind::Channel))
+            .filter(|&c| options.is_visible(c))
+            .map(|c| request(c, channel_lut(image, c, mode)))
+            .collect()
+    } else {
+        let c = meta.plane_channel(index)?;
+        Ok(vec![request(c, channel_lut(image, c, mode))?])
     }
 }
 
@@ -215,71 +222,69 @@ pub fn table_rows(dtype: DType) -> u32 {
 
 /// The display level of every value an integer pixel type can hold, in
 /// the order the shader indexes them (value minus the type's minimum),
-/// computed by `imager_render::to_levels` itself.
-pub fn level_table(dtype: DType, range: (f64, f64)) -> Result<Vec<u8>> {
-    let all = match dtype {
-        DType::U8 => Buffer::from_vec((0..=u8::MAX).collect()),
-        DType::U16 => Buffer::from_vec((0..=u16::MAX).collect()),
-        DType::I16 => Buffer::from_vec((i16::MIN..=i16::MAX).collect()),
+/// each computed by `imager_render::LevelMap::level`. `rgb` selects the
+/// rule for components of an RGB image.
+pub fn level_table(dtype: DType, rgb: bool, range: (f64, f64)) -> Result<Vec<u8>> {
+    let map = LevelMap::new(dtype, rgb, range)?;
+    let values = match dtype {
+        DType::U8 => 0..=u8::MAX as i32,
+        DType::U16 => 0..=u16::MAX as i32,
+        DType::I16 => i16::MIN as i32..=i16::MAX as i32,
         other => {
             return Err(Error::Unsupported(format!(
                 "no level table for {other} samples"
             )));
         }
     };
-    to_levels(&all, range)
+    Ok(values.map(|v| map.level(v as f64)).collect())
 }
 
 /// Constants of the shader's float rule for one channel.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FloatParams {
-    /// The range minimum rounded to single precision.
-    pub min_hi: f32,
-    /// What rounding left over: `min - min_hi`.
-    pub min_lo: f32,
-    /// `255 / (max - min)`.
+    /// The range minimum, rounded to single precision.
+    pub min: f32,
+    /// `255 / (max - min)` with both rounded to single precision first.
     pub scale: f32,
 }
 
-/// The constants for a display range, or `None` if the range cannot be
-/// drawn on the GPU (not finite, or not `max > min`; the CPU renderer
-/// defines what those show).
+/// The constants for a display range of 32-bit float samples, or `None` if
+/// the range is left to the CPU renderer (not finite, or not `max > min`).
 pub fn float_params(range: (f64, f64)) -> Option<FloatParams> {
-    let (min, max) = range;
+    // The range as LevelMap uses it for f32 data.
+    let (min, max) = LevelMap::new(DType::F32, false, range).ok()?.range();
     let scale = (255.0 / (max - min)) as f32;
-    let min_hi = min as f32;
     let params = FloatParams {
-        min_hi,
-        min_lo: (min - min_hi as f64) as f32,
+        min: min as f32,
         scale,
     };
-    (min_hi.is_finite() && max > min && scale.is_finite() && scale > 0.0).then_some(params)
+    (min.is_finite() && max > min && scale.is_finite() && scale > 0.0).then_some(params)
 }
 
 /// The shader's float rule on the CPU, for tests and documentation.
 pub fn float_level(v: f32, p: FloatParams) -> u8 {
-    let t = ((v - p.min_hi) - p.min_lo) * p.scale + 0.5;
+    let t = (v - p.min) * p.scale + 0.5;
     if t >= 1.0 { t.min(255.0) as u8 } else { 0 }
 }
 
 /// True if the shader can draw `plan` exactly as the CPU renderer would
 /// (within one level for floats).
 pub fn gpu_can_draw(plan: &DisplayPlan) -> bool {
-    match SampleKind::of(plan.dtype) {
-        None => false,
-        Some(_) if plan.channels.len() > MAX_GPU_CHANNELS => false,
-        Some(SampleKind::Float) => plan
+    let Some(kind) = SampleKind::of(plan.dtype) else {
+        return false;
+    };
+    let blend_ok = plan.rgb || plan.blend == Blend::Sum || plan.channels.len() == 1;
+    let ranges_ok = kind != SampleKind::Float
+        || plan
             .channels
             .iter()
-            .all(|c| float_params(c.range).is_some()),
-        Some(_) => true,
-    }
+            .all(|c| float_params(c.range).is_some());
+    plan.channels.len() <= MAX_GPU_CHANNELS && blend_ok && ranges_ok
 }
 
-/// WGSL for `fn level(c: u32, p: vec2<i32>, ...)`-style sample mapping:
-/// the body that turns the raw texel `raw` of channel `c` into a level.
-/// `levels` is the table texture, `params.table_rows` the rows per channel
-/// and `params.chan[c].xyz` the float `(min_hi, min_lo, scale)`.
+/// WGSL for `fn level(c, raw)`: turns the raw texel `raw` of channel `c`
+/// into a level. `levels` is the table texture, `params.table_rows` the
+/// rows per channel and `params.chan[c].xy` the float `(min, scale)`.
 pub(crate) fn level_wgsl(kind: SampleKind) -> &'static str {
     match kind {
         SampleKind::Uint => {
@@ -297,7 +302,7 @@ pub(crate) fn level_wgsl(kind: SampleKind) -> &'static str {
         }
         SampleKind::Float => {
             "fn level(c: u32, raw: f32) -> u32 {
-    let t = ((raw - params.chan[c].x) - params.chan[c].y) * params.chan[c].z + 0.5;
+    let t = (raw - params.chan[c].x) * params.chan[c].y + 0.5;
     // NaN fails the comparison and shows level 0, as on the CPU.
     if (t >= 1.0) {
         return u32(min(t, 255.0));
@@ -308,61 +313,94 @@ pub(crate) fn level_wgsl(kind: SampleKind) -> &'static str {
     }
 }
 
-/// Renders a tile on the CPU with `imager_render::render_plane`: each
-/// channel's samples (`width` x `height`, in plan order) through its range
-/// and lookup table, added and clamped. This is what the viewer shows when
-/// the GPU path cannot be used.
+/// Renders a tile on the CPU with `imager_render::render_plane_with`: the
+/// channels' samples (`width` x `height`, in plan order) are presented to
+/// it as a small image carrying the plan's ranges and lookup tables. This
+/// is what the viewer shows when the shader cannot be used.
 pub fn render_tile_cpu(
     plan: &DisplayPlan,
     tiles: &[Buffer],
     width: usize,
     height: usize,
 ) -> Result<Rgba8> {
-    let mut out = Rgba8 {
-        width,
-        height,
-        data: [0, 0, 0, 255].repeat(width * height),
-    };
-    for (channel, samples) in plan.channels.iter().zip(tiles) {
-        let mut meta = ImageMeta::plane(plan.dtype, width, height)?;
-        meta.channels = vec![ChannelMeta {
-            name: None,
-            lut: Some(channel.lut.clone()),
-            display_range: Some(channel.range),
-        }];
-        let image = Image::from_planes(meta, vec![samples.clone()])?;
-        let layer = render_plane(&image, &[])?;
-        let sums = out.data.as_chunks_mut::<4>().0;
-        for (sum, add) in sums.iter_mut().zip(layer.data.as_chunks::<4>().0) {
-            for (s, a) in sum.iter_mut().zip(add).take(3) {
-                *s = s.saturating_add(*a);
-            }
-        }
+    let n = plan.channels.len();
+    if n == 0 || tiles.len() != n {
+        // Nothing visible: what an empty blend leaves.
+        let fill = if !plan.rgb && plan.blend == Blend::Min {
+            255
+        } else {
+            0
+        };
+        return Ok(Rgba8 {
+            width,
+            height,
+            data: [fill, fill, fill, 255].repeat(width * height),
+        });
     }
-    Ok(out)
+    let mut meta = ImageMeta::xyczt(plan.dtype, width, height, n, 1, 1)?;
+    meta.color = if plan.rgb {
+        ColorModel::Rgb
+    } else {
+        ColorModel::Composite
+    };
+    meta.channels = plan
+        .channels
+        .iter()
+        .map(|channel| ChannelMeta {
+            name: None,
+            lut: (!plan.rgb).then(|| channel.lut.clone()),
+            display_range: Some(channel.range),
+        })
+        .collect();
+    let image = Image::from_planes(meta, tiles.to_vec())?;
+    let options = DisplayOptions {
+        mode: ChannelMode::Composite,
+        blend: plan.blend,
+        ..DisplayOptions::default()
+    };
+    let position = vec![0; image.meta().plane_shape().len()];
+    render_plane_with(&image, &position, &options)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use imager_render::{effective_display_range, to_levels};
     use proptest::prelude::*;
 
     #[test]
-    fn table_is_to_levels_for_every_value() {
-        let t = level_table(DType::U8, (0.0, 255.0)).unwrap();
+    fn table_is_the_level_map_for_every_value() {
+        let t = level_table(DType::U8, false, (0.0, 255.0)).unwrap();
         assert!(t.iter().enumerate().all(|(i, &l)| l as usize == i));
-        let t = level_table(DType::U16, (100.0, 355.0)).unwrap();
+        // The 8-bit rule, not the 16-bit one: (int)(256 * (v - 50) / 150).
+        let t = level_table(DType::U8, false, (50.0, 200.0)).unwrap();
+        assert_eq!(
+            [t[49], t[51], t[125], t[199], t[200]],
+            [0, 1, 128, 254, 255]
+        );
+        // RGB components truncate the minimum.
+        let t = level_table(DType::U8, true, (40.7, 180.2)).unwrap();
+        assert_eq!([t[40], t[41]], [0, 1]);
+        let t = level_table(DType::U16, false, (100.0, 355.0)).unwrap();
         assert_eq!(t.len(), 65536);
         assert_eq!(
             [t[99], t[100], t[101], t[227], t[228], t[355], t[400]],
             [0, 0, 1, 127, 128, 255, 255]
         );
         // Signed samples are indexed from the type's minimum.
-        let t = level_table(DType::I16, (-10.0, 245.0)).unwrap();
+        let t = level_table(DType::I16, false, (-10.0, 245.0)).unwrap();
         assert_eq!(t[(-11i32 + 32768) as usize], 0);
         assert_eq!(t[(-9i32 + 32768) as usize], 1);
         assert_eq!(t[(245 + 32768) as usize], 255);
-        assert!(level_table(DType::F32, (0.0, 1.0)).is_err());
+        assert!(level_table(DType::F32, false, (0.0, 1.0)).is_err());
+        // Every entry agrees with to_levels on a plane of all values.
+        for range in [(0.0, 25087.0), (99.5, 354.5), (600.0, 600.0), (5.0, 3.0)] {
+            let all = Buffer::from_vec((0..=u16::MAX).collect::<Vec<u16>>());
+            assert_eq!(
+                level_table(DType::U16, false, range).unwrap(),
+                to_levels(&all, range).unwrap()
+            );
+        }
     }
 
     /// The reason the integer path is a table rather than arithmetic.
@@ -371,13 +409,14 @@ mod tests {
         let level = to_levels(&Buffer::from_vec(vec![147u16]), (0.0, 25087.0)).unwrap()[0];
         let exact = (147u32 * 512 + 25088) / (2 * 25088);
         assert_eq!((level, exact), (1, 2));
-        assert_eq!(level_table(DType::U16, (0.0, 25087.0)).unwrap()[147], 1);
+        let table = level_table(DType::U16, false, (0.0, 25087.0)).unwrap();
+        assert_eq!(table[147], 1);
     }
 
     #[test]
     fn float_rule_edge_cases() {
         let p = float_params((0.0, 1.0)).unwrap();
-        let levels: Vec<u8> = [
+        let samples = [
             -1.0f32,
             0.0,
             0.5,
@@ -386,11 +425,15 @@ mod tests {
             f32::NAN,
             f32::INFINITY,
             f32::NEG_INFINITY,
-        ]
-        .iter()
-        .map(|&v| float_level(v, p))
-        .collect();
+        ];
+        let levels: Vec<u8> = samples.iter().map(|&v| float_level(v, p)).collect();
         assert_eq!(levels, [0, 0, 128, 255, 255, 0, 255, 0]);
+        assert_eq!(
+            levels,
+            to_levels(&Buffer::from_vec(samples.to_vec()), (0.0, 1.0)).unwrap()
+        );
+        // The range is rounded to single precision, as LevelMap does.
+        assert_eq!(float_params((0.1, 0.7)).unwrap().min, 0.1f32);
         // Ranges the CPU renderer must decide.
         assert!(float_params((3.0, 3.0)).is_none());
         assert!(float_params((2.0, 1.0)).is_none());
@@ -398,44 +441,103 @@ mod tests {
         assert!(float_params((0.0, f64::INFINITY)).is_none());
     }
 
-    #[test]
-    fn requests_follow_the_colour_model() {
-        let mut meta = ImageMeta::xyczt(DType::U16, 4, 4, 3, 2, 1).unwrap();
+    fn stack(dtype: DType, color: ColorModel) -> Image {
+        let mut meta = ImageMeta::xyczt(dtype, 2, 2, 3, 2, 1).unwrap();
+        meta.color = color;
         meta.channels = (0..3)
             .map(|c| ChannelMeta {
                 name: None,
-                lut: Some(primary(c)),
-                display_range: (c == 1).then_some((5.0, 50.0)),
+                lut: (c == 0).then(|| primary(2)),
+                display_range: match c {
+                    1 => Some((5.0, 50.0)),
+                    2 => Some((0.0, 0.0)),
+                    _ => None,
+                },
             })
             .collect();
-        // Grayscale: only the plane at the position.
-        let r = channel_requests(&meta, &[2, 1], &[]).unwrap();
-        assert_eq!(r.len(), 1);
-        assert_eq!((r[0].plane, r[0].channel, r[0].range), (5, 2, None));
-        assert_eq!(r[0].lut.name, "Blue");
-        // Composite: visible channels at the position's Z.
-        meta.color = ColorModel::Composite;
-        let r = channel_requests(&meta, &[2, 1], &[true, true, false]).unwrap();
-        assert_eq!(
-            r.iter()
-                .map(|c| (c.plane, c.channel, c.range))
-                .collect::<Vec<_>>(),
-            [(3, 0, None), (4, 1, Some((5.0, 50.0)))]
-        );
-        assert!(channel_requests(&meta, &[0], &[]).is_err());
+        let planes = (0..6).map(|_| Buffer::zeros(dtype, 4)).collect();
+        Image::from_planes(meta, planes).unwrap()
+    }
 
-        // RGB: three channels, full range by default, whatever the position.
-        let mut rgb = ImageMeta::xyczt(DType::U8, 4, 4, 3, 1, 1).unwrap();
-        rgb.color = ColorModel::Rgb;
-        let r = channel_requests(&rgb, &[1], &[false; 3]).unwrap();
+    #[test]
+    fn requests_follow_the_renderer() {
+        let options = DisplayOptions::default();
+        // Grayscale model, automatic mode: only the plane at the position,
+        // with its own table or grey.
+        let image = stack(DType::U16, ColorModel::Grayscale);
+        let r = channel_requests(&image, &[1, 1], &options).unwrap();
+        assert_eq!(r.len(), 1);
+        assert_eq!(
+            (r[0].plane, r[0].channel, r[0].range),
+            (4, 1, Some((5.0, 50.0)))
+        );
+        assert_eq!(r[0].lut, Lut::grays());
+        let r = channel_requests(&image, &[0, 0], &options).unwrap();
+        assert_eq!((r[0].range, r[0].lut.name.as_str()), (None, "Blue"));
+        // Shown as a composite on request: default channel colours.
+        let composite = DisplayOptions {
+            mode: ChannelMode::Composite,
+            visible: vec![true, false],
+            ..DisplayOptions::default()
+        };
+        let r = channel_requests(&image, &[1, 1], &composite).unwrap();
+        assert_eq!(
+            r.iter().map(|c| (c.plane, c.channel)).collect::<Vec<_>>(),
+            [(3, 0), (5, 2)]
+        );
+        // (0, 0) on 16-bit data means the plane's own range.
+        assert_eq!(r[1].range, None);
+        assert_eq!(r[1].lut, channel_lut(&image, 2, ChannelMode::Composite));
+        // Grayscale mode ignores tables.
+        let gray = DisplayOptions {
+            mode: ChannelMode::Grayscale,
+            ..DisplayOptions::default()
+        };
+        let r = channel_requests(&image, &[0, 0], &gray).unwrap();
+        assert_eq!(r[0].lut, Lut::grays());
+        assert!(channel_requests(&image, &[0], &options).is_err());
+
+        // A composite image shows all channels by default.
+        let image = stack(DType::U16, ColorModel::Composite);
+        let r = channel_requests(&image, &[2, 0], &options).unwrap();
+        assert_eq!(r.len(), 3);
+
+        // RGB: three channels whatever the mode; (0, 0) is a real range for
+        // 8-bit data.
+        let mut meta = ImageMeta::xyczt(DType::U8, 2, 2, 3, 1, 1).unwrap();
+        meta.color = ColorModel::Rgb;
+        let planes = (0..3).map(|_| Buffer::zeros(DType::U8, 4)).collect();
+        let rgb = Image::from_planes(meta, planes).unwrap();
+        let r = channel_requests(&rgb, &[1], &gray).unwrap();
         assert_eq!(r.len(), 3);
         assert!(r.iter().all(|c| c.range == Some((0.0, 255.0))));
         assert_eq!(r[1].lut.table[200], [0, 200, 0]);
+    }
 
-        // 8-bit data defaults to the full range without a scan.
-        let gray = ImageMeta::plane(DType::U8, 4, 4).unwrap();
-        let r = channel_requests(&gray, &[], &[]).unwrap();
-        assert_eq!(r[0].range, Some((0.0, 255.0)));
+    #[test]
+    fn known_ranges_agree_with_the_renderer() {
+        for dtype in [DType::U8, DType::U16, DType::I16, DType::F32, DType::F64] {
+            for color in [ColorModel::Grayscale, ColorModel::Composite] {
+                let image = stack(dtype, color);
+                for plane in 0..6 {
+                    let channel = image.meta().plane_channel(plane).unwrap();
+                    let reference = effective_display_range(&image, plane).unwrap();
+                    match known_range(image.meta(), channel).unwrap() {
+                        Some(range) => assert_eq!(range, reference, "{dtype} {plane}"),
+                        // All samples are zero, so the plane's range is (0, 0).
+                        None => assert_eq!(reference, (0.0, 0.0), "{dtype} {plane}"),
+                    }
+                }
+            }
+        }
+        let mut meta = ImageMeta::xyczt(DType::U16, 2, 2, 3, 1, 1).unwrap();
+        meta.color = ColorModel::Rgb;
+        let planes = (0..3).map(|_| Buffer::zeros(DType::U16, 4)).collect();
+        let rgb = Image::from_planes(meta, planes).unwrap();
+        assert_eq!(known_range(rgb.meta(), 0).unwrap(), Some((0.0, 65535.0)));
+        assert_eq!(effective_display_range(&rgb, 0).unwrap(), (0.0, 65535.0));
+        let complex = ImageMeta::plane(DType::C32, 2, 2).unwrap();
+        assert!(known_range(&complex, 0).is_err());
     }
 
     #[test]
@@ -446,69 +548,109 @@ mod tests {
             range,
             lut: Lut::grays(),
         };
-        let plan = |dtype, n: usize, range| DisplayPlan {
+        let plan = |dtype, n: usize, range, blend| DisplayPlan {
             dtype,
+            rgb: false,
+            blend,
             channels: vec![channel(range); n],
         };
-        assert!(gpu_can_draw(&plan(DType::U16, 7, (0.0, 1.0))));
-        assert!(!gpu_can_draw(&plan(DType::U16, 8, (0.0, 1.0))));
-        assert!(!gpu_can_draw(&plan(DType::U32, 1, (0.0, 1.0))));
-        assert!(!gpu_can_draw(&plan(DType::F64, 1, (0.0, 1.0))));
-        assert!(gpu_can_draw(&plan(DType::F32, 1, (0.0, 1.0))));
-        assert!(!gpu_can_draw(&plan(DType::F32, 1, (1.0, 1.0))));
+        let sum = Blend::Sum;
+        assert!(gpu_can_draw(&plan(DType::U16, 7, (0.0, 1.0), sum)));
+        assert!(!gpu_can_draw(&plan(DType::U16, 8, (0.0, 1.0), sum)));
+        assert!(!gpu_can_draw(&plan(DType::U32, 1, (0.0, 1.0), sum)));
+        assert!(!gpu_can_draw(&plan(DType::F64, 1, (0.0, 1.0), sum)));
+        assert!(gpu_can_draw(&plan(DType::F32, 1, (0.0, 1.0), sum)));
+        assert!(!gpu_can_draw(&plan(DType::F32, 1, (1.0, 1.0), sum)));
         // Integer tables reproduce even degenerate ranges.
-        assert!(gpu_can_draw(&plan(DType::I16, 1, (5.0, -5.0))));
+        assert!(gpu_can_draw(&plan(DType::I16, 1, (5.0, -5.0), sum)));
+        // Only sums are blended in the shader.
+        assert!(!gpu_can_draw(&plan(DType::U16, 2, (0.0, 1.0), Blend::Max)));
+        assert!(!gpu_can_draw(&plan(DType::U16, 0, (0.0, 1.0), Blend::Min)));
+        assert!(gpu_can_draw(&plan(DType::U16, 1, (0.0, 1.0), Blend::Min)));
+        assert!(gpu_can_draw(&plan(DType::U16, 0, (0.0, 1.0), sum)));
     }
 
     #[test]
-    fn cpu_tile_is_render_plane_summed() {
-        let plan = DisplayPlan {
+    fn cpu_tile_is_the_renderer_on_the_tile() {
+        let channels = vec![
+            ChannelDisplay {
+                plane: 0,
+                channel: 0,
+                range: (0.0, 255.0),
+                lut: primary(0),
+            },
+            ChannelDisplay {
+                plane: 1,
+                channel: 1,
+                range: (0.0, 255.0),
+                lut: Lut::grays(),
+            },
+        ];
+        let plan = |blend| DisplayPlan {
             dtype: DType::U8,
-            channels: vec![
-                ChannelDisplay {
-                    plane: 0,
-                    channel: 0,
-                    range: (0.0, 255.0),
-                    lut: primary(0),
-                },
-                ChannelDisplay {
-                    plane: 1,
-                    channel: 1,
-                    range: (0.0, 255.0),
-                    lut: Lut::grays(),
-                },
-            ],
+            rgb: false,
+            blend,
+            channels: channels.clone(),
         };
         let tiles = [
             Buffer::from_vec(vec![10u8, 200]),
             Buffer::from_vec(vec![5u8, 100]),
         ];
-        let out = render_tile_cpu(&plan, &tiles, 2, 1).unwrap();
+        let out = render_tile_cpu(&plan(Blend::Sum), &tiles, 2, 1).unwrap();
         assert_eq!(out.data, [15, 5, 5, 255, 255, 100, 100, 255]);
-        // No channels: black, opaque.
-        let none = DisplayPlan {
-            dtype: DType::U8,
-            channels: vec![],
+        let out = render_tile_cpu(&plan(Blend::Max), &tiles, 2, 1).unwrap();
+        assert_eq!(out.data, [10, 5, 5, 255, 200, 100, 100, 255]);
+        let out = render_tile_cpu(&plan(Blend::Min), &tiles, 2, 1).unwrap();
+        assert_eq!(out.data, [5, 0, 0, 255, 100, 0, 0, 255]);
+        // One channel, no channel axis.
+        let single = DisplayPlan {
+            channels: channels[..1].to_vec(),
+            ..plan(Blend::Sum)
         };
-        assert_eq!(
-            render_tile_cpu(&none, &[], 1, 1).unwrap().data,
-            [0, 0, 0, 255]
-        );
+        let out = render_tile_cpu(&single, &tiles[..1], 2, 1).unwrap();
+        assert_eq!(out.data, [10, 0, 0, 255, 200, 0, 0, 255]);
+        // No channels: black, or white for a minimum.
+        let none = |blend| DisplayPlan {
+            channels: vec![],
+            ..plan(blend)
+        };
+        let out = render_tile_cpu(&none(Blend::Sum), &[], 1, 1).unwrap();
+        assert_eq!(out.data, [0, 0, 0, 255]);
+        let out = render_tile_cpu(&none(Blend::Min), &[], 1, 1).unwrap();
+        assert_eq!(out.data, [255, 255, 255, 255]);
+        // RGB: the levels are the colour, by the RGB rule.
+        let rgb = DisplayPlan {
+            dtype: DType::U8,
+            rgb: true,
+            blend: Blend::Sum,
+            channels: (0..3)
+                .map(|c| ChannelDisplay {
+                    plane: c,
+                    channel: c,
+                    range: (40.7, 180.2),
+                    lut: primary(c),
+                })
+                .collect(),
+        };
+        let tiles = [40u8, 41, 200].map(|v| Buffer::from_vec(vec![v]));
+        let out = render_tile_cpu(&rgb, &tiles, 1, 1).unwrap();
+        assert_eq!(out.data, [0, 1, 255, 255]);
     }
 
     proptest! {
-        /// The shader's float rule stays within one level of `to_levels`.
+        /// The shader's float rule stays within one level of the renderer.
         #[test]
         fn float_rule_is_within_one_level(
-            min in -1e4f64..1e4, width in 1e-3f64..1e5,
+            min in -1e4f64..1e4, width in 1e-2f64..1e5,
             values in prop::collection::vec(-2e5f32..2e5, 1..200),
         ) {
             let range = (min, min + width);
-            let p = float_params(range).unwrap();
-            let reference = to_levels(&Buffer::from_vec(values.clone()), range).unwrap();
-            for (v, want) in values.iter().zip(reference) {
-                let got = float_level(*v, p);
-                prop_assert!(got.abs_diff(want) <= 1, "{v} in {range:?}: {got} vs {want}");
+            if let Some(p) = float_params(range) {
+                let reference = to_levels(&Buffer::from_vec(values.clone()), range).unwrap();
+                for (v, want) in values.iter().zip(reference) {
+                    let got = float_level(*v, p);
+                    prop_assert!(got.abs_diff(want) <= 1, "{v} in {range:?}: {got} vs {want}");
+                }
             }
         }
     }

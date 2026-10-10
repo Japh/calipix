@@ -359,6 +359,8 @@ impl App {
         let channel = meta.channels.first().cloned().unwrap_or_default();
         let plan = DisplayPlan {
             dtype: meta.dtype(),
+            rgb: false,
+            blend: imager_render::Blend::Sum,
             channels: vec![ChannelDisplay {
                 plane: 0,
                 channel: 0,

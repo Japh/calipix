@@ -37,13 +37,13 @@ fn check(name: &str, image: &Image, position: &[usize]) {
         tile_size: 64,
         ..ViewOptions::default()
     };
-    // Whole image at 100%: exactly render_plane (for single-plane models).
-    if meta.color != ColorModel::Composite {
+    // Whole image at 100%: exactly render_plane.
+    {
         let mut view = ImageView::new(options.clone());
         view.set_position(position);
         let got = view.render_cpu_tiled(image, w, h).unwrap();
         let want = render_plane(image, position).unwrap();
-        assert_eq!(got, want, "{name}: whole image");
+        assert!(got == want, "{name}: whole image");
     }
     let mut view = ImageView::new(options);
     view.set_position(position);

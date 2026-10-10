@@ -232,11 +232,15 @@ impl ViewTransform {
     }
 
     /// The image pixel shown by the device pixel whose top-left corner is
-    /// at `(px, py)`, when samples are taken every `step` image pixels.
+    /// at `(px, py)`, when the image is drawn from one sample per block of
+    /// `step` x `step` pixels.
     ///
     /// This is the definition the shader implements: the pixel centre is
-    /// mapped to image coordinates, and the sample is the one at the
-    /// largest multiple of `step` not beyond it (after [`TIE_BIAS`]).
+    /// mapped to image coordinates (with [`TIE_BIAS`]), and the pixel shows
+    /// the sample kept for the block that point falls in: the middle pixel
+    /// of the block, `block * step + step / 2`, or the image's last pixel
+    /// where the edge cuts the block short. With `step` 1 that is simply
+    /// the image pixel under the centre.
     pub fn displayed_pixel(
         &self,
         px: f64,
@@ -252,7 +256,12 @@ impl ViewTransform {
             return None;
         }
         let (x, y) = (u as usize * step, v as usize * step);
-        (x < width && y < height).then_some((x, y))
+        (x < width && y < height).then(|| {
+            (
+                (x + step / 2).min(width - 1),
+                (y + step / 2).min(height - 1),
+            )
+        })
     }
 
     /// The image pixels at least partly inside the viewport, or `None` if
@@ -400,8 +409,11 @@ mod tests {
             zoom: 0.25,
             origin: [0.0, 0.0],
         };
-        // Screen pixel 3 has its centre at image 14; with step 4 it shows 12.
-        assert_eq!(t.displayed_pixel(3.0, 0.0, 4, 100, 100), Some((12, 0)));
+        // Screen pixel 3 has its centre at image 14, in the block 12..16,
+        // whose sample is pixel 14.
+        assert_eq!(t.displayed_pixel(3.0, 0.0, 4, 100, 100), Some((14, 2)));
+        // A block cut short by the edge shows the last pixel.
+        assert_eq!(t.displayed_pixel(24.0, 0.0, 4, 98, 1), Some((97, 0)));
         assert_eq!(t.displayed_pixel(25.0, 0.0, 4, 100, 100), None);
         assert_eq!(t.displayed_pixel(-1.0, 0.0, 4, 100, 100), None);
         // A centre exactly on a boundary shows the pixel after it.

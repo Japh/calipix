@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use egui_wgpu::wgpu;
 use imager_core::{AxisKind, Buffer, ColorModel, Error, Image, Result};
-use imager_render::{Rgba8, default_display_range};
+use imager_render::{ChannelMode, DisplayOptions, Rgba8, effective_display_range};
 
 use crate::geometry::{
     MAX_LEVEL, TIE_BIAS, ViewState, ViewTransform, Viewport, ZOOM_LEVELS, level_for_zoom,
@@ -80,8 +80,8 @@ pub struct Probe {
     ///
     /// This is the pixel under the cursor, except for an image that is not
     /// in memory viewed below 50% before its full-resolution tile has been
-    /// loaded: then it is the sample displayed there, whose coordinates are
-    /// multiples of the decimation step.
+    /// loaded: then it is the sample displayed there, the middle pixel of
+    /// its block ([`crate::tiles::TileGrid::sample_position`]).
     pub x: usize,
     pub y: usize,
     /// The same position in the X and Y axes' calibrated units.
@@ -175,7 +175,7 @@ pub struct ImageView {
     state: ViewState,
     pending: Option<Pending>,
     position: Vec<usize>,
-    visible: Vec<bool>,
+    display_options: DisplayOptions,
     last_axis: Option<usize>,
 
     image: Option<Image>,
@@ -212,7 +212,7 @@ impl ImageView {
             },
             pending: Some(Pending::Initial),
             position: Vec::new(),
-            visible: Vec::new(),
+            display_options: DisplayOptions::default(),
             last_axis: None,
             image: None,
             tiles: ByteLru::default(),
@@ -376,16 +376,32 @@ impl ImageView {
         axis.is_some_and(|axis| self.step_axis(axis, delta))
     }
 
-    /// Whether channel `channel` contributes to a composite image.
+    /// How channels are shown: mode, visibility and blending, as
+    /// `imager_render::render_plane_with` takes them. The application's
+    /// Display panel drives the view through this.
+    ///
+    /// `reduction` is not used: zoomed out, the view always shows one
+    /// sample per device pixel without averaging (see [`crate::tiles`]),
+    /// which is `Reduction::Nearest` where the two are comparable.
+    pub fn display_options(&self) -> &DisplayOptions {
+        &self.display_options
+    }
+
+    pub fn set_display_options(&mut self, options: DisplayOptions) {
+        self.display_options = options;
+    }
+
+    /// Whether channel `channel` contributes in composite mode.
     pub fn channel_visible(&self, channel: usize) -> bool {
-        self.visible.get(channel).copied().unwrap_or(true)
+        self.display_options.is_visible(channel)
     }
 
     pub fn set_channel_visible(&mut self, channel: usize, visible: bool) {
-        if self.visible.len() <= channel {
-            self.visible.resize(channel + 1, true);
+        let list = &mut self.display_options.visible;
+        if list.len() <= channel {
+            list.resize(channel + 1, true);
         }
-        self.visible[channel] = visible;
+        list[channel] = visible;
     }
 
     fn fit_position(&mut self, plane_shape: &[usize]) {
@@ -458,7 +474,6 @@ impl ImageView {
         }
         self.display_plan = None;
         self.fit_position(meta.plane_shape());
-        self.visible.resize(meta.size(&AxisKind::Channel), true);
         if self.last_axis.is_some_and(|a| a >= self.position.len()) {
             self.last_axis = None;
         }
@@ -541,10 +556,8 @@ impl ImageView {
             return None;
         }
         let range = if image.is_in_memory() {
-            // Exactly the reference renderer's default.
-            image
-                .read_plane(plane)
-                .and_then(|samples| default_display_range(&samples))
+            // The reference renderer's own answer.
+            effective_display_range(image, plane)
         } else if blocking {
             plane_range(image, plane)
         } else {
@@ -588,7 +601,7 @@ impl ImageView {
             cover: Vec::new(),
             loading: false,
         };
-        let requests = match channel_requests(meta, &self.position, &self.visible) {
+        let requests = match channel_requests(image, &self.position, &self.display_options) {
             Ok(requests) => requests,
             Err(e) => {
                 self.error = Some(e.to_string());
@@ -623,6 +636,8 @@ impl ImageView {
         if channels.len() == requests.len() {
             let plan = DisplayPlan {
                 dtype: meta.dtype(),
+                rgb: meta.color == ColorModel::Rgb,
+                blend: self.display_options.blend,
                 channels,
             };
             planned.use_gpu = !self.options.force_cpu
@@ -880,12 +895,9 @@ impl ImageView {
 
         let mut channels = Vec::new();
         let mut planes = Vec::new();
-        for request in channel_requests(meta, &self.position, &self.visible)? {
+        for request in channel_requests(image, &self.position, &self.display_options)? {
             let samples = image.read_plane(request.plane)?;
-            let range = match request.range {
-                Some(range) => range,
-                None => default_display_range(&samples)?,
-            };
+            let range = effective_display_range(image, request.plane)?;
             channels.push(ChannelDisplay {
                 plane: request.plane,
                 channel: request.channel,
@@ -896,6 +908,8 @@ impl ImageView {
         }
         let plan = DisplayPlan {
             dtype: meta.dtype(),
+            rgb: meta.color == ColorModel::Rgb,
+            blend: self.display_options.blend,
             channels,
         };
         let full = render_tile_cpu(&plan, &planes, w, h)?;
@@ -950,7 +964,12 @@ impl ImageView {
             };
             if let Some(tile) = self.tiles.peek(&key) {
                 let i = (ly % grid.tile) * tile.width + lx % grid.tile;
-                return Some((lx * step, ly * step, tile.samples.get_f64(i)?));
+                let at = |index, size| TileGrid::sample_position(level, index, size);
+                return Some((
+                    at(lx, grid.width),
+                    at(ly, grid.height),
+                    tile.samples.get_f64(i)?,
+                ));
             }
         }
         None
@@ -965,12 +984,12 @@ impl ImageView {
             .pixel_at(screen, meta.width(), meta.height())?;
         let level = level_for_zoom(planned.transform.zoom);
         let channel_axis = meta.axis_index(&AxisKind::Channel);
-        let channels: Vec<usize> = match (meta.color, channel_axis) {
-            (ColorModel::Composite | ColorModel::Rgb, Some(_)) => {
-                (0..meta.size(&AxisKind::Channel)).collect()
-            }
-            (_, Some(axis)) => vec![self.position.get(axis - 2).copied().unwrap_or(0)],
-            (_, None) => vec![0],
+        let together = meta.color == ColorModel::Rgb
+            || self.display_options.resolved_mode(image) == ChannelMode::Composite;
+        let channels: Vec<usize> = match channel_axis {
+            Some(_) if together => (0..meta.size(&AxisKind::Channel)).collect(),
+            Some(axis) => vec![self.position.get(axis - 2).copied().unwrap_or(0)],
+            None => vec![0],
         };
         let mut values = Vec::with_capacity(channels.len());
         let (cursor_x, cursor_y) = (x, y);
@@ -1098,11 +1117,13 @@ impl ImageView {
     /// channel visibility changed.
     pub fn position_controls(&mut self, ui: &mut egui::Ui, image: &Image) -> bool {
         self.sync_image(image);
+        let composite = self.display_options.resolved_mode(image) == ChannelMode::Composite;
         let changed = crate::controls::position_controls(
             ui,
             image.meta(),
+            composite,
             &mut self.position,
-            &mut self.visible,
+            &mut self.display_options.visible,
             &mut self.last_axis,
         );
         if changed {

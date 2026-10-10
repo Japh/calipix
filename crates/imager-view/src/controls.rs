@@ -27,18 +27,20 @@ pub fn axis_label(kind: &AxisKind) -> String {
 /// Draws the controls in one wrapping row and applies changes.
 ///
 /// - Sliders show positions counted from 1, as ImageJ does.
-/// - For a composite image each channel has a toggle button that shows or
-///   hides it. For a grayscale image the buttons select the one channel
-///   shown. RGB images have no channel buttons.
+/// - When channels are shown together (`composite`), each has a toggle
+///   button that shows or hides it. Otherwise the buttons select the one
+///   channel shown. RGB images have no channel buttons.
 ///
 /// `position` holds one index per axis beyond X and Y, `visible` one flag
-/// per channel, and `last_axis` is set to the slot of the slider that was
-/// moved. Returns true if anything changed.
+/// per channel (channels beyond its end are visible; it is extended when
+/// one is hidden), and `last_axis` is set to the slot of the slider that
+/// was moved. Returns true if anything changed.
 pub fn position_controls(
     ui: &mut egui::Ui,
     meta: &ImageMeta,
+    composite: bool,
     position: &mut [usize],
-    visible: &mut [bool],
+    visible: &mut Vec<bool>,
     last_axis: &mut Option<usize>,
 ) -> bool {
     let mut changed = false;
@@ -73,11 +75,13 @@ pub fn position_controls(
                     None => format!("Channel {}", c + 1),
                 };
                 let text = format!("{}", c + 1);
-                if meta.color == ColorModel::Composite {
-                    let Some(on) = visible.get_mut(c) else {
-                        continue;
-                    };
-                    if ui.toggle_value(on, text).on_hover_text(hint).changed() {
+                if composite {
+                    let mut on = visible.get(c).copied().unwrap_or(true);
+                    if ui.toggle_value(&mut on, text).on_hover_text(hint).changed() {
+                        if visible.len() <= c {
+                            visible.resize(c + 1, true);
+                        }
+                        visible[c] = on;
                         changed = true;
                     }
                 } else if ui
