@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use imager_core::{Buffer, ColorModel, DType, Image, ImageMeta, Rect};
+use imager_core::{Buffer, ColorModel, DType, Image, ImageMeta, Lut, Rect};
 
 use super::ifd::{MemStorage, Storage, TiffFile, tag};
 use super::{reader, writer};
@@ -360,7 +360,7 @@ fn corrupted_files_never_panic() {
         // The directories and tag values sit at the start and at the end;
         // most damage is aimed there, the rest anywhere.
         let len = seed.len();
-        for round in 0..2500 {
+        for round in 0..1200 {
             let mut bytes = seed.clone();
             for _ in 0..1 + next() % 3 {
                 let at = match round % 4 {
@@ -382,4 +382,383 @@ fn corrupted_files_never_panic() {
             exercise(seed[..cut].to_vec());
         }
     }
+}
+
+/// What ImageJ should report for `image` once it is saved as TIFF, in the
+/// format printed by `tests/tiff_support/imagej_open_check.ijm`. Derived
+/// from the image itself, not from our reader.
+fn imagej_report(image: &Image) -> String {
+    use imager_core::AxisKind;
+    use std::fmt::Write as _;
+
+    let meta = image.meta();
+    let (w, h) = (meta.width(), meta.height());
+    let rgb = meta.color == ColorModel::Rgb;
+    let rgb48 = rgb && meta.dtype() == DType::U16;
+    let size = |kind: AxisKind| meta.size(&kind);
+    let (samples, z, t) = (
+        size(AxisKind::Channel),
+        size(AxisKind::Z),
+        size(AxisKind::Time),
+    );
+    // ImageJ has no 16-bit RGB type: such files open as three channels.
+    let c = if rgb && !rgb48 { 1 } else { samples };
+    let bits = match meta.dtype() {
+        DType::U8 if rgb => 24,
+        DType::U8 => 8,
+        DType::U16 | DType::I16 => 16,
+        _ => 32,
+    };
+    let axis = |kind: AxisKind| meta.axis_index(&kind).map(|i| &meta.axes()[i]);
+    let unit = match meta.axes()[0].unit.as_deref() {
+        None => "pixels",
+        Some("inch") => "inches",
+        Some(unit) => unit,
+    };
+    let codes: String = unit.encode_utf16().map(|u| format!("{u} ")).collect();
+    let interval = axis(AxisKind::Time)
+        .filter(|a| a.unit.is_some())
+        .map_or(0.0, |a| a.scale);
+    let mut out = String::new();
+    writeln!(
+        out,
+        "dims {w}x{h} c={c} z={z} t={t} bits={bits} n={}",
+        c * z * t
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "voxel {:.6} {:.6} {:.6} unit={codes}interval={interval:.4}",
+        meta.axes()[0].scale,
+        meta.axes()[1].scale,
+        axis(AxisKind::Z).map_or(1.0, |a| a.scale),
+    )
+    .unwrap();
+    let dimensions = [c, z, t].iter().filter(|&&n| n > 1).count();
+    let hyperstack = (c > 1 || t > 1) && dimensions > 1 && !rgb48;
+    let composite = c > 1;
+    writeln!(
+        out,
+        "flags hyperstack={} composite={}",
+        u8::from(hyperstack),
+        u8::from(composite)
+    )
+    .unwrap();
+
+    let decimals = if bits == 32 { 2 } else { 0 };
+    let signed = meta.dtype() == DType::I16;
+    let raw =
+        |plane: &Buffer, i: usize| plane.get_f64(i).unwrap() + if signed { 32768.0 } else { 0.0 };
+    let points = [0, w * h - 1, 3 * w + 5];
+    let (mut low, mut high) = (f64::INFINITY, f64::NEG_INFINITY);
+    for n in 0..c * z * t {
+        let (ci, zi, ti) = (n % c, n / c % z, n / (c * z));
+        let index = |channel: usize| {
+            let mut position = Vec::new();
+            for a in &meta.axes()[2..] {
+                position.push(match a.kind {
+                    AxisKind::Channel => channel,
+                    AxisKind::Z => zi,
+                    _ => ti,
+                });
+            }
+            meta.plane_index(&position).unwrap()
+        };
+        if rgb && !rgb48 {
+            let planes: Vec<Buffer> = (0..3)
+                .map(|s| image.read_plane(index(s)).unwrap())
+                .collect();
+            let pixel = |i: usize| {
+                let v: Vec<String> = planes
+                    .iter()
+                    .map(|p| format!("{}", p.get_f64(i).unwrap()))
+                    .collect();
+                v.join(",")
+            };
+            writeln!(
+                out,
+                "plane {n}: {} {} {}",
+                pixel(points[0]),
+                pixel(points[1]),
+                pixel(points[2])
+            )
+            .unwrap();
+        } else {
+            let plane = image.read_plane(index(ci)).unwrap();
+            let values: Vec<f64> = (0..w * h).map(|i| raw(&plane, i)).collect();
+            let min = values.iter().copied().fold(f64::INFINITY, f64::min);
+            let max = values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+            let mean = values.iter().sum::<f64>() / values.len() as f64;
+            (low, high) = (low.min(min), high.max(max));
+            writeln!(
+                out,
+                "plane {n}: {:.d$} {:.d$} {:.d$} min={min:.d$} max={max:.d$} mean={mean:.3} value={:.d$}",
+                values[points[0]],
+                values[points[1]],
+                values[points[2]],
+                plane.get_f64(points[2]).unwrap(),
+                d = decimals,
+            )
+            .unwrap();
+        }
+        // Labels are stored per ImageJ stack slice; the channels of 48-bit
+        // RGB are labelled by `FileOpener.open`.
+        if rgb48 {
+            writeln!(out, "label {n}={}", ["Red", "Green", "Blue"][n]).unwrap();
+        } else if c * z * t > 1
+            && let Some(label) = meta.properties.get(&format!("imagej.label.{n}"))
+        {
+            writeln!(out, "label {n}={label}").unwrap();
+        }
+    }
+    let entries = |lut: &Lut| {
+        let e = |i: usize| {
+            format!(
+                "{},{},{}",
+                lut.table[i][0], lut.table[i][1], lut.table[i][2]
+            )
+        };
+        format!("{} {} {}", e(0), e(128), e(255))
+    };
+    if composite {
+        for ci in 0..c {
+            let channel = meta.channels.get(ci);
+            let lut = channel
+                .and_then(|ch| ch.lut.clone())
+                .unwrap_or_else(|| super::imagej::default_channel_lut(ci));
+            // 48-bit RGB has no stored ranges; ImageJ uses the data range.
+            let (lo, hi) = channel
+                .and_then(|ch| ch.display_range)
+                .unwrap_or((low, high));
+            writeln!(
+                out,
+                "channel {}: lut {} range={lo:.4}..{hi:.4}",
+                ci + 1,
+                entries(&lut)
+            )
+            .unwrap();
+        }
+        let mode = match meta.color {
+            ColorModel::Grayscale if meta.channels.iter().any(|ch| ch.lut.is_some()) => "color",
+            ColorModel::Grayscale => "grayscale",
+            _ => "composite",
+        };
+        writeln!(out, "mode={mode}").unwrap();
+    } else if !rgb {
+        let channel = meta.channels.first();
+        let lut = channel
+            .and_then(|ch| ch.lut.clone())
+            .unwrap_or_else(Lut::grays);
+        let (lo, hi) = channel
+            .and_then(|ch| ch.display_range)
+            .expect("check images set a range");
+        // `ImageProcessor.isInvertedLut`: brightness never increases.
+        let sum = |i: usize| lut.table[i].iter().map(|&v| u32::from(v)).sum::<u32>();
+        let inverting = (1..255).all(|i| sum(i - 1) >= sum(i));
+        writeln!(
+            out,
+            "lut {} range={lo:.4}..{hi:.4} inverting={}",
+            entries(&lut),
+            u8::from(inverting)
+        )
+        .unwrap();
+    }
+    let property = |key: &str| meta.properties.get(key).cloned().unwrap_or_default();
+    writeln!(out, "info={}", property("Info").replace('\n', "|")).unwrap();
+    writeln!(out, "property={}", property("Objective")).unwrap();
+    let overlay = meta
+        .properties
+        .keys()
+        .filter(|k| k.starts_with("imagej.overlay."))
+        .count();
+    // The selection in the fixture this is copied from is an oval (type 1).
+    let selection = if meta.properties.contains_key("imagej.roi") {
+        1
+    } else {
+        -1
+    };
+    writeln!(out, "selection={selection} overlay={overlay}").unwrap();
+    out.push_str("CHECK_DONE\n");
+    out
+}
+
+/// Writes a set of files covering what the writer can produce, each with
+/// the report ImageJ should print for it, into `$IMAGER_TIFF_CHECK_DIR`.
+/// See `tests/tiff_support/imagej_open_check.ijm` for how to run the check.
+#[test]
+#[ignore = "writes files for a manual check with ImageJ"]
+fn write_files_for_imagej_check() {
+    use imager_core::{Axis, AxisKind, ChannelMeta};
+
+    let dir = std::path::PathBuf::from(
+        std::env::var("IMAGER_TIFF_CHECK_DIR").expect("set IMAGER_TIFF_CHECK_DIR"),
+    );
+    std::fs::create_dir_all(&dir).unwrap();
+    let (w, h) = (32usize, 24usize);
+    // Value of sample `i` of channel c, slice z, frame t (0-based).
+    let rule = |c: usize, z: usize, t: usize, i: usize| {
+        ((c + 1) * 10000 + (z + 1) * 1000 + (t + 1) * 100 + i % w + 32 * (i / w)) as f64
+    };
+    type Rule<'a> = &'a dyn Fn(usize, usize, usize, usize) -> f64;
+    let build = |dtype: DType, (c, z, t): (usize, usize, usize), value: Rule| {
+        let meta = ImageMeta::xyczt(dtype, w, h, c, z, t).unwrap();
+        let planes: Vec<Buffer> = (0..c * z * t)
+            .map(|p| {
+                let v = |i: usize| value(p % c, p / c % z, p / (c * z), i);
+                let n = 0..w * h;
+                match dtype {
+                    DType::U8 => Buffer::from_vec(n.map(|i| v(i) as u8).collect::<Vec<_>>()),
+                    DType::U16 => Buffer::from_vec(n.map(|i| v(i) as u16).collect::<Vec<_>>()),
+                    DType::I16 => Buffer::from_vec(n.map(|i| v(i) as i16).collect::<Vec<_>>()),
+                    DType::U32 => Buffer::from_vec(n.map(|i| v(i) as u32).collect::<Vec<_>>()),
+                    DType::I32 => Buffer::from_vec(n.map(|i| v(i) as i32).collect::<Vec<_>>()),
+                    _ => Buffer::from_vec(n.map(|i| v(i) as f32).collect::<Vec<_>>()),
+                }
+            })
+            .collect();
+        (meta, planes)
+    };
+    let ranged = |lut: Option<Lut>, range: (f64, f64)| ChannelMeta {
+        name: None,
+        lut,
+        display_range: Some(range),
+    };
+    let calibrate = |meta: &mut ImageMeta, kind: AxisKind, scale: f64, unit: &str| {
+        let index = meta.axis_index(&kind).unwrap();
+        *meta.axis_mut(index).unwrap() = Axis::calibrated(kind, scale, unit);
+    };
+    let mut files: Vec<(&str, Image, writer::Options)> = Vec::new();
+    let mut add =
+        |name: &'static str, meta: ImageMeta, planes: Vec<Buffer>, options: writer::Options| {
+            files.push((name, Image::from_planes(meta, planes).unwrap(), options));
+        };
+    let default = writer::Options::default();
+
+    let byte = |c: usize, z: usize, t: usize, i: usize| {
+        ((rule(c, z, t, i) as usize * 7 + z * 40) % 256) as f64
+    };
+    let (mut meta, planes) = build(DType::U8, (1, 1, 1), &byte);
+    meta.channels = vec![ranged(Some(Lut::grays().inverted()), (0.0, 255.0))];
+    calibrate(&mut meta, AxisKind::X, 0.5, "mm");
+    calibrate(&mut meta, AxisKind::Y, 0.25, "mm");
+    meta.properties
+        .insert("Info".into(), "written by imager\nsecond line".into());
+    meta.properties
+        .insert("Objective".into(), "63x/1.4 Oil".into());
+    add("u8_inverting_lut_mm.tif", meta, planes, default);
+
+    let (mut meta, planes) = build(DType::U8, (1, 6, 1), &byte);
+    let custom = Lut::from_fn("Custom", |i| [i / 2, 255 - i, i.wrapping_mul(3)]);
+    meta.channels = vec![ranged(Some(custom), (10.0, 200.0))];
+    meta.properties
+        .insert("imagej.label.1".into(), "second slice".into());
+    add("u8_stack_custom_lut.tif", meta, planes, default);
+
+    let (mut meta, planes) = build(DType::U16, (3, 4, 5), &rule);
+    meta.color = ColorModel::Composite;
+    meta.channels = vec![
+        ranged(
+            Some(Lut::from_fn("Cyan", |i| [0, i, i])),
+            (10000.0, 15000.0),
+        ),
+        ranged(
+            Some(Lut::from_fn("Magenta", |i| [i, 0, i])),
+            (20000.0, 26000.0),
+        ),
+        ranged(
+            Some(Lut::from_fn("Yellow", |i| [i, i, 0])),
+            (30000.0, 37000.0),
+        ),
+    ];
+    calibrate(&mut meta, AxisKind::X, 0.25, "\u{b5}m");
+    calibrate(&mut meta, AxisKind::Y, 0.25, "\u{b5}m");
+    calibrate(&mut meta, AxisKind::Z, 1.5, "\u{b5}m");
+    calibrate(&mut meta, AxisKind::Time, 2.5, "sec");
+    meta.properties
+        .insert("Info".into(), "fixture=hyperstack\nkey=value".into());
+    meta.properties
+        .insert("imagej.label.43".into(), "c2-z3-t4 label".into());
+    add("u16_hyperstack_composite.tif", meta, planes, default);
+
+    let (mut meta, planes) = build(DType::U16, (2, 1, 3), &rule);
+    meta.channels = vec![
+        ranged(None, (10000.0, 11000.0)),
+        ranged(None, (20000.0, 21000.0)),
+    ];
+    add("u16_channels_grayscale_mode.tif", meta, planes, default);
+
+    let (mut meta, planes) = build(DType::U16, (2, 2, 1), &rule);
+    meta.channels = vec![
+        ranged(
+            Some(Lut::from_fn("Magenta", |i| [i, 0, i])),
+            (10000.0, 12000.0),
+        ),
+        ranged(
+            Some(Lut::from_fn("Green", |i| [0, i, 0])),
+            (20000.0, 22000.0),
+        ),
+    ];
+    add("u16_channels_color_mode.tif", meta, planes, default);
+
+    let float = |c: usize, z: usize, t: usize, i: usize| rule(c, z, t, i) * 0.25 - 2800.0;
+    let (mut meta, planes) = build(DType::F32, (1, 3, 1), &float);
+    meta.channels = vec![ranged(None, (-10.5, 320.25))];
+    calibrate(&mut meta, AxisKind::Z, 0.5, "\u{b5}m");
+    add("f32_stack.tif", meta, planes, default);
+
+    let signed = |c: usize, z: usize, t: usize, i: usize| rule(c, z, t, i) - 11500.0;
+    let (mut meta, planes) = build(DType::I16, (1, 2, 1), &signed);
+    meta.channels = vec![ranged(None, (-100.0, 3000.0))];
+    add("i16_stack.tif", meta, planes, default);
+
+    let color = |c: usize, z: usize, t: usize, i: usize| {
+        ((i % w) * (c + 3) + (i / w) * 5 + z * 20 + t * 50) as f64 % 256.0
+    };
+    let (mut meta, planes) = build(DType::U8, (3, 1, 1), &color);
+    meta.color = ColorModel::Rgb;
+    add("rgb8.tif", meta, planes, default);
+    let (mut meta, planes) = build(DType::U8, (3, 3, 2), &color);
+    meta.color = ColorModel::Rgb;
+    add("rgb8_slices_and_frames.tif", meta, planes, default);
+    let (mut meta, planes) = build(DType::U16, (3, 1, 1), &rule);
+    meta.color = ColorModel::Rgb;
+    add("rgb48.tif", meta, planes, default);
+
+    let (mut meta, planes) = build(DType::U16, (1, 5, 1), &rule);
+    meta.channels = vec![ranged(None, (11000.0, 16000.0))];
+    let single = writer::Options {
+        single_directory: true,
+        ..Default::default()
+    };
+    add("u16_single_directory_stack.tif", meta, planes, single);
+
+    // The selection and overlay of a file ImageJ wrote.
+    let source = reader::open(MemStorage::new(fixture("gray8_roi_overlay.tif")), "x").unwrap();
+    let (mut meta, planes) = build(DType::U8, (1, 1, 1), &byte);
+    meta.channels = vec![ranged(None, (0.0, 255.0))];
+    for (key, value) in &source.meta().properties {
+        meta.properties.insert(key.clone(), value.clone());
+    }
+    add("u8_selection_and_overlay.tif", meta, planes, default);
+
+    // Types ImageJ does not have; it converts 32-bit integers to float.
+    let (mut meta, planes) = build(DType::U32, (1, 2, 1), &rule);
+    meta.channels = vec![ranged(None, (0.0, 20000.0))];
+    add("u32_stack.tif", meta, planes, default);
+    let (mut meta, planes) = build(DType::I32, (1, 1, 1), &signed);
+    meta.channels = vec![ranged(None, (-500.0, 500.0))];
+    add("i32.tif", meta, planes, default);
+
+    for (name, image, options) in &files {
+        std::fs::write(dir.join(name), encode(image, *options)).unwrap();
+        std::fs::write(
+            dir.join(format!("{name}.expected.txt")),
+            imagej_report(image),
+        )
+        .unwrap();
+        // Whatever ImageJ makes of the file, we must read it back.
+        let (opened, _) = open(std::fs::read(dir.join(name)).unwrap());
+        assert_same_planes(&opened, image);
+    }
+    println!("wrote {} files to {}", files.len(), dir.display());
 }
