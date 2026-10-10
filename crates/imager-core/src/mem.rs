@@ -123,4 +123,20 @@ mod tests {
         assert_eq!(out.meta().dtype(), DType::F32);
         assert_eq!(out.read_plane(1).unwrap().get_f64(5), Some(7.5));
     }
+
+    #[test]
+    fn with_meta_keeps_an_in_memory_image_in_memory_and_shares_planes() {
+        let img = stack();
+        let mut meta = img.meta().clone();
+        meta.name = "renamed".to_string();
+        let renamed = img.with_meta(meta).unwrap();
+        assert!(renamed.is_in_memory());
+        assert_eq!(renamed.meta().name, "renamed");
+        assert!(
+            renamed
+                .read_plane(1)
+                .unwrap()
+                .shares_storage(&img.read_plane(1).unwrap())
+        );
+    }
 }

@@ -198,6 +198,11 @@ impl Image {
                 "replacement metadata must keep the pixel type and shape".to_string(),
             ));
         }
+        // An in-memory image stays in memory: the planes are shared, not
+        // copied, so this is as cheap as a view and reads stay immediate.
+        if let Some(mem) = self.0.as_mem() {
+            return Image::from_planes(meta, mem.planes().to_vec());
+        }
         crate::view::with_meta(self, meta)
     }
 }
