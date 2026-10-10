@@ -69,7 +69,9 @@ pub fn main(argv: impl IntoIterator<Item = OsString>) -> Result<String> {
         Err(e) if !e.use_stderr() => return Ok(e.to_string()),
         Err(e) => bail!("{}", e.to_string().trim_start_matches("error: ").trim_end()),
     };
-    let registry = Arc::new(imager_commands::standard_registry());
+    // Application commands are listed too, so that every frontend shows
+    // the same set; `run` explains why it cannot run them.
+    let registry = Arc::new(crate::state::action::full_registry());
     match cli.command {
         Some(Cmd::Run { json, id, args }) => run_command(registry, &id, &args, json),
         Some(Cmd::Commands { json, id }) => list_commands(&registry, id.as_deref(), json),
@@ -91,6 +93,12 @@ fn open_interface(_files: Vec<PathBuf>) -> Result<String> {
 fn run_command(registry: Arc<Registry>, id: &str, tokens: &[String], json: bool) -> Result<String> {
     let executor = Executor::new(registry, EffectsPolicy::allow_all());
     let spec = executor.registry().get(id)?.spec().clone();
+    if !spec.flags.headless_ok {
+        bail!(
+            "`{id}` ({}) acts on the desktop interface and cannot be run from the command line",
+            spec.title
+        );
+    }
     let RunTokens { params, save_to } = split_tokens(&spec, tokens)?;
 
     let mut session = Session::new();

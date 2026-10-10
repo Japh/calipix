@@ -2,6 +2,7 @@
 //! and headless use; this library holds the logic so it can be tested.
 
 pub mod cli;
+pub mod demo;
 #[cfg(feature = "gui")]
-mod gui;
+pub mod gui;
 pub mod state;

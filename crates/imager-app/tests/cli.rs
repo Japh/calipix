@@ -106,6 +106,27 @@ fn reports_mistakes_clearly() {
     assert!(message(&["run", "image.invert", "--input", source, "-o"]).contains("-o needs"));
 }
 
+/// Commands that act on the interface are listed like any other, but
+/// cannot be run without one.
+#[test]
+fn interface_commands_are_listed_but_not_run() {
+    let listing = imager(&["commands"]).unwrap();
+    assert!(listing.contains("view.zoom_in"), "{listing}");
+    assert!(listing.contains("help.command_palette"), "{listing}");
+    let help = imager(&["commands", "edit.undo"]).unwrap();
+    assert!(help.contains("Menu: Edit > Undo"), "{help}");
+
+    for id in ["view.zoom_in", "edit.undo", "window.toggle_info"] {
+        let refusal = format!("{:#}", imager(&["run", id]).unwrap_err());
+        assert!(refusal.contains(id), "{refusal}");
+        assert!(
+            refusal
+                .contains("acts on the desktop interface and cannot be run from the command line"),
+            "{refusal}"
+        );
+    }
+}
+
 #[test]
 fn help_and_version_are_not_errors() {
     assert!(imager(&["--help"]).unwrap().contains("Usage: imager"));
