@@ -14,5 +14,15 @@ egui-wgpu.workspace = true
 imager-core.workspace = true
 imager-render.workspace = true
 
+[dev-dependencies]
+eframe.workspace = true
+egui_kittest.workspace = true
+imager-io.workspace = true
+proptest.workspace = true
+# Blocks on wgpu's adapter and device futures in the offscreen tests.
+pollster = "1"
+# Writes the example's self-screenshot.
+png = "0.18"
+
 [lints]
 workspace = true

@@ -1769,10 +1769,16 @@ name = "imager-view"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "eframe",
  "egui",
  "egui-wgpu",
+ "egui_kittest",
  "imager-core",
+ "imager-io",
  "imager-render",
+ "png",
+ "pollster 1.0.1",
+ "proptest",
 ]
 
 [[package]]
