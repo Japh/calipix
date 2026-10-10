@@ -11,6 +11,12 @@ rust-version.workspace = true
 image.workspace = true
 imager-core.workspace = true
 thiserror.workspace = true
+tiff.workspace = true
+
+[dev-dependencies]
+flate2.workspace = true
+proptest.workspace = true
+weezl.workspace = true
 
 [lints]
 workspace = true
