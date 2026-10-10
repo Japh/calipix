@@ -1252,6 +1252,7 @@ name = "imager-render"
 version = "0.1.0"
 dependencies = [
  "imager-core",
+ "proptest",
 ]
 
 [[package]]
