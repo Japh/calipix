@@ -1739,10 +1739,14 @@ dependencies = [
 name = "imager-io"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "flate2",
  "image",
  "imager-core",
+ "proptest",
  "thiserror 2.0.21",
+ "tiff",
+ "weezl",
 ]
 
 [[package]]

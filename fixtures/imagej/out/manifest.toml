@@ -561,7 +561,7 @@ macro = "gen/07_rois.ijm"
 
 [[file]]
 path = "roiset.zip"
-sha256 = "d38d034edb9085192dd3bbfdcffee206f7abe9ac10168a809d82f13d9ad44f3a"
+sha256 = "39cd33b0a3b1abeacd96a811940710c1990e6a4cdb7ddff940305ddba6c0ec28"
 bytes = 874
 macro = "gen/07_rois.ijm"
 reproducible = false # embeds zip entry timestamps
@@ -577,3 +577,33 @@ path = "stack_z6_8bit.tif"
 sha256 = "0693962137b5d544622207c14a101efa9dd435e21441fc29b2124bf3e4131435"
 bytes = 5487
 macro = "gen/03_hyperstack.ijm"
+
+[[file]]
+path = "tiff_composite_color.tif"
+sha256 = "05571e15da4fe0190a7e12b069d9ddaeadd930ab14c8ceba1fee23be45c1de3f"
+bytes = 3879
+macro = "gen/10_tiff_metadata.ijm"
+
+[[file]]
+path = "tiff_composite_gray.tif"
+sha256 = "2a118eae897dc37af7e874f05792087ea81a5c6cb176366f7a3ebac9c8d949c7"
+bytes = 1212
+macro = "gen/10_tiff_metadata.ijm"
+
+[[file]]
+path = "tiff_frames_fps.tif"
+sha256 = "da65cac6a28c952337743b19a1ea9388e1674a3d623eb4f6923e7b300bbfd929"
+bytes = 1410
+macro = "gen/10_tiff_metadata.ijm"
+
+[[file]]
+path = "tiff_gray16_fire.tif"
+sha256 = "8c0a78abb27a551da37133bb18721a3adc92b161215ceed9dce6242f8f1efa5a"
+bytes = 2189
+macro = "gen/10_tiff_metadata.ijm"
+
+[[file]]
+path = "tiff_rgb_stack.tif"
+sha256 = "b013f00f8d8019aba08ce2cf9cfe92e5770b46fe9e8d58d180ffaef3db84b0aa"
+bytes = 2199
+macro = "gen/10_tiff_metadata.ijm"
