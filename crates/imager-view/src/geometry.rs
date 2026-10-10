@@ -249,9 +249,8 @@ impl ViewTransform {
         width: usize,
         height: usize,
     ) -> Option<(usize, usize)> {
-        let scale = self.zoom * step as f64;
-        let u = ((px + 0.5 - self.origin[0]) / scale + TIE_BIAS).floor();
-        let v = ((py + 0.5 - self.origin[1]) / scale + TIE_BIAS).floor();
+        let u = self.block_at(0, px, step);
+        let v = self.block_at(1, py, step);
         if u < 0.0 || v < 0.0 {
             return None;
         }
@@ -262,6 +261,36 @@ impl ViewTransform {
                 (y + step / 2).min(height - 1),
             )
         })
+    }
+
+    /// The index along `axis` of the block of `step` image pixels that the
+    /// device pixel with corner coordinate `p` shows: its centre in image
+    /// coordinates, divided by `step`, plus [`TIE_BIAS`], rounded down.
+    /// May be negative or beyond the image.
+    pub fn block_at(&self, axis: usize, p: f64, step: usize) -> f64 {
+        ((p + 0.5 - self.origin[axis]) / (self.zoom * step as f64) + TIE_BIAS).floor()
+    }
+
+    /// The device pixels along `axis` that show blocks `lo..hi` (see
+    /// [`block_at`](Self::block_at)), as a half-open range of corner
+    /// coordinates. Consecutive block ranges give consecutive pixel ranges,
+    /// so tiles drawn through these ranges neither overlap nor leave gaps.
+    pub fn pixels_showing(&self, axis: usize, lo: usize, hi: usize, step: usize) -> (f64, f64) {
+        let first_at_or_after = |block: usize| {
+            let block = block as f64;
+            let scale = self.zoom * step as f64;
+            let mut p = (self.origin[axis] + (block - TIE_BIAS) * scale - 0.5).ceil();
+            // The estimate can be one off through rounding; settle it with
+            // the very arithmetic that decides what a pixel shows.
+            while self.block_at(axis, p - 1.0, step) >= block {
+                p -= 1.0;
+            }
+            while self.block_at(axis, p, step) < block {
+                p += 1.0;
+            }
+            p
+        };
+        (first_at_or_after(lo), first_at_or_after(hi))
     }
 
     /// The image pixels at least partly inside the viewport, or `None` if
@@ -483,6 +512,35 @@ mod tests {
             let once = s;
             s.clamp([w, h], &vp);
             prop_assert!(close(s.center, once.center, 1e-9));
+        }
+
+        #[test]
+        fn pixel_ranges_partition_the_screen(
+            zoom in 0.01f64..32.0,
+            origin in -3000i32..3000,
+            level in 0u32..5,
+            tile in 1usize..40,
+        ) {
+            let step = 1usize << level;
+            let t = ViewTransform { zoom, origin: [origin as f64, 0.0] };
+            let mut previous_end = None;
+            for index in 0..4 {
+                let (lo, hi) = (index * tile, (index + 1) * tile);
+                let (p0, p1) = t.pixels_showing(0, lo, hi, step);
+                prop_assert!(p1 >= p0);
+                // Every pixel in the range shows a block of the tile, and
+                // the pixels just outside do not.
+                if p1 > p0 {
+                    prop_assert!(t.block_at(0, p0, step) >= lo as f64);
+                    prop_assert!(t.block_at(0, p1 - 1.0, step) < hi as f64);
+                }
+                prop_assert!(t.block_at(0, p0 - 1.0, step) < lo as f64);
+                prop_assert!(t.block_at(0, p1, step) >= hi as f64);
+                if let Some(end) = previous_end {
+                    prop_assert_eq!(p0, end);
+                }
+                previous_end = Some(p1);
+            }
         }
 
         #[test]

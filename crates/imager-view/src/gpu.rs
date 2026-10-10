@@ -4,11 +4,17 @@
 //! `R16Uint`, `R16Sint` or `R32Float`). A tile is drawn as a full-target
 //! triangle restricted by the scissor rectangle to the tile's part of the
 //! screen. The fragment shader works from the device pixel position alone:
-//! it maps the pixel centre to a texel of the tile, discards the fragment
-//! if that texel belongs to another tile, and otherwise reads the texel of
-//! each channel with `textureLoad` (there is no sampler and so no
-//! smoothing), maps it to a display level as described in
-//! [`crate::mapping`] and adds up the channels' lookup-table colours.
+//! it maps the pixel centre to a texel of the tile, reads the texel of each
+//! channel with `textureLoad` (there is no sampler and so no smoothing),
+//! maps it to a display level as described in [`crate::mapping`] and adds
+//! up the channels' lookup-table colours.
+//!
+//! Which pixels belong to which tile is decided on the CPU, in double
+//! precision, and enforced by the scissor rectangles, which partition the
+//! screen ([`crate::geometry::ViewTransform::pixels_showing`]). The shader
+//! clamps its texel to the tile, so single-precision error in the pixel
+//! position can at worst pick a neighbouring texel where a pixel centre
+//! sits on a texel boundary; it can never leave a gap between tiles.
 
 use std::collections::HashMap;
 use std::num::NonZeroU64;
@@ -45,7 +51,11 @@ struct Params {
 
 const PARAMS_SIZE: u64 = std::mem::size_of::<Params>() as u64;
 
-fn shader_source(kind: SampleKind) -> String {
+/// The shader for samples of `kind` with `channels` channels drawn. There
+/// is one shader per channel count rather than a run-time test of the
+/// count: Microsoft's software rasteriser was seen to skip texture reads
+/// placed inside such a test for pixels on the edge of a scissor rectangle.
+fn shader_source(kind: SampleKind, channels: usize) -> String {
     let img_t = match kind {
         SampleKind::Uint => "u32",
         SampleKind::Sint => "i32",
@@ -94,15 +104,13 @@ fn colour(c: u32, l: u32) -> vec3<u32> {
 @fragment
 fn fs_main(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
     let t = params.texel0 + (frag.xy - params.base) * params.texels_per_px;
-    let p = vec2<i32>(floor(t));
-    if (p.x < 0 || p.y < 0 || p.x >= params.size.x || p.y >= params.size.y) {
-        discard;
-    }
+    let p = clamp(vec2<i32>(floor(t)), vec2<i32>(0), params.size - vec2<i32>(1));
     var sum = vec3<u32>(0u);
 ";
-    for c in 0..MAX_GPU_CHANNELS {
+    for c in 0..channels.min(MAX_GPU_CHANNELS) {
         src += &format!(
-            "    if (params.n_channels > {c}u) {{ sum += colour({c}u, level({c}u, textureLoad(img{c}, p, 0).r)); }}\n"
+            "    sum += colour({c}u, level({c}u, textureLoad(img{c}, p, 0).r));
+"
         );
     }
     src += "    return vec4<f32>(vec3<f32>(min(sum, vec3<u32>(255u))) / 255.0, 1.0);
@@ -114,10 +122,7 @@ fn fs_main(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
 @fragment
 fn fs_picture(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
     let t = params.texel0 + (frag.xy - params.base) * params.texels_per_px;
-    let p = vec2<i32>(floor(t));
-    if (p.x < 0 || p.y < 0 || p.x >= params.size.x || p.y >= params.size.y) {
-        discard;
-    }
+    let p = clamp(vec2<i32>(floor(t)), vec2<i32>(0), params.size - vec2<i32>(1));
     return vec4<f32>(vec3<f32>(textureLoad(img0, p, 0).rgb) / 255.0, 1.0);
 }
 ";
@@ -133,6 +138,9 @@ fn kind_index(kind: SampleKind) -> usize {
     }
 }
 
+/// Sample kind index, channels drawn, picture mode and target format.
+type PipelineKey = (usize, usize, bool, wgpu::TextureFormat);
+
 const KINDS: [SampleKind; 3] = [SampleKind::Uint, SampleKind::Sint, SampleKind::Float];
 
 struct Inner {
@@ -145,8 +153,7 @@ struct Inner {
     max_texture_side: u32,
     uniform_align: u64,
     layouts: [wgpu::BindGroupLayout; 3],
-    shaders: [wgpu::ShaderModule; 3],
-    pipelines: Mutex<HashMap<(usize, bool, wgpu::TextureFormat), wgpu::RenderPipeline>>,
+    pipelines: Mutex<HashMap<PipelineKey, wgpu::RenderPipeline>>,
     /// 1x1 textures bound in place of channels that are not drawn.
     blanks: [wgpu::TextureView; 3],
 }
@@ -228,12 +235,6 @@ impl ViewerGpu {
                 entries: &entries,
             })
         });
-        let shaders = KINDS.map(|kind| {
-            device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("imager-view tile shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source(kind).into()),
-            })
-        });
         let blanks = [
             wgpu::TextureFormat::R8Uint,
             wgpu::TextureFormat::R16Sint,
@@ -254,7 +255,6 @@ impl ViewerGpu {
             max_texture_side: limits.max_texture_dimension_2d,
             uniform_align: limits.min_uniform_buffer_offset_alignment.max(1) as u64,
             layouts,
-            shaders,
             pipelines: Mutex::new(HashMap::new()),
             blanks,
         }))
@@ -289,15 +289,21 @@ impl ViewerGpu {
     fn pipeline(
         &self,
         kind: SampleKind,
+        channels: usize,
         picture: bool,
         format: wgpu::TextureFormat,
     ) -> wgpu::RenderPipeline {
         let k = kind_index(kind);
+        let channels = channels.min(MAX_GPU_CHANNELS);
         let mut pipelines = self.0.pipelines.lock().unwrap_or_else(|e| e.into_inner());
         pipelines
-            .entry((k, picture, format))
+            .entry((k, channels, picture, format))
             .or_insert_with(|| {
                 let device = &self.0.device;
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("imager-view tile shader"),
+                    source: wgpu::ShaderSource::Wgsl(shader_source(kind, channels).into()),
+                });
                 let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("imager-view tile pipeline layout"),
                     bind_group_layouts: &[Some(&self.0.layouts[k])],
@@ -307,7 +313,7 @@ impl ViewerGpu {
                     label: Some("imager-view tile pipeline"),
                     layout: Some(&layout),
                     vertex: wgpu::VertexState {
-                        module: &self.0.shaders[k],
+                        module: &module,
                         entry_point: Some("vs_main"),
                         compilation_options: Default::default(),
                         buffers: &[],
@@ -316,7 +322,7 @@ impl ViewerGpu {
                     depth_stencil: None,
                     multisample: wgpu::MultisampleState::default(),
                     fragment: Some(wgpu::FragmentState {
-                        module: &self.0.shaders[k],
+                        module: &module,
                         entry_point: Some(if picture { "fs_picture" } else { "fs_main" }),
                         compilation_options: Default::default(),
                         targets: &[Some(wgpu::ColorTargetState {
@@ -682,7 +688,12 @@ impl GpuFrame {
             })
             .collect();
         let prepared = Prepared {
-            pipeline: self.gpu.pipeline(self.kind, self.picture, self.format),
+            pipeline: self.gpu.pipeline(
+                self.kind,
+                self.n_channels as usize,
+                self.picture,
+                self.format,
+            ),
             bind_groups,
             stride: stride as u32,
         };
@@ -864,8 +875,10 @@ mod tests {
     #[test]
     fn shaders_have_a_slot_per_channel() {
         for kind in KINDS {
-            let src = shader_source(kind);
+            let src = shader_source(kind, 3);
             assert!(src.contains(&format!("var img{}:", MAX_GPU_CHANNELS - 1)));
+            assert_eq!(src.matches("sum += colour(").count(), 3);
+            assert_eq!(shader_source(kind, 0).matches("sum += colour(").count(), 0);
             assert!(src.contains("fn level("));
             assert_eq!(src.contains("fn fs_picture("), kind == SampleKind::Uint);
         }

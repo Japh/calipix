@@ -794,18 +794,13 @@ impl ImageView {
             let Some(textures) = textures else {
                 continue;
             };
-            // The screen pixels the area's samples can reach.
-            let area_step = TileGrid::step(area.level) as f64;
-            let x0 = (t.origin[0] + area_rect.x as f64 * area_step * t.zoom).floor();
-            let y0 = (t.origin[1] + area_rect.y as f64 * area_step * t.zoom).floor();
-            let x1 = (t.origin[0] + (area_rect.x + area_rect.w) as f64 * area_step * t.zoom).ceil();
-            let y1 = (t.origin[1] + (area_rect.y + area_rect.h) as f64 * area_step * t.zoom).ceil();
-            let scissor = [
-                (x0 as i32).max(bounds[0]),
-                (y0 as i32).max(bounds[1]),
-                (x1.min(bounds[2] as f64)) as i32,
-                (y1.min(bounds[3] as f64)) as i32,
-            ];
+            // Exactly the screen pixels that show samples of the area.
+            let area_step = TileGrid::step(area.level);
+            let (x0, x1) = t.pixels_showing(0, area_rect.x, area_rect.x + area_rect.w, area_step);
+            let (y0, y1) = t.pixels_showing(1, area_rect.y, area_rect.y + area_rect.h, area_step);
+            let clamp =
+                |v: f64, axis: usize| v.clamp(bounds[axis] as f64, bounds[axis + 2] as f64) as i32;
+            let scissor = [clamp(x0, 0), clamp(y0, 1), clamp(x1, 0), clamp(y1, 1)];
             if scissor[2] <= scissor[0] || scissor[3] <= scissor[1] {
                 continue;
             }

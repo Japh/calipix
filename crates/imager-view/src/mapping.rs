@@ -302,8 +302,14 @@ pub(crate) fn level_wgsl(kind: SampleKind) -> &'static str {
         }
         SampleKind::Float => {
             "fn level(c: u32, raw: f32) -> u32 {
+    // NaN shows level 0, as on the CPU. It is recognised by its bits (all
+    // exponent bits set, fraction not zero) because not every backend
+    // compares NaN as IEEE 754 requires.
+    let bits = bitcast<u32>(raw);
+    if ((bits & 0x7f800000u) == 0x7f800000u && (bits & 0x007fffffu) != 0u) {
+        return 0u;
+    }
     let t = (raw - params.chan[c].x) * params.chan[c].y + 0.5;
-    // NaN fails the comparison and shows level 0, as on the CPU.
     if (t >= 1.0) {
         return u32(min(t, 255.0));
     }
