@@ -421,6 +421,132 @@ fn hyperstack() {
     assert_eq!(meta.properties.len(), 3, "{:?}", meta.properties);
 }
 
+/// The 16-bit rule of `gen/10_tiff_metadata.ijm` (c, z, t are 0-based here).
+fn small16(c: usize, z: usize, t: usize) -> Vec<u16> {
+    let base = (c + 1) * 10000 + (z + 1) * 1000 + (t + 1) * 100;
+    pattern(16, 12, |x, y| (base + x + 16 * y) as u16)
+}
+
+#[test]
+fn composite_in_color_mode() {
+    let image = open("tiff_composite_color.tif");
+    let meta = image.meta();
+    assert_eq!(meta.dtype(), DType::U16);
+    assert_eq!(meta.shape(), &[16, 12, 2, 2]);
+    assert_eq!(meta.axes()[2].kind, AxisKind::Channel);
+    assert_eq!(meta.axes()[3].kind, AxisKind::Z);
+    for z in 0..2 {
+        for c in 0..2 {
+            let index = meta.plane_index(&[c, z]).unwrap();
+            assert_eq!(plane::<u16>(&image, index), small16(c, z, 0));
+        }
+    }
+    // "color" mode shows one channel at a time through its own table.
+    assert_eq!(meta.color, ColorModel::Grayscale);
+    let expected = [
+        ("Green", [0, 255, 0], (10000.0, 11000.0)),
+        ("Magenta", [255, 0, 255], (20000.0, 22000.0)),
+    ];
+    assert_eq!(meta.channels.len(), 2);
+    for (channel, (name, top, range)) in meta.channels.iter().zip(expected) {
+        let lut = channel.lut.as_ref().unwrap();
+        assert_eq!((lut.name.as_str(), lut.table[255]), (name, top));
+        assert_eq!(channel.display_range, Some(range));
+    }
+    // The mode is implied by the tables, so it is not kept as a property.
+    assert_eq!(meta.properties.get("imagej.mode"), None);
+}
+
+#[test]
+fn composite_in_grayscale_mode() {
+    let image = open("tiff_composite_gray.tif");
+    let meta = image.meta();
+    assert_eq!(meta.shape(), &[16, 12, 2]);
+    assert_eq!(meta.axes()[2].kind, AxisKind::Channel);
+    for c in 0..2 {
+        assert_eq!(plane::<u16>(&image, c), small16(c, 0, 0));
+    }
+    // Shown in grey: no tables, but each channel keeps its range.
+    assert_eq!(meta.color, ColorModel::Grayscale);
+    assert_eq!(meta.channels.len(), 2);
+    assert_eq!(meta.channels[0].lut, None);
+    assert_eq!(meta.channels[0].display_range, Some((10000.0, 10500.0)));
+    assert_eq!(meta.channels[1].lut, None);
+    assert_eq!(meta.channels[1].display_range, Some((20000.0, 20500.0)));
+    assert!(meta.properties.is_empty(), "{:?}", meta.properties);
+}
+
+#[test]
+fn rgb_stack() {
+    let image = open("tiff_rgb_stack.tif");
+    let meta = image.meta();
+    assert_eq!(meta.dtype(), DType::U8);
+    assert_eq!(meta.shape(), &[16, 12, 3, 3]);
+    assert_eq!(meta.axes()[2].kind, AxisKind::Channel);
+    assert_eq!(meta.axes()[3].kind, AxisKind::Z);
+    assert_eq!(meta.color, ColorModel::Rgb);
+    for s in 0..3 {
+        let expected: [Vec<u8>; 3] = [
+            pattern(16, 12, |x, _| ((x * 16) & 255) as u8),
+            pattern(16, 12, |_, y| ((y * 20) & 255) as u8),
+            pattern(16, 12, |_, _| ((s + 1) * 60) as u8),
+        ];
+        for (c, expected) in expected.iter().enumerate() {
+            let index = meta.plane_index(&[c, s]).unwrap();
+            assert_eq!(
+                &plane::<u8>(&image, index),
+                expected,
+                "slice {s} channel {c}"
+            );
+        }
+    }
+}
+
+#[test]
+fn time_series_with_interval_and_frame_rate() {
+    let image = open("tiff_frames_fps.tif");
+    let meta = image.meta();
+    assert_eq!(meta.dtype(), DType::U8);
+    assert_eq!(meta.shape(), &[16, 12, 4]);
+    let time = &meta.axes()[2];
+    assert_eq!(
+        (&time.kind, time.scale, time.unit.as_deref()),
+        (&AxisKind::Time, 0.5, Some("sec"))
+    );
+    for t in 0..4 {
+        let expected: Vec<u8> = pattern(16, 12, |x, y| (((t + 1) * 50 + x + y) % 256) as u8);
+        assert_eq!(plane::<u8>(&image, t), expected, "frame {t}");
+    }
+    // An 8-bit image whose range is not 0..255 stores it.
+    assert_eq!(meta.channels[0].display_range, Some((20.0, 180.0)));
+    // The animation speed has no place in the axes.
+    assert_eq!(
+        meta.properties.get("imagej.fps").map(String::as_str),
+        Some("7")
+    );
+    assert_eq!(meta.properties.len(), 1);
+}
+
+#[test]
+fn sixteen_bit_with_a_colour_table() {
+    // Not a palette image: 16-bit samples plus a ColorMap tag for display.
+    let image = open("tiff_gray16_fire.tif");
+    let meta = image.meta();
+    assert_eq!(meta.dtype(), DType::U16);
+    assert_eq!(meta.shape(), &[16, 12]);
+    assert_eq!(
+        plane::<u16>(&image, 0),
+        pattern(16, 12, |x, y| (100 * x + y) as u16)
+    );
+    let fire = open("gray8_fire.tif");
+    let lut = meta.channels[0].lut.as_ref().unwrap();
+    assert_eq!(
+        lut.table,
+        fire.meta().channels[0].lut.as_ref().unwrap().table
+    );
+    assert_eq!(meta.channels[0].display_range, Some((100.0, 1500.0)));
+}
+
 #[test]
 fn every_corpus_tiff_is_covered() {
     // Fails when a fixture is added without a test above.
@@ -457,6 +583,11 @@ fn every_corpus_tiff_is_covered() {
         "rgb_le.tif",
         "stack_z3_16bit_le.tif",
         "stack_z6_8bit.tif",
+        "tiff_composite_color.tif",
+        "tiff_composite_gray.tif",
+        "tiff_frames_fps.tif",
+        "tiff_gray16_fire.tif",
+        "tiff_rgb_stack.tif",
     ];
     assert_eq!(names, covered);
 }

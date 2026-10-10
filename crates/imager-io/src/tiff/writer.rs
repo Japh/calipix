@@ -231,10 +231,10 @@ fn mode(plan: &Plan) -> &'static str {
         return "composite";
     }
     match meta.properties.get("imagej.mode").map(String::as_str) {
-        Some("gray") => "gray",
+        Some("grayscale") => "grayscale",
         Some("color") => "color",
         _ if meta.channels.iter().any(|c| c.lut.is_some()) => "color",
-        _ => "gray",
+        _ => "grayscale",
     }
 }
 
@@ -262,7 +262,12 @@ fn description(plan: &Plan) -> String {
     if plan.frames.0 > 1 {
         d.push_str(&format!("frames={}\n", plan.frames.0));
     }
-    if plan.ij_channels() > 1 || plan.frames.0 > 1 {
+    // `ImagePlus.isHyperStack` without a window: more than three dimensions.
+    let extra_dimensions = [plan.ij_channels(), plan.slices.0, plan.frames.0]
+        .iter()
+        .filter(|&&n| n > 1)
+        .count();
+    if extra_dimensions > 1 {
         d.push_str("hyperstack=true\n");
     }
     if plan.ij_channels() > 1 {

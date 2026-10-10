@@ -488,8 +488,8 @@ impl ChunkedSource {
         // BlackIsZero, so samples come back exactly as stored. A tiled image
         // is declared as large as its whole tiles: the crate then decodes
         // every tile in full and we crop, which avoids its row-by-row path
-        // for edge tiles (that path fails with "no lzw end code found" on
-        // LZW tiles whose padding compresses well).
+        // for edge tiles (with tiff 0.11.3 that path failed with "no lzw end
+        // code found" on an LZW-compressed corner tile of a 70x50 test image).
         let (coded_width, coded_height) = match info.tile {
             Some(_) => (across * chunk_w, height.div_ceil(chunk_h) * chunk_h),
             None => (width, height),

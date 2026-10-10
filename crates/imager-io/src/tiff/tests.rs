@@ -435,7 +435,7 @@ fn imagej_report(image: &Image) -> String {
     )
     .unwrap();
     let dimensions = [c, z, t].iter().filter(|&&n| n > 1).count();
-    let hyperstack = (c > 1 || t > 1) && dimensions > 1 && !rgb48;
+    let hyperstack = dimensions > 1 && !rgb48;
     let composite = c > 1;
     writeln!(
         out,

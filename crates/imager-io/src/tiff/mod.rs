@@ -35,7 +35,7 @@
 //! | `imagej.label.N` | Label of stack slice `N` (0-based, in ImageJ's stack order) |
 //! | `imagej.roi` | The active selection in ImageJ's `.roi` encoding, as hex |
 //! | `imagej.overlay.N` | Overlay element `N` in `.roi` encoding, as hex |
-//! | `imagej.KEY` | Entry `KEY` of the ImageJ description that is not image structure: `cf`, `c0`..`c4`, `vunit`, `zeroclip` (density calibration), `fps`, `loop`, `inverty`, `info`, `mode` (only `gray` with stored lookup tables), and any entry we do not know |
+//! | `imagej.KEY` | Entry `KEY` of the ImageJ description that is not image structure: `cf`, `c0`..`c4`, `vunit`, `zeroclip` (density calibration), `fps`, `loop`, `inverty`, `info`, `mode` (only `grayscale` with stored lookup tables), and any entry we do not know |
 //! | any other key | An ImageJ image property (the `prop` metadata block), for example `CurrentLUT` |
 //! | `tiff.description` | ImageDescription of a file not written by ImageJ (read only) |
 //! | `tiff.software`, `tiff.datetime`, `tiff.artist`, `tiff.host_computer` | The corresponding TIFF tags (read only) |

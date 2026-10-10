@@ -428,7 +428,7 @@ fn resaving_imagej_files_reproduces_their_description_and_content() {
         assert_eq!(&std::fs::read(&path).unwrap()[..4], b"II\x2a\x00");
         checked += 1;
     }
-    assert_eq!(checked, 26);
+    assert_eq!(checked, 31);
 }
 
 #[test]

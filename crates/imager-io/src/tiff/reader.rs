@@ -675,7 +675,7 @@ pub(crate) fn open(storage: Arc<dyn Storage>, file_name: &str) -> TiffResult<Ima
             let mode = if text.contains("mode=composite") {
                 "composite"
             } else if text.contains("mode=gray") {
-                "gray"
+                "grayscale"
             } else {
                 "color"
             };
@@ -689,11 +689,11 @@ pub(crate) fn open(storage: Arc<dyn Storage>, file_name: &str) -> TiffResult<Ima
                     Some(bytes) => Some(
                         lut_from_planar(bytes, "Custom").unwrap_or_else(|| default_channel_lut(3)),
                     ),
-                    None if ij_meta.luts.is_empty() && mode == "gray" => None,
+                    None if ij_meta.luts.is_empty() && mode == "grayscale" => None,
                     None => Some(default_channel_lut(i)),
                 };
             }
-            if mode == "gray" && !ij_meta.luts.is_empty() {
+            if mode == "grayscale" && !ij_meta.luts.is_empty() {
                 stored_mode = Some(mode);
             }
             for (i, range) in ranges.iter_mut().enumerate() {
