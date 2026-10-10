@@ -210,6 +210,12 @@ fn against_cpu_view(view: &mut ImageView, image: &Image, l: Look) -> Diff {
     apply(view, l);
     let got = view.render_gpu(image, gpu(), l.size[0], l.size[1]).unwrap();
     let want = view.render_cpu(image, l.size[0], l.size[1]).unwrap();
+    // The widget's CPU fallback draws the same picture as the reference.
+    let fallback = view.render_cpu_tiled(image, l.size[0], l.size[1]).unwrap();
+    assert!(
+        fallback == want,
+        "CPU fallback differs from the reference for {l:?}"
+    );
     diff(&got, &want)
 }
 
@@ -544,6 +550,11 @@ fn a_plane_larger_than_one_tile() {
     let image = with_display(&image, Some((0.0, 60000.0)), Some(fire()));
     let mut view = ImageView::default();
     assert_eq!(view.options().tile_size, 1024);
+    // Create the device and the 16-bit pipeline before timing anything.
+    let small = Image::from_vec(4, 4, vec![0u16; 16]).unwrap();
+    ImageView::default()
+        .render_gpu(&small, gpu(), 4, 4)
+        .unwrap();
 
     // Whole plane at 100% against render_plane.
     let start = Instant::now();
@@ -624,6 +635,7 @@ fn only_visible_tiles_are_read_and_the_budget_evicts() {
     let l = look(1.0, [1000.0, 750.0], [1500, 1000]);
     assert_eq!(against_cpu_view(&mut view, &image, l).differing, 0);
     assert!(view.stats().tiles >= 24);
+    assert!(view.stats().tiles_read >= 24 + 7 - 4);
     no_gpu_errors();
 }
 

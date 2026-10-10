@@ -3,9 +3,9 @@
 
 use std::time::{Duration, Instant};
 
+use egui::accesskit::Role;
 use egui::{Event, Modifiers, MouseWheelUnit, PointerButton, Pos2, TouchPhase, Vec2, pos2, vec2};
 use egui_kittest::Harness;
-use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 use imager_core::{
     Axis, AxisKind, Buffer, ChannelMeta, ColorModel, DType, Image, ImageMeta, Lut, PixelSource,
@@ -133,13 +133,19 @@ fn wheel_zooms_in_steps_about_the_cursor() {
     wheel(&h, 1.0, Modifiers::NONE);
     h.run_steps(2);
     assert_eq!(h.state().zoom, 8.0);
-    assert_eq!(h.state().probe.clone().map(|p| (p.x, p.y)), Some((before.x, before.y)));
+    assert_eq!(
+        h.state().probe.clone().map(|p| (p.x, p.y)),
+        Some((before.x, before.y))
+    );
 
     // Three notches down in one event: three steps back.
     wheel(&h, -3.0, Modifiers::NONE);
     h.run_steps(2);
     assert_eq!(h.state().zoom, 3.0);
-    assert_eq!(h.state().probe.clone().map(|p| (p.x, p.y)), Some((before.x, before.y)));
+    assert_eq!(
+        h.state().probe.clone().map(|p| (p.x, p.y)),
+        Some((before.x, before.y))
+    );
 
     // The wheel does nothing when the cursor is elsewhere.
     h.remove_cursor();
@@ -213,8 +219,14 @@ fn middle_drag_and_space_drag_pan() {
     });
     h.run_steps(2);
     let after = h.state().view.center();
-    assert!((after[0] - (start[0] - 80.0 / 4.0)).abs() < 1e-6, "{after:?}");
-    assert!((after[1] - (start[1] - 40.0 / 4.0)).abs() < 1e-6, "{after:?}");
+    assert!(
+        (after[0] - (start[0] - 80.0 / 4.0)).abs() < 1e-6,
+        "{after:?}"
+    );
+    assert!(
+        (after[1] - (start[1] - 40.0 / 4.0)).abs() < 1e-6,
+        "{after:?}"
+    );
 
     // A plain primary drag does not pan (it belongs to tools)...
     h.drag_at(from);
@@ -236,7 +248,10 @@ fn middle_drag_and_space_drag_pan() {
     h.key_up(egui::Key::Space);
     h.run_steps(2);
     let spaced = h.state().view.center();
-    assert!((spaced[0] - (after[0] + 40.0 / 4.0)).abs() < 1e-6, "{spaced:?}");
+    assert!(
+        (spaced[0] - (after[0] + 40.0 / 4.0)).abs() < 1e-6,
+        "{spaced:?}"
+    );
     assert_eq!(spaced[1], after[1]);
 
     // Panning cannot lose the image: a huge drag stops at its edge.
@@ -268,7 +283,11 @@ fn probe_reports_pixel_value_and_calibration() {
     )
     .unwrap();
     meta.name = "calibrated".to_string();
-    let samples = Buffer::from_vec((0..w * hgt).map(|i| value(i % w, i / w)).collect::<Vec<_>>());
+    let samples = Buffer::from_vec(
+        (0..w * hgt)
+            .map(|i| value(i % w, i / w))
+            .collect::<Vec<_>>(),
+    );
     let image = Image::from_planes(meta, vec![samples]).unwrap();
     let mut app = App::new(image);
     app.view.set_zoom(3.0);
@@ -310,7 +329,9 @@ fn stack(color: ColorModel) -> Image {
             display_range: Some((0.0, 100.0)),
         })
         .collect();
-    let planes = (0..60).map(|p| Buffer::from_vec(vec![p as u16; w * hgt])).collect();
+    let planes = (0..60)
+        .map(|p| Buffer::from_vec(vec![p as u16; w * hgt]))
+        .collect();
     Image::from_planes(meta, planes).unwrap()
 }
 
@@ -348,8 +369,9 @@ fn position_controls_and_stepping() {
     assert!(rect.height() > 250.0 && rect.height() < 360.0, "{rect:?}");
 
     // Sliders for Z and T are present and labelled.
-    h.get_by_role_and_label(Role::Slider, "Z");
-    h.get_by_role_and_label(Role::Slider, "T");
+    h.get_by_role_and_label(Role::Label, "Z");
+    h.get_by_role_and_label(Role::Label, "T");
+    assert_eq!(h.query_all_by_role(Role::Slider).count(), 2);
 
     // Channel buttons toggle visibility in a composite.
     assert!(h.state().view.channel_visible(1));

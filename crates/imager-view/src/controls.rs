@@ -50,11 +50,12 @@ pub fn position_controls(
                 continue;
             };
             if axis.kind != AxisKind::Channel {
+                // The label goes before its slider, as in the layout sketch
+                // in docs/ux.md, and names it for assistive technology.
+                let label = ui.label(axis_label(&axis.kind));
                 let mut shown = *current + 1;
-                let slider = egui::Slider::new(&mut shown, 1..=size)
-                    .integer()
-                    .text(axis_label(&axis.kind));
-                if ui.add(slider).changed() {
+                let slider = egui::Slider::new(&mut shown, 1..=size).integer();
+                if ui.add(slider).labelled_by(label.id).changed() {
                     *current = shown.clamp(1, size) - 1;
                     *last_axis = Some(slot);
                     changed = true;

@@ -186,8 +186,10 @@ pub struct ImageView {
     loader: Option<Loader>,
     display: Option<DisplayTextures>,
     display_plan: Option<DisplayPlan>,
-    cpu_tiles: ByteLru<TileCoord, egui::TextureHandle>,
+    cpu_tiles: ByteLru<TileCoord, Rgba8>,
     cpu_plan: Option<DisplayPlan>,
+    cpu_generation: u64,
+    composed: Option<(ComposeKey, egui::TextureHandle)>,
     last_viewport: Option<Viewport>,
     wheel: f32,
     error: Option<String>,
@@ -222,6 +224,8 @@ impl ImageView {
             display_plan: None,
             cpu_tiles: ByteLru::default(),
             cpu_plan: None,
+            cpu_generation: 0,
+            composed: None,
             last_viewport: None,
             wheel: 0.0,
             error: None,
@@ -241,6 +245,7 @@ impl ImageView {
         }
         if options.force_cpu != self.options.force_cpu {
             self.cpu_tiles.clear();
+            self.cpu_generation += 1;
         }
         self.options = options;
     }
@@ -426,6 +431,7 @@ impl ImageView {
         self.gpu_bytes = 0;
         self.cpu_tiles.clear();
         self.cpu_plan = None;
+        self.cpu_generation += 1;
         self.auto_ranges.clear();
         self.failed.clear();
         self.loader = None;
@@ -1039,12 +1045,13 @@ impl ImageView {
             renderer = Renderer::Gpu;
             painter.add(egui_wgpu::Callback::new_paint_callback(rect, frame));
         } else if planned.plan.is_some() {
-            loading |= self.paint_cpu(ui.ctx(), &painter, &planned, ppp);
+            loading |= self.paint_cpu(ui.ctx(), &painter, &planned, &viewport, ppp);
         }
         if renderer == Renderer::Gpu {
             // CPU-rendered tiles are of no use while the shader draws.
             self.cpu_tiles.clear();
             self.cpu_plan = None;
+            self.composed = None;
         }
 
         let probe = response
@@ -1182,100 +1189,208 @@ impl ImageView {
         self.state.clamp(size, viewport);
     }
 
-    /// Draws the plan with CPU-rendered tiles as ordinary egui textures.
-    /// Returns true if some tiles are still to be rendered.
-    fn paint_cpu(
-        &mut self,
-        ctx: &egui::Context,
-        painter: &egui::Painter,
-        planned: &Planned,
-        ppp: f32,
-    ) -> bool {
+    /// Renders the tiles of a plan that have not been rendered yet with the
+    /// CPU renderer. With a `budget`, stops after the first tile once that
+    /// much time has passed. Returns true if some tiles remain.
+    fn render_cpu_tiles(&mut self, planned: &Planned, budget: Option<Duration>) -> bool {
         let Some(plan) = &planned.plan else {
             return false;
         };
         if self.cpu_plan.as_ref() != Some(plan) {
             self.cpu_tiles.clear();
             self.cpu_plan = Some(plan.clone());
+            self.cpu_generation += 1;
         }
         let started = Instant::now();
         let mut rendered = 0;
         let mark = self.cpu_tiles.mark();
         let mut unfinished = false;
-        let t = planned.transform;
-        let to_points = |tile: imager_core::Rect, level: u8| {
-            let step = TileGrid::step(level) as f64;
-            let at = |v: usize, axis: usize| {
-                ((t.origin[axis] + v as f64 * step * t.zoom) / ppp as f64) as f32
+        for &(_, source) in &planned.cover {
+            if self.cpu_tiles.get(&source).is_some() {
+                continue;
+            }
+            let Some(source_rect) = planned.grid.tile_rect(source) else {
+                continue;
             };
-            egui::Rect::from_min_max(
-                egui::pos2(at(tile.x, 0), at(tile.y, 1)),
-                egui::pos2(at(tile.x + tile.w, 0), at(tile.y + tile.h, 1)),
-            )
-        };
+            // Keep the interface responsive: after the first tile of a
+            // frame, stop once the frame has used its share of time.
+            if rendered > 0 && budget.is_some_and(|b| started.elapsed() > b) {
+                unfinished = true;
+                continue;
+            }
+            let samples: Option<Vec<Buffer>> = plan
+                .channels
+                .iter()
+                .map(|c| {
+                    self.tiles
+                        .peek(&source.on_plane(c.plane))
+                        .map(|tile| tile.samples.clone())
+                })
+                .collect();
+            let Some(samples) = samples else {
+                continue;
+            };
+            let render_start = Instant::now();
+            match render_tile_cpu(plan, &samples, source_rect.w, source_rect.h) {
+                Ok(rgba) => {
+                    let bytes = rgba.data.len();
+                    self.cpu_tiles.insert(source, rgba, bytes);
+                    self.cpu_generation += 1;
+                    rendered += 1;
+                    self.stats.cpu_renders += 1;
+                    self.stats.cpu_render_time += render_start.elapsed();
+                }
+                Err(e) => self.error = Some(e.to_string()),
+            }
+        }
+        if self.cpu_tiles.evict(self.options.cache_bytes / 2, mark) > 0 {
+            self.cpu_generation += 1;
+        }
+        unfinished
+    }
+
+    /// Assembles the picture of the viewport from CPU-rendered tiles: for
+    /// every device pixel the sample the shader would show there (the same
+    /// arithmetic, in double precision), or the background.
+    fn compose_cpu(&self, planned: &Planned, viewport: &Viewport) -> Rgba8 {
+        let (width, height) = (viewport.size[0] as usize, viewport.size[1] as usize);
+        let [r, g, b] = self.options.background;
+        let mut data = [r, g, b, 255].repeat(width * height);
+        let t = planned.transform;
+        // Positions relative to the viewport's corner.
+        let origin = [t.origin[0] - viewport.min[0], t.origin[1] - viewport.min[1]];
         for &(area, source) in &planned.cover {
             let (Some(area_rect), Some(source_rect)) =
                 (planned.grid.tile_rect(area), planned.grid.tile_rect(source))
             else {
                 continue;
             };
-            if self.cpu_tiles.get(&source).is_none() {
-                // Keep the interface responsive: after the first tile of a
-                // frame, stop once the frame has used its share of time.
-                if rendered > 0 && started.elapsed() > CPU_FRAME_BUDGET {
-                    unfinished = true;
-                    continue;
-                }
-                let samples: Option<Vec<Buffer>> = plan
-                    .channels
-                    .iter()
-                    .map(|c| {
-                        self.tiles
-                            .peek(&source.on_plane(c.plane))
-                            .map(|tile| tile.samples.clone())
-                    })
-                    .collect();
-                let Some(samples) = samples else {
-                    continue;
-                };
-                let render_start = Instant::now();
-                match render_tile_cpu(plan, &samples, source_rect.w, source_rect.h) {
-                    Ok(rgba) => {
-                        let picture = egui::ColorImage::from_rgba_unmultiplied(
-                            [rgba.width, rgba.height],
-                            &rgba.data,
-                        );
-                        let name = format!("imager-view {source:?}");
-                        let handle = ctx.load_texture(name, picture, egui::TextureOptions::NEAREST);
-                        self.cpu_tiles.insert(source, handle, rgba.data.len());
-                        rendered += 1;
-                        self.stats.cpu_renders += 1;
-                        self.stats.cpu_render_time += render_start.elapsed();
-                    }
-                    Err(e) => {
-                        self.error = Some(e.to_string());
-                        continue;
-                    }
-                }
-            }
-            let Some(handle) = self.cpu_tiles.get(&source) else {
+            let Some(tile) = self.cpu_tiles.peek(&source) else {
                 continue;
             };
-            let clip = to_points(area_rect, area.level).intersect(painter.clip_rect());
-            painter.with_clip_rect(clip).image(
+            let area_step = TileGrid::step(area.level) as f64;
+            let scale = t.zoom * TileGrid::step(source.level) as f64;
+            // For each axis: the device pixels the area can reach, and the
+            // texel of the source tile each of them shows, if any.
+            let texels = |axis: usize, start: usize, len: usize, limit: usize, size: usize| {
+                let lo = (origin[axis] + start as f64 * area_step * t.zoom)
+                    .floor()
+                    .max(0.0);
+                let hi = (origin[axis] + (start + len) as f64 * area_step * t.zoom)
+                    .ceil()
+                    .min(limit as f64);
+                let source_start = [source_rect.x, source_rect.y][axis] as f64;
+                (lo as usize..hi.max(lo) as usize)
+                    .filter_map(|p| {
+                        let u = ((p as f64 + 0.5 - origin[axis]) / scale + TIE_BIAS).floor()
+                            - source_start;
+                        (u >= 0.0 && u < size as f64).then_some((p, u as usize))
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let columns = texels(0, area_rect.x, area_rect.w, width, source_rect.w);
+            let rows = texels(1, area_rect.y, area_rect.h, height, source_rect.h);
+            for &(py, v) in &rows {
+                let from = &tile.data[v * tile.width * 4..(v + 1) * tile.width * 4];
+                let to = &mut data[py * width * 4..(py + 1) * width * 4];
+                for &(px, u) in &columns {
+                    to[px * 4..px * 4 + 4].copy_from_slice(&from[u * 4..u * 4 + 4]);
+                }
+            }
+        }
+        Rgba8 {
+            width,
+            height,
+            data,
+        }
+    }
+
+    /// Draws what the view shows into a `width` x `height` picture the way
+    /// the widget does when it cannot use the shader: tiles rendered by
+    /// `imager-render`, assembled on the CPU. Reads every tile needed
+    /// before returning.
+    pub fn render_cpu_tiled(&mut self, image: &Image, width: u32, height: u32) -> Result<Rgba8> {
+        let viewport = Viewport::new(0.0, 0.0, width as f64, height as f64);
+        let planned = self.plan_frame(image, None, &viewport, None, true, false);
+        if let Some(e) = self.error.clone() {
+            return Err(Error::Unsupported(e));
+        }
+        self.render_cpu_tiles(&planned, None);
+        if let Some(e) = self.error.clone() {
+            return Err(Error::Unsupported(e));
+        }
+        Ok(self.compose_cpu(&planned, &viewport))
+    }
+
+    /// Draws the plan through the CPU renderer: one viewport-sized texture,
+    /// reassembled when the view or the tiles change. Returns true if some
+    /// tiles are still to be rendered.
+    fn paint_cpu(
+        &mut self,
+        ctx: &egui::Context,
+        painter: &egui::Painter,
+        planned: &Planned,
+        viewport: &Viewport,
+        ppp: f32,
+    ) -> bool {
+        let unfinished = self.render_cpu_tiles(planned, Some(CPU_FRAME_BUDGET));
+        let key = ComposeKey {
+            transform: planned.transform,
+            viewport: *viewport,
+            cover: planned.cover.clone(),
+            generation: self.cpu_generation,
+        };
+        if self.composed.as_ref().is_none_or(|(k, _)| *k != key) {
+            let start = Instant::now();
+            let picture = self.compose_cpu(planned, viewport);
+            let picture = egui::ColorImage::from_rgba_unmultiplied(
+                [picture.width, picture.height],
+                &picture.data,
+            );
+            let options = egui::TextureOptions::NEAREST;
+            let handle = match self.composed.take() {
+                Some((_, mut handle)) => {
+                    handle.set(picture, options);
+                    handle
+                }
+                None => ctx.load_texture("imager-view", picture, options),
+            };
+            self.composed = Some((key, handle));
+            self.stats.cpu_render_time += start.elapsed();
+        }
+        if let Some((_, handle)) = &self.composed {
+            // Exactly the viewport's device pixels, one texel each.
+            let at = |v: f64| (v / ppp as f64) as f32;
+            let rect = egui::Rect::from_min_max(
+                egui::pos2(at(viewport.min[0]), at(viewport.min[1])),
+                egui::pos2(
+                    at(viewport.min[0] + viewport.size[0]),
+                    at(viewport.min[1] + viewport.size[1]),
+                ),
+            );
+            painter.image(
                 handle.id(),
-                to_points(source_rect, source.level),
+                rect,
                 egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
                 egui::Color32::WHITE,
             );
         }
-        let budget = self.options.cache_bytes / 2;
-        self.cpu_tiles.evict(budget, mark);
         if unfinished {
             ctx.request_repaint();
         }
         unfinished
     }
+}
+
+/// What a composed viewport picture was made from; it is remade when any
+/// of this changes.
+#[derive(Clone, PartialEq)]
+struct ComposeKey {
+    transform: ViewTransform,
+    viewport: Viewport,
+    cover: Vec<(TileCoord, TileCoord)>,
+    /// Counts changes to the set of CPU-rendered tiles.
+    generation: u64,
 }
 
 /// Time the CPU renderer may take per frame once something is on screen.
