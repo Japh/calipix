@@ -241,11 +241,11 @@ impl Layout {
         }
         for id in open {
             if self.find(Pane::Image(id.0)).is_none() {
+                // The welcome tab marks the group images belong to, even
+                // while it is hidden; failing that, any other image will do.
                 let sibling = self
-                    .image_tiles()
-                    .first()
-                    .map(|(tile, _)| *tile)
-                    .or_else(|| self.find(Pane::Welcome));
+                    .find(Pane::Welcome)
+                    .or_else(|| self.image_tiles().first().map(|(tile, _)| *tile));
                 self.add_beside(Pane::Image(id.0), sibling);
                 self.focus(Pane::Image(id.0));
             }

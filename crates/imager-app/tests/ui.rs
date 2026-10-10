@@ -642,6 +642,35 @@ fn menus_show_shortcuts_and_disable_what_cannot_run() {
     assert!(disabled(format!("Close {}", ctrl("W"))));
 }
 
+#[test]
+fn zoom_shortcuts_reach_the_viewer() {
+    let mut h = harness(&["zoom.png"]);
+    // Fitted to the tab to begin with, which for a 2 x 1 image is large.
+    assert!(h.query_by_label("100%").is_none());
+    h.key_press(Key::Num1);
+    h.run();
+    assert!(
+        h.query_by_label("100%").is_some(),
+        "1 shows the image at 100%"
+    );
+    h.key_press(Key::Plus);
+    h.run();
+    assert!(h.query_by_label("200%").is_some(), "+ zooms in");
+    h.key_press(Key::Minus);
+    h.run();
+    h.key_press(Key::Minus);
+    h.run();
+    assert!(h.query_by_label("50%").is_some(), "- zooms out");
+    choose(&mut h, "View", "Fit to Window");
+    assert!(h.query_by_label("50%").is_none());
+
+    // Ctrl+W closes the active image.
+    h.key_press_modifiers(Modifiers::COMMAND, Key::W);
+    settle(&mut h);
+    assert!(h.state().state.active().is_none());
+    assert!(h.query_by_role_and_label(Role::Button, "Welcome").is_some());
+}
+
 /// A file dragged onto the window.
 #[derive(Debug)]
 struct Dropped(PathBuf);
