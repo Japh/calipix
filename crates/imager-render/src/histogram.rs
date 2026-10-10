@@ -1,19 +1,4 @@
 //! Histograms and summary statistics with ImageJ's binning.
-//!
-//! ImageJ computes these differently for each pixel type, and differently
-//! again for a whole stack; the differences are kept:
-//!
-//! | Data | ImageJ class | Bins | Mode |
-//! |---|---|---|---|
-//! | 8-bit plane or stack, RGB | `ByteStatistics`, `ColorStatistics`, `StackStatistics.sum8BitHistograms` | 256, one per value | most frequent value |
-//! | other integers, plane | `ShortStatistics` | `bins` over `min..=max` | most frequent value |
-//! | other integers, stack | `StackStatistics.sum16BitHistograms` | 256 over `min..=max` | start of the fullest bin |
-//! | float, plane | `FloatStatistics` | `bins` over `min..max` | centre of the fullest bin |
-//! | float, stack; any stack with non-default options | `StackStatistics.doCalculations` | `bins` over `min..max` | start of the fullest bin |
-//!
-//! ImageJ has integer statistics for unsigned 16-bit only; imager uses the
-//! same rules for signed and for 32 and 64-bit integers. 64-bit integers are
-//! converted to double precision first.
 
 use imager_core::dispatch_real;
 use imager_core::{AxisKind, Buffer, ColorModel, DType, Error, Image, RealPixel, Result};
@@ -54,6 +39,26 @@ impl HistogramOptions {
 
 /// Bin counts with the statistics ImageJ reports beside them
 /// (`ij.process.ImageStatistics`).
+///
+/// ImageJ computes these differently for each pixel type, and differently
+/// again for a whole stack; the differences are kept:
+///
+/// | Data | ImageJ class | Bins | Mode |
+/// |---|---|---|---|
+/// | 8-bit plane or stack, RGB | `ByteStatistics`, `ColorStatistics`, `StackStatistics.sum8BitHistograms` | 256, one per value | most frequent value |
+/// | other integers, plane | `ShortStatistics` | `bins` over `min..=max` | most frequent value |
+/// | other integers, stack | `StackStatistics.sum16BitHistograms` | 256 over `min..=max` | start of the fullest bin |
+/// | float, plane | `FloatStatistics` | `bins` over `min..max` | centre of the fullest bin |
+/// | float, stack; any stack with non-default options | `StackStatistics.doCalculations` | `bins` over `min..max` | start of the fullest bin |
+///
+/// The bin of a sample `v` is `(int)((v - (int)hist_min) * (1.0 / bin_width))`
+/// in the `ShortStatistics` and `sum16BitHistograms` rows and
+/// `(int)((v - hist_min) * (bins / (hist_max - hist_min)))` in the two rows
+/// below them, in both cases limited to the last bin.
+///
+/// ImageJ has integer statistics for unsigned 16-bit only; imager uses the
+/// same rules for signed and for 32 and 64-bit integers. 64-bit integers are
+/// converted to double precision first.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Histogram {
     /// Samples per bin. Bin `i` starts at `hist_min + i * bin_width`; the
@@ -79,7 +84,7 @@ pub struct Histogram {
     /// Sample standard deviation (divisor `count - 1`); 0 for fewer than
     /// two samples.
     pub std_dev: f64,
-    /// The mode as ImageJ reports it (`dmode`); see the module table.
+    /// The mode as ImageJ reports it (`dmode`); see the table above.
     pub mode: f64,
     /// Index of the fullest bin (the first, if several are equally full).
     pub mode_bin: usize,
@@ -318,6 +323,9 @@ fn integer_histogram(values: &[(f64, u64)], options: &HistogramOptions, stack: b
     }
 }
 
+/// Calls its argument once for each plane that takes part in a histogram.
+type EachPlane<'a> = dyn Fn(&mut dyn FnMut(&Buffer) -> Result<()>) -> Result<()> + 'a;
+
 /// Which of ImageJ's two sample-by-sample algorithms to follow.
 #[derive(Clone, Copy, PartialEq)]
 enum Scan {
@@ -328,12 +336,7 @@ enum Scan {
 }
 
 /// Histogram by two passes over the samples, the first finding their range.
-/// `each` calls its argument once per plane.
-fn scan_histogram(
-    each: &dyn Fn(&mut dyn FnMut(&Buffer) -> Result<()>) -> Result<()>,
-    options: &HistogramOptions,
-    scan: Scan,
-) -> Result<Histogram> {
+fn scan_histogram(each: &EachPlane, options: &HistogramOptions, scan: Scan) -> Result<Histogram> {
     fn fold<T: RealPixel>(samples: &[T], limit: f64, f: &mut dyn FnMut(f64)) {
         // ImageJ's implicit thresholds of -Float.MAX_VALUE and
         // Float.MAX_VALUE drop NaN and the infinities; 64-bit samples use
@@ -434,7 +437,7 @@ fn scan_histogram(
 /// (`stack == false`, exactly one plane) or as a stack.
 fn histogram_of(
     dtype: DType,
-    each: &dyn Fn(&mut dyn FnMut(&Buffer) -> Result<()>) -> Result<()>,
+    each: &EachPlane,
     options: &HistogramOptions,
     stack: bool,
 ) -> Result<Histogram> {
@@ -486,8 +489,8 @@ fn histogram_of(
 /// Unsigned 8-bit planes follow `ByteStatistics` (with other than 256 bins
 /// or with a range they are binned as 16-bit data over 0 to 256, as the
 /// macro function `getHistogram` does), other integers `ShortStatistics`
-/// and floats `FloatStatistics`. See the [module documentation](self) for
-/// how the bins and the mode differ between them.
+/// and floats `FloatStatistics`. See [`Histogram`] for how
+/// the bins and the mode differ between them.
 pub fn buffer_histogram(plane: &Buffer, options: &HistogramOptions) -> Result<Histogram> {
     histogram_of(plane.dtype(), &|f| f(plane), options, false)
 }

@@ -39,8 +39,8 @@ macro = "gen/34_contrast.ijm"
 
 [[file]]
 path = "display_levels.csv"
-sha256 = "1fc97269d2aee8fa1e34705550078e32d5fd759d6feaa8d9a65e0d0f891d16e6"
-bytes = 127662
+sha256 = "ee2016f51bc989e3142b7b2ceb85e19e06f7975b9922f0b8136052316eb30817"
+bytes = 129946
 macro = "gen/31_display.ijm"
 
 [[file]]

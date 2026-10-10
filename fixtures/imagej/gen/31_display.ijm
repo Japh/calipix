@@ -6,6 +6,7 @@
 //   u16  512x1  v = 500 + (x*37) mod 4000
 //   f32  256x1  v = (float)((x-100.25)*0.375)
 //   f32s as f32, with NaN at x=3, +Infinity at x=200 and -Infinity at x=10
+//   f32t 256x1  v = (float)(0.1 + x*2e-9): neighbouring single-precision values around 0.1
 //   rgb  256x1  r = x, g = 255-x, b = (x*7) mod 256   (display range applied to all channels)
 //   rgb4 as rgb, display range applied to the red channel only (setMinAndMax(min, max, 4))
 // Outputs:
@@ -32,6 +33,8 @@ s = s + row("f32", "Ice", 0, "-10", "30");
 s = s + row("f32", "Grays", 1, "-10", "30");
 rs = newArray("auto","auto", "-10","10", "0","1");
 for (i=0; i<rs.length; i+=2) s = s + row("f32s", "Grays", 0, rs[i], rs[i+1]);
+// a range narrow enough to show that ImageJ keeps min and max in single precision
+s = s + row("f32t", "Grays", 0, "0.1", "0.1000001");
 // RGB: ColorProcessor.setMinAndMax changes the pixels themselves
 rc = newArray("0","255", "50","200", "40.7","180.2", "100","100", "0","127", "128","255", "-30","400", "0.9","254.9");
 for (i=0; i<rc.length; i+=2) s = s + row("rgb", "Grays", 0, rc[i], rc[i+1]);
@@ -46,6 +49,9 @@ function make(kind) {
 	} else if (kind=="u16") {
 		newImage("i", "16-bit black", 512, 1, 1);
 		for (x=0; x<512; x++) setPixel(x, 0, 500 + (x*37)%4000);
+	} else if (kind=="f32t") {
+		newImage("i", "32-bit black", 256, 1, 1);
+		for (x=0; x<256; x++) setPixel(x, 0, 0.1 + x*2e-9);
 	} else if (kind=="f32" || kind=="f32s") {
 		newImage("i", "32-bit black", 256, 1, 1);
 		for (x=0; x<256; x++) setPixel(x, 0, (x-100.25)*0.375);
