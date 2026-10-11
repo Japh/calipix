@@ -975,7 +975,10 @@ fn gated_state(ending: Ending) -> (AppState, Gate) {
         }))
         .unwrap();
     let mut state = AppState::build(registry, Settings::default(), None);
-    state.open(sample("gated.png"));
+    // Tests run in parallel, so each needs its own file.
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    state.open(sample(&format!("gated-{n}.png")));
     (state, gate)
 }
 

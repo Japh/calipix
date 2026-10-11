@@ -12,6 +12,7 @@ bytemuck.workspace = true
 flate2.workspace = true
 image.workspace = true
 imager-core.workspace = true
+png = "0.18"
 thiserror.workspace = true
 tiff.workspace = true
 

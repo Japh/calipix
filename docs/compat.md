@@ -61,6 +61,9 @@ are byte-identical to ImageJ's.
 
 | Behaviour | ImageJ source | Status |
 |---|---|---|
+| PNG reading: grey 1 to 16 bit, RGB 8 and 16, palettes of every depth (kept as 8-bit indices plus LUT), interlacing | `Opener.openUsingImageIO`, `ImagePlus.setImage` | verified on 36 crafted files |
+| PNG transparency (alpha, palette alpha, colour key) blended over white into 8-bit RGB | `Opener.openUsingImageIO` | verified exact for RGB and palette files |
+| PNG writing: 8-bit, 8-bit with LUT as palette, 16-bit, RGB | `PNG_Writer.writeImage` | verified: same layout, palette and samples as ImageJ's files |
 | Palette BMP (1, 4, 8 bits) opens as 8-bit indices with the palette as LUT; 24 and 32 bits as RGB | `BMP_Reader`, `BMPDecoder` | verified |
 | BMP writing | `BMP_Writer` | verified, byte-identical to ImageJ |
 | Single GIF opens as 8-bit indices plus palette LUT; one covering part of the screen opens as RGB on black | `GIF_Reader` | verified |
@@ -82,7 +85,11 @@ are byte-identical to ImageJ's.
 |---|---|---|---|
 | Pixel types | 8-bit, 16-bit unsigned, 32-bit float, RGB | Also signed and 32/64-bit integers, 64-bit float, complex | ImageJ2's data model supports them. Operations on types ImageJ 1.x lacks follow its 16-bit rules (integers) or 32-bit rules (floats). |
 | RGB | A packed pixel type | Three 8-bit channels flagged as RGB | One code path for all kernels; macros will still see packed values. |
-| PNG transparency | Discarded | Discarded | Same. |
+| Grey PNG with alpha or a transparent colour | Grey levels brightened (a linear-to-sRGB conversion in Java) before blending over white | Stored levels blended over white | Java artefact; no other PNG is treated this way |
+| Transparent colour in a grey PNG below 8 bits | Honoured only when it is 0 | Honoured | Java bug |
+| 16-bit RGB PNG | Composite with three slices | Three channels flagged as RGB | Consistent with 16-bit RGB TIFF |
+| Saving an 8-bit image with a display range as PNG | Range applied to the samples | Sample values saved | No silent data change |
+| Saving a stack as PNG | Saves only the slice shown | Refused, suggests TIFF | No silent data loss |
 | TIFF pixel types | 32-bit integers become float; 64-bit and signed 8-bit are misread | Kept as stored | No silent conversion |
 | 16-bit RGB TIFF | Composite with three slices | Three channels flagged as RGB | Consistent with 8-bit RGB |
 | TIFF variants | Refuses tiles, BigTIFF, OME-TIFF and the floating-point predictor | Opens them | Wider compatibility |
