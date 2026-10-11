@@ -90,13 +90,13 @@ pub fn default_path() -> Option<PathBuf> {
     let dir = if let Some(dir) = var("IMAGER_CONFIG_DIR") {
         dir
     } else if cfg!(windows) {
-        var("APPDATA")?.join("imager")
+        var("APPDATA")?.join("ImageR2")
     } else if cfg!(target_os = "macos") {
-        var("HOME")?.join("Library/Application Support/imager")
+        var("HOME")?.join("Library/Application Support/ImageR2")
     } else {
         var("XDG_CONFIG_HOME")
             .or_else(|| Some(var("HOME")?.join(".config")))?
-            .join("imager")
+            .join("imager2")
     };
     Some(dir.join("settings.json"))
 }

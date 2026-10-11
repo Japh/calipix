@@ -1,4 +1,4 @@
-# Dependency policy. imager is BSD-2-Clause; copyleft dependencies are not
+# Dependency policy. ImageR2 is BSD-2-Clause; copyleft dependencies are not
 # accepted, and every crate must come from crates.io.
 
 [licenses]

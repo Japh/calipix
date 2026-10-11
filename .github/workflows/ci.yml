@@ -69,13 +69,13 @@ jobs:
         include:
           - os: ubuntu-latest
             name: linux-x86_64
-            binary: imager
+            binary: imager2
           - os: windows-latest
             name: windows-x86_64
-            binary: imager.exe
+            binary: imager2.exe
           - os: macos-latest
             name: macos-arm64
-            binary: imager
+            binary: imager2
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -95,6 +95,6 @@ jobs:
           cp target/release/${{ matrix.binary }} LICENSE NOTICE README.md dist/
       - uses: actions/upload-artifact@v4
         with:
-          name: imager-${{ matrix.name }}
+          name: imager2-${{ matrix.name }}
           path: dist
           if-no-files-found: error

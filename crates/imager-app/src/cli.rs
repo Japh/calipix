@@ -1,6 +1,6 @@
 //! Command-line interface.
 //!
-//! `imager run <id>` exposes every registered command. Its options are not
+//! `imager2 run <id>` exposes every registered command. Its options are not
 //! declared here: they are derived from the command's spec, so a command
 //! added to the registry is immediately usable from the shell.
 
@@ -17,7 +17,7 @@ use imager_command::{
 
 #[derive(Parser)]
 #[command(
-    name = "imager",
+    name = "imager2",
     version,
     about = "Scientific image processing",
     args_conflicts_with_subcommands = true
@@ -36,7 +36,7 @@ enum Cmd {
     ///
     /// Parameters are given as --name value. For image parameters, give
     /// the path of an image file. Use -o to save the resulting image.
-    /// See `imager commands <ID>` for a command's parameters.
+    /// See `imager2 commands <ID>` for a command's parameters.
     Run {
         /// Print the command's outputs as JSON
         #[arg(long)]
@@ -87,7 +87,7 @@ fn open_interface(files: Vec<PathBuf>) -> Result<String> {
 
 #[cfg(not(feature = "gui"))]
 fn open_interface(_files: Vec<PathBuf>) -> Result<String> {
-    bail!("this is a headless build without the desktop interface; see `imager --help`")
+    bail!("this is a headless build without the desktop interface; see `imager2 --help`")
 }
 
 fn run_command(registry: Arc<Registry>, id: &str, tokens: &[String], json: bool) -> Result<String> {

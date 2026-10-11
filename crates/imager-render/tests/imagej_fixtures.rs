@@ -244,7 +244,7 @@ fn composites_match_imagej() {
         let ours = packed(&render_plane_with(&image, &position, &options).unwrap());
         // When the first channel is hidden, ImageJ clears its buffer from the
         // second pixel on (`for (int i=1; ...)` in CompositeImage.updateImage)
-        // and the first pixel keeps whatever was drawn before. imager shows
+        // and the first pixel keeps whatever was drawn before. ImageR2 shows
         // the correct colour there.
         let skip = usize::from(!options.is_visible(0));
         assert_eq!(ours[skip..], expected[skip..], "{kind} {case}");

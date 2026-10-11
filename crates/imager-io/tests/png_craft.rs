@@ -1,6 +1,6 @@
 //! Builds the hand-made PNG files in `fixtures/imagej/gen/22_png_inputs`,
 //! which `22_png.ijm` has ImageJ open so that `png_imagej.rs` can compare
-//! what imager reads from them with what ImageJ reads.
+//! what ImageR2 reads from them with what ImageJ reads.
 //!
 //! Between them they hold every colour type at every bit depth, palettes
 //! of every kind, each form of transparency, and Adam7 interlacing. The

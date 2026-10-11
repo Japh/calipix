@@ -1,10 +1,11 @@
-# imager2
+# ImageR2
 
 Open scientific N-dimensional image processing 🔬 🎇 in Rust.
 
-imager is a port of [ImageJ2](https://imagej.net/software/imagej2/) to Rust:
-one application, one download, with results that match ImageJ. It is at an
-early stage; see [Status](#status).
+ImageR2 is a Rust-based clone of the Java-based
+[ImageJ2](https://imagej.net/software/imagej2/) (hence the R): one
+application, one download, with results that match ImageJ. It is at an early
+stage; see [Status](#status).
 
 ## Try it
 
@@ -23,7 +24,7 @@ cargo run --release -- commands
 cargo run --release -- run image.invert --input in.png -o out.png
 ```
 
-`imager commands <id>` describes a command's parameters, and `--json` gives a
+`imager2 commands <id>` describes a command's parameters, and `--json` gives a
 machine-readable description of every command.
 
 ## How it is put together
@@ -42,9 +43,9 @@ drift apart, and every run is recorded for undo and reproducibility.
 | `imager-render` | Reference renderer (samples to display colours) |
 | `imager-commands` | The built-in commands |
 | `imager-view` | GPU image viewer widget |
-| `imager-app` | The `imager` binary: desktop interface and command line |
+| `imager-app` | The `imager2` binary: desktop interface and command line |
 
-The crates are an internal structure; imager ships as a single binary.
+The crates are an internal structure; ImageR2 ships as a single binary.
 
 ## Status
 

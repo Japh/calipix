@@ -17,14 +17,14 @@ fn temp(name: &str) -> PathBuf {
     dir.join(name)
 }
 
-/// Runs `imager run image.invert` on an ImageJ-written PNG and requires
+/// Runs `imager2 run image.invert` on an ImageJ-written PNG and requires
 /// every sample to equal ImageJ's own Edit > Invert result.
 fn assert_invert_matches_imagej(base: &str) {
     let source = fixture(&format!("{base}.png"));
     let expected = imager_io::open(fixture(&format!("{base}_invert.png"))).unwrap();
     let produced_path = temp(&format!("{base}_invert.png"));
 
-    let argv = ["imager", "run", "image.invert", "--input"]
+    let argv = ["imager2", "run", "image.invert", "--input"]
         .into_iter()
         .map(OsString::from)
         .chain([
@@ -68,7 +68,7 @@ fn invert_rgb_matches_imagej() {
 fn invert_float_matches_imagej() {
     let expected = imager_io::open(fixture("gray32f_invert.tif")).unwrap();
     let produced_path = temp("gray32f_invert.tif");
-    let argv = ["imager", "run", "image.invert", "--input"]
+    let argv = ["imager2", "run", "image.invert", "--input"]
         .into_iter()
         .map(OsString::from)
         .chain([

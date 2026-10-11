@@ -4,7 +4,7 @@
 //! These only compute a range. The caller stores it in the channel's
 //! [`display_range`](imager_core::ChannelMeta::display_range); sample values
 //! are never changed (ImageJ rewrites the pixels of RGB images at this
-//! point; imager does not).
+//! point; ImageR2 does not).
 
 use imager_core::{ColorModel, DType, Image, Result};
 

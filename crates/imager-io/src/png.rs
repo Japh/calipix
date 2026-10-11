@@ -25,7 +25,7 @@
 //! rounded to the nearest. A pixel of the transparent colour becomes white. Gamma and
 //! background chunks are ignored.
 //!
-//! Where imager differs from ImageJ on purpose:
+//! Where ImageR2 differs from ImageJ on purpose:
 //!
 //! - **Grey with transparency.** Java takes the grey samples of a
 //!   grey-with-alpha image, and of a grey image with a transparent colour,
@@ -33,18 +33,18 @@
 //!   8-bit `v` becomes `round(255 * f(v / 255))` with `f(x) = 12.92 x` up to
 //!   0.0031308 and `1.055 x^(1/2.4) - 0.055` above, so 1 becomes 13 and 128
 //!   becomes 188, even where the image is opaque. No other grey or colour
-//!   PNG is treated so. imager blends the stored values.
+//!   PNG is treated so. ImageR2 blends the stored values.
 //! - **A transparent colour in a grey file of fewer than 8 bits.** Java
-//!   honours it only when it is 0. imager honours any.
+//!   honours it only when it is 0. ImageR2 honours any.
 //! - **RGB, 16 bits.** ImageJ shows the three channels as a composite with
-//!   red, green and blue lookup tables; imager marks them as RGB, as it does
+//!   red, green and blue lookup tables; ImageR2 marks them as RGB, as it does
 //!   for 16-bit RGB TIFF. The sample values are the same.
 //!
 //! # Writing
 //!
 //! `PNG_Writer.writeImage` writes what `ImagePlus.getBufferedImage` shows,
 //! except for 16-bit images with the grey lookup table, whose samples it
-//! writes as they are. imager always writes samples:
+//! writes as they are. ImageR2 always writes samples:
 //!
 //! | Image | File | ImageJ |
 //! |---|---|---|

@@ -100,7 +100,7 @@ impl Task {
             }
         };
         std::thread::Builder::new()
-            .name(format!("imager {}", spec.id))
+            .name(format!("ImageR2 {}", spec.id))
             .spawn(worker)?;
         Ok(Task {
             spec: spec.clone(),

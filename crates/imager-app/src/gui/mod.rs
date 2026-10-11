@@ -88,7 +88,7 @@ impl FilePicker for NativePicker {
         let (sender, answer) = channel();
         let request = request.clone();
         let _ = std::thread::Builder::new()
-            .name("imager file dialog".to_string())
+            .name("ImageR2 file dialog".to_string())
             .spawn(move || {
                 let _ = sender.send(native_dialog(&request));
             });
@@ -398,7 +398,7 @@ impl Shell {
             let renderer = self.viewer.renderer_description();
             let modal = about.show(ctx, |ui| {
                 ui.set_width(340.0);
-                ui.heading("imager");
+                ui.heading("ImageR2");
                 ui::weak(ui, concat!("Version ", env!("CARGO_PKG_VERSION")));
                 ui.add_space(ui::GAP);
                 ui.label("Scientific image processing: a Rust port of ImageJ.");
@@ -618,7 +618,7 @@ fn native_options(size: [f32; 2]) -> eframe::NativeOptions {
     use eframe::{egui_wgpu, wgpu};
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("imager")
+            .with_title("ImageR2")
             .with_inner_size(size)
             .with_min_inner_size([640.0, 420.0])
             .with_drag_and_drop(true),
@@ -677,7 +677,7 @@ pub fn run(files: Vec<PathBuf>) -> Result<()> {
     };
     let force_cpu = flag("IMAGER_CPU_RENDERER");
     eframe::run_native(
-        "imager",
+        "imager2",
         native_options(size),
         Box::new(move |cc| {
             // The viewer shares the renderer egui itself draws with.

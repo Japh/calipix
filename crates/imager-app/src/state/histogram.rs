@@ -222,7 +222,7 @@ impl Histograms {
             let (queue, sender, waker) =
                 (self.queue.clone(), self.sender.clone(), self.waker.clone());
             let spawned = std::thread::Builder::new()
-                .name("imager histograms".to_string())
+                .name("ImageR2 histograms".to_string())
                 .spawn(move || work(&queue, &sender, waker.as_ref()));
             if spawned.is_err() {
                 self.worker_started = false;

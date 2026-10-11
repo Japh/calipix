@@ -11,7 +11,7 @@ fn temp(name: &str) -> PathBuf {
 }
 
 fn imager(args: &[&str]) -> anyhow::Result<String> {
-    let argv = std::iter::once("imager")
+    let argv = std::iter::once("imager2")
         .chain(args.iter().copied())
         .map(OsString::from);
     imager_app::cli::main(argv)
@@ -129,15 +129,15 @@ fn interface_commands_are_listed_but_not_run() {
 
 #[test]
 fn help_and_version_are_not_errors() {
-    assert!(imager(&["--help"]).unwrap().contains("Usage: imager"));
-    assert!(imager(&["--version"]).unwrap().starts_with("imager "));
+    assert!(imager(&["--help"]).unwrap().contains("Usage: imager2"));
+    assert!(imager(&["--version"]).unwrap().starts_with("imager2 "));
     assert!(imager(&["run", "--help"]).unwrap().contains("--name value"));
 }
 
 /// The real binary: exit codes and which stream output goes to.
 #[test]
 fn binary_exit_codes_and_streams() {
-    let exe = env!("CARGO_BIN_EXE_imager");
+    let exe = env!("CARGO_BIN_EXE_imager2");
     let ok = Command::new(exe).args(["commands"]).output().unwrap();
     assert!(ok.status.success());
     assert!(String::from_utf8_lossy(&ok.stdout).contains("image.invert"));

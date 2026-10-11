@@ -1,6 +1,6 @@
 [package]
 name = "imager-app"
-description = "The imager application: desktop interface and command line"
+description = "The ImageR2 application: desktop interface and command line"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,7 +8,7 @@ repository.workspace = true
 rust-version.workspace = true
 
 [[bin]]
-name = "imager"
+name = "imager2"
 path = "src/main.rs"
 
 [dependencies]

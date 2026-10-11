@@ -642,7 +642,7 @@ fn write_files_for_imagej_check() {
     calibrate(&mut meta, AxisKind::X, 0.5, "mm");
     calibrate(&mut meta, AxisKind::Y, 0.25, "mm");
     meta.properties
-        .insert("Info".into(), "written by imager\nsecond line".into());
+        .insert("Info".into(), "written by ImageR2\nsecond line".into());
     meta.properties
         .insert("Objective".into(), "63x/1.4 Oil".into());
     add("u8_inverting_lut_mm.tif", meta, planes, default);

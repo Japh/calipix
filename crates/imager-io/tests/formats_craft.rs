@@ -1,6 +1,6 @@
 //! Builds the hand-made GIF and BMP files in
 //! `fixtures/imagej/gen/21_crafted_inputs`, which `21_crafted.ijm` has
-//! ImageJ open so that `formats_imagej.rs` can compare what imager reads
+//! ImageJ open so that `formats_imagej.rs` can compare what ImageR2 reads
 //! from them with what ImageJ reads.
 //!
 //! They exercise what ImageJ's own writers never produce: GIF disposal
@@ -175,7 +175,7 @@ fn gif_gray_first() -> Vec<u8> {
 ///
 /// It is deliberately not interlaced: Java's decoder, when it delivers an
 /// interlaced image that stops short of the bottom of the screen, repeats
-/// the image's last row on the row below it (seen with Java 21). imager
+/// the image's last row on the row below it (seen with Java 21). ImageR2
 /// does not reproduce that.
 fn gif_single() -> Vec<u8> {
     let mut gif = Gif::new(11, 9, &COLORS, 5);

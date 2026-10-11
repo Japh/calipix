@@ -1,7 +1,7 @@
 # Interface design
 
 This is the specification every piece of the interface follows. It exists so
-that imager feels like one application, however many people and extensions
+that ImageR2 feels like one application, however many people and extensions
 contribute to it. Change this document first, then the code.
 
 ## Principles
@@ -13,7 +13,7 @@ contribute to it. Change this document first, then the code.
    and contrast, lookup tables, channel visibility) changes only how an image
    is displayed. Anything that changes sample values is under *Process* and
    says so. ImageJ blurs this line (its B&C "Apply" button, for example);
-   imager does not.
+   ImageR2 does not.
 3. **Everything is a command.** If the interface can do it, it is in the
    command palette, the command line, macros and the agent tools, with the
    same name and parameters. No bespoke dialogs.

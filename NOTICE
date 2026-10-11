@@ -1,9 +1,9 @@
-imager
+ImageR2
 Copyright (c) 2026, Japh
 
-imager is a Rust port of ImageJ2 and reproduces the behaviour of ImageJ.
+ImageR2 is a Rust port of ImageJ2 and reproduces the behaviour of ImageJ.
 Parts of it are derived from, or written with reference to, the following
-works. Their licences are compatible with imager's BSD 2-Clause licence.
+works. Their licences are compatible with ImageR2's BSD 2-Clause licence.
 
 ImageJ 1.x  (https://github.com/imagej/ImageJ)
   Public domain. Developed at the National Institutes of Health by an

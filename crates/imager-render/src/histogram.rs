@@ -56,7 +56,7 @@ impl HistogramOptions {
 /// `(int)((v - hist_min) * (bins / (hist_max - hist_min)))` in the two rows
 /// below them, in both cases limited to the last bin.
 ///
-/// ImageJ has integer statistics for unsigned 16-bit only; imager uses the
+/// ImageJ has integer statistics for unsigned 16-bit only; ImageR2 uses the
 /// same rules for signed and for 32 and 64-bit integers. 64-bit integers are
 /// converted to double precision first.
 #[derive(Clone, Debug, PartialEq)]

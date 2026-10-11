@@ -1,4 +1,4 @@
-// Opens one TIFF written by imager with real ImageJ and prints what ImageJ
+// Opens one TIFF written by ImageR2 with real ImageJ and prints what ImageJ
 // makes of it, in exactly the format of the `.expected.txt` file that the
 // ignored test `tiff::tests::write_files_for_imagej_check` writes next to it.
 //

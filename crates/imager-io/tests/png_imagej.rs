@@ -169,7 +169,7 @@ fn assert_same_kind(image: &Image, seen: &Seen) {
     assert_eq!(meta.color, color, "{name}");
 }
 
-/// Inputs that imager reads differently from ImageJ on purpose; see
+/// Inputs that ImageR2 reads differently from ImageJ on purpose; see
 /// `gray_with_transparency_is_not_brightened`.
 const GRAY_WITH_TRANSPARENCY: [&str; 8] = [
     "graya8",
@@ -280,7 +280,7 @@ fn to_8_bits(sample: u16, max: u32) -> u16 {
     ((u32::from(sample) * 255 + max / 2) / max) as u16
 }
 
-/// Grey files with transparency are the one place where imager's samples
+/// Grey files with transparency are the one place where ImageR2's samples
 /// differ from ImageJ's. Both blend over white into an RGB image, but
 /// ImageJ (that is, Java) first brightens the grey levels as if they were
 /// linear light; and for fewer than 8 bits it misses any transparent colour
@@ -326,7 +326,7 @@ fn gray_with_transparency_is_not_brightened() {
         }
         for c in 0..3 {
             assert_eq!(seen.slice(c + 1), java, "{name}: ImageJ, channel {c}");
-            assert_eq!(plane(&image, c), plain, "{name}: imager, channel {c}");
+            assert_eq!(plane(&image, c), plain, "{name}: ImageR2, channel {c}");
         }
         brightened += java.iter().zip(&plain).filter(|(j, p)| j != p).count();
     }
@@ -335,7 +335,7 @@ fn gray_with_transparency_is_not_brightened() {
 }
 
 /// The transparent colour of `gray4_trns` is level 8, which Java does not
-/// find: ImageJ leaves those pixels grey where imager makes them white.
+/// find: ImageJ leaves those pixels grey where ImageR2 makes them white.
 #[test]
 fn transparent_color_below_8_bits_is_honoured() {
     let (craft, seen) = (craft_for("gray4_trns"), seen_for("gray4_trns"));
@@ -529,7 +529,7 @@ fn written_files_open_to_the_saved_image() {
     }
 }
 
-/// Where ImageJ saves what is on screen instead of the samples, imager
+/// Where ImageJ saves what is on screen instead of the samples, ImageR2
 /// saves the samples or refuses.
 #[test]
 fn saves_samples_where_imagej_saves_the_rendering() {

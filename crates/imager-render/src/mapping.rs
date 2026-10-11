@@ -33,7 +33,7 @@ pub enum LevelRule {
     /// equal to both gets level 0.
     Byte,
     /// Every other integer type. ImageJ has this rule for unsigned 16-bit
-    /// only (`ShortProcessor.create8BitImage`); imager applies it to signed
+    /// only (`ShortProcessor.create8BitImage`); ImageR2 applies it to signed
     /// and to 32 and 64-bit integers as well:
     ///
     /// ```text
@@ -57,7 +57,7 @@ pub enum LevelRule {
     /// level 255 and all others 0.
     Float,
     /// The components of an 8-bit RGB image (`ColorProcessor.setMinAndMax`,
-    /// which in ImageJ rewrites the pixels; imager only displays them
+    /// which in ImageJ rewrites the pixels; ImageR2 only displays them
     /// differently):
     ///
     /// ```text

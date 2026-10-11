@@ -1,6 +1,6 @@
 //! Application commands: operations on the interface itself (undo, zoom,
 //! panels, theme, palette). They are ordinary commands in the registry, so
-//! menus, the palette, shortcuts and `imager commands` list them like any
+//! menus, the palette, shortcuts and `imager2 commands` list them like any
 //! other. Running one queues a [`UiAction`], which the application applies
 //! on its next frame.
 
@@ -204,8 +204,8 @@ fn definitions() -> Vec<(CommandSpec, UiAction)> {
             UiAction::OpenPalette,
         ),
         (
-            spec("help.about", "About imager")
-                .summary("Shows the version of imager and its licence.")
+            spec("help.about", "About ImageR2")
+                .summary("Shows the version of ImageR2 and its licence.")
                 .menu("Help", 910.0),
             UiAction::About,
         ),

@@ -137,7 +137,7 @@ fn menus_follow_the_prescribed_order_and_grouping() {
     );
     assert_eq!(
         labels(submenu(state.menu(), "Help")),
-        ["Command Palette", "-", "About imager"]
+        ["Command Palette", "-", "About ImageR2"]
     );
 }
 

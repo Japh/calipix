@@ -680,7 +680,7 @@ fn main() -> eframe::Result {
         }));
     }
     eframe::run_native(
-        "imager viewer example",
+        "ImageR2 viewer example",
         options,
         Box::new(move |cc| Ok(Box::new(App::new(cc, image, huge_source)))),
     )
