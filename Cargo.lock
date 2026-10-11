@@ -1743,6 +1743,7 @@ dependencies = [
  "flate2",
  "image",
  "imager-core",
+ "png",
  "proptest",
  "thiserror 2.0.21",
  "tiff",
