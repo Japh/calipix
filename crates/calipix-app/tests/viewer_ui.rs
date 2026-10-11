@@ -67,7 +67,7 @@ fn harness_with(files: &[PathBuf], picker: FakePicker) -> H {
         .with_size(egui::vec2(1400.0, 1500.0))
         .with_max_steps(24)
         .build_ui_state(|ui, shell: &mut Shell| shell.ui(ui), shell);
-    harness.run();
+    harness.step();
     catch_up(&mut harness);
     harness
 }
@@ -77,13 +77,27 @@ fn harness(fixtures: &[&str]) -> H {
     harness_with(&files, FakePicker::default())
 }
 
+/// Runs frames until the interface stops asking to be redrawn. Work on
+/// other threads (tiles being read, histograms) keeps a spinner turning for
+/// as long as it takes, which on a slow machine is longer than any fixed
+/// number of frames; so this waits in real time, up to a generous limit.
+fn quiet(h: &mut H) {
+    for _ in 0..600 {
+        if h.run_ok().is_some() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    panic!("the interface was still redrawing after several seconds");
+}
+
 /// Lets what runs off the interface thread finish (commands, histograms)
 /// and the interface show it, as time passing would.
 fn catch_up(h: &mut H) {
     for _ in 0..3 {
         h.state_mut().state.wait();
         h.state_mut().state.wait_for_histograms();
-        h.run();
+        quiet(h);
     }
 }
 
@@ -142,7 +156,7 @@ fn item<'a>(h: &'a H, label: &'a str) -> egui_kittest::Node<'a> {
 
 fn choose(h: &mut H, menu: &str, label: &str) {
     h.get_by_role_and_label(Role::Button, menu).click();
-    h.run();
+    quiet(h);
     item(h, label).click();
     settle(h);
 }
@@ -152,7 +166,7 @@ fn choose(h: &mut H, menu: &str, label: &str) {
 fn choose_lut(h: &mut H, channel: &str, lut: &str) {
     h.get_by_label(&format!("Lookup table of {channel}"))
         .click();
-    h.run();
+    quiet(h);
     // The drop-down's own entry, not a field that already shows the name.
     h.get_all_by_label(lut)
         .last()
@@ -188,23 +202,23 @@ fn a_hyperstack_has_channel_buttons_and_sliders_that_move_the_view() {
     let slider = |h: &H, index: usize| h.get_all_by_role(Role::Slider).nth(index).unwrap().rect();
     let z = slider(&h, 0).center();
     click_at(&h, z);
-    h.run();
+    quiet(&mut h);
     let position = h.state().state.position(id);
     assert!((1..=2).contains(&position[1]), "{position:?}");
     assert_eq!((position[0], position[2]), (0, 0));
     let t = slider(&h, 1).center();
     click_at(&h, t);
-    h.run();
+    quiet(&mut h);
     assert_eq!(h.state().state.position(id)[2], 2, "frame 3 of 5");
 
     // Right and Left step along the slider used last, here T.
     h.key_press(Key::ArrowRight);
-    h.run();
+    quiet(&mut h);
     assert_eq!(h.state().state.position(id)[2], 3);
     h.key_press(Key::ArrowLeft);
-    h.run();
+    quiet(&mut h);
     h.key_press(Key::ArrowLeft);
-    h.run();
+    quiet(&mut h);
     assert_eq!(h.state().state.position(id)[2], 1);
     choose(&mut h, "View", "Next Plane");
     assert_eq!(h.state().state.position(id)[2], 2);
@@ -223,7 +237,7 @@ fn a_hyperstack_has_channel_buttons_and_sliders_that_move_the_view() {
     let (two, on) = button(&h, "2");
     assert_eq!(on, Some(Toggled::True));
     click_at(&h, two);
-    h.run();
+    quiet(&mut h);
     assert!(!h.state().state.channel_visible(id, 1));
     assert!(h.state().state.channel_visible(id, 0));
     assert_eq!(button(&h, "2").1, Some(Toggled::False));
@@ -231,7 +245,7 @@ fn a_hyperstack_has_channel_buttons_and_sliders_that_move_the_view() {
     assert_eq!(tick.accesskit_node().toggled(), Some(Toggled::False));
     // And back, from the panel this time.
     tick.click();
-    h.run();
+    quiet(&mut h);
     assert!(h.state().state.channel_visible(id, 1));
     assert_eq!(button(&h, "2").1, Some(Toggled::True));
     assert_eq!(titles(&h), ["Open"], "hiding a channel is not recorded");
@@ -252,10 +266,10 @@ fn the_status_bar_reads_out_what_is_under_the_pointer() {
     // Zoomed to fill the tab, the middle of the view is the middle of
     // the image: pixel (4, 4), whose value is 4 * 8 + 4.
     h.key_press(Key::Num0);
-    h.run();
+    quiet(&mut h);
     let view = h.get_by_label("View of probe.png").rect();
     h.hover_at(view.center() + egui::vec2(2.0, 2.0));
-    h.run();
+    quiet(&mut h);
     let probe = h
         .state()
         .view()
@@ -280,7 +294,7 @@ fn composite_and_calibrated_images_read_out_every_channel_and_units() {
     // Let the planes arrive from the file before reading them.
     for _ in 0..40 {
         h.hover_at(view.center());
-        h.run();
+        quiet(&mut h);
         let loaded = h
             .state()
             .view()
@@ -400,14 +414,14 @@ fn typing_a_range_runs_one_command() {
         })
         .expect("the Display panel has a Max field");
     field.click();
-    h.run();
+    quiet(&mut h);
     let editing = h
         .query_all_by_role(Role::SpinButton)
         .chain(h.query_all_by_role(Role::TextInput))
         .find(|node| node.is_focused())
         .expect("clicking a number field starts editing it");
     editing.type_text("30000");
-    h.run();
+    quiet(&mut h);
     // Nothing happens until the value is entered.
     assert_eq!(titles(&h), ["Open"]);
     h.key_press(Key::Enter);
@@ -429,7 +443,7 @@ fn the_channel_mode_is_chosen_in_the_display_panel() {
     let mut h = harness(&["hyperstack_c3z4t5.tif"]);
     let id = active(&h);
     h.get_by_role_and_label(Role::ComboBox, "Channels").click();
-    h.run();
+    quiet(&mut h);
     h.get_all_by_label("Grayscale").last().unwrap().click();
     settle(&mut h);
     assert_eq!(titles(&h), ["Open", "Set Channel Mode"]);
@@ -444,7 +458,7 @@ fn the_channel_mode_is_chosen_in_the_display_panel() {
     );
     h.get_by_role_and_label(Role::RadioButton, "Channel 3")
         .click();
-    h.run();
+    quiet(&mut h);
     assert_eq!(h.state().state.position(id)[0], 2);
     assert_eq!(
         titles(&h).len(),
@@ -534,13 +548,13 @@ fn the_histogram_panel_shows_imagej_statistics_for_the_plane_in_view() {
     let log = h.get_by_role_and_label(Role::CheckBox, "Log scale");
     assert_eq!(log.accesskit_node().toggled(), Some(Toggled::False));
     log.click();
-    h.run();
+    quiet(&mut h);
     let log = h.get_by_role_and_label(Role::CheckBox, "Log scale");
     assert_eq!(log.accesskit_node().toggled(), Some(Toggled::True));
     // Looking at the histogram costs one count, however many frames pass.
     let counted = h.state().state.histograms_computed();
     for _ in 0..10 {
-        h.run();
+        quiet(&mut h);
     }
     assert_eq!(h.state().state.histograms_computed(), counted);
 }
@@ -671,7 +685,7 @@ fn two_images_can_be_shown_side_by_side() {
     assert!((left.width() - right.width()).abs() < 4.0);
     // Clicking an image makes it the one the panels describe.
     click_at(&h, left.center());
-    h.run();
+    quiet(&mut h);
     assert_eq!(image(&h).meta().name, "gray8.tif");
     // Reset Layout puts them back in tabs.
     choose(&mut h, "Window", "Reset Layout");
