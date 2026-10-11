@@ -41,18 +41,32 @@ drift apart, and every run is recorded for undo and reproducibility.
 | `imager-io` | File formats |
 | `imager-render` | Reference renderer (samples to display colours) |
 | `imager-commands` | The built-in commands |
+| `imager-view` | GPU image viewer widget |
 | `imager-app` | The `imager` binary: desktop interface and command line |
 
 The crates are an internal structure; imager ships as a single binary.
 
 ## Status
 
-Milestone 0 (foundations) is in place: the image model, the command system,
-PNG reading and writing, an Invert command, the command line and a minimal
-window. Next is the viewer milestone: TIFF and OME-TIFF, a GPU viewer for
-large and multi-dimensional images, and the dockable workspace.
+Milestone 1 (viewer) is in place:
 
-[docs/compat.md](docs/compat.md) records how results compare with ImageJ.
+- TIFF as ImageJ reads and writes it, including hyperstacks, calibration,
+  lookup tables and stacks larger than memory; basic OME-TIFF; PNG, JPEG,
+  GIF, BMP and NRRD.
+- A GPU viewer for multi-channel, multi-dimensional and very large images,
+  with a CPU fallback that gives identical results.
+- A dockable workspace: image tabs, Info, Display, Histogram, History and
+  Log panels, a command palette (Ctrl+K), dialogs generated from command
+  definitions, undo and redo for everything.
+- Display controls that never change image data: display range, auto
+  contrast, lookup tables, channel modes.
+
+Processing and measurement come next (milestone 2): selections, filters,
+image maths, measurements and results tables.
+
+[docs/compat.md](docs/compat.md) records how results compare with ImageJ,
+[docs/ux.md](docs/ux.md) is the interface specification, and
+[docs/backlog.md](docs/backlog.md) lists what has been deferred.
 
 ## Development
 

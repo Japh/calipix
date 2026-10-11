@@ -77,6 +77,11 @@ are byte-identical to ImageJ's.
 
 | Command | ImageJ equivalent | Behaviour | Status |
 |---|---|---|---|
+| `view.auto_contrast` | Brightness/Contrast "Auto" | Same range as ImageJ, including the narrowing on repeated presses. The press count is kept per image and restarts when the image changes; ImageJ keeps one global count. | verified (range); press counting from source |
+| `view.enhance_contrast` | Process > Enhance Contrast | Display range only, as ImageJ without "Normalize". | verified |
+| `view.reset_display_range` | Brightness/Contrast "Reset" | Default range for the pixel type. | from source |
+| `view.invert_lut` | Image > Lookup Tables > Invert LUT | Reverses the lookup table; samples unchanged. | verified |
+| `view.set_channel_mode` | Image > Color > Make Composite | Composite, color or grayscale. An RGB image becomes a three-channel composite that looks the same. | verified (modes); RGB case from source |
 | `image.invert` (Process > Invert) | Edit > Invert | 8-bit and RGB: `255 - v`. 16-bit: `max - (v - min)` over each plane's data range ("Full range 16-bit inversions" off, the ImageJ default). Float: the same over the display range. | 8-bit, 16-bit and RGB **verified** against ImageJ 1.54p (`imagej_golden` test); float from source until TIFF reading exists |
 
 ## Intentional differences
@@ -102,4 +107,6 @@ are byte-identical to ImageJ's.
 | RGB GIF with more than 256 colours | Quantised | Refused | Lossy step left explicit |
 | Truncated GIF | Opens partly black | Error | No silent data loss |
 | JPEG chroma | Subsampled below quality 90 | Never subsampled | Encoder limitation; files are larger and closer to the source |
+| Opening zoom | 100%, in a window sized to the image | Largest standard zoom step at which the image fits the tab | One window; small images should not be specks |
+| Mouse wheel | Scrolls through a stack | Zooms about the cursor; Shift+wheel steps through the stack | Matches other image viewers; see `docs/ux.md` |
 | Undo | One step, some commands only | Every command, unlimited steps; saving is not undone | Images are immutable snapshots that share unchanged planes. |

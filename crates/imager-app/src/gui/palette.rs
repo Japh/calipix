@@ -68,13 +68,25 @@ impl Palette {
         let palette = egui::Modal::new(id).area(area).frame(frame);
         let modal = palette.show(ctx, |ui| {
             ui.set_width(WIDTH);
-            let search = ui.add(
-                egui::TextEdit::singleline(&mut self.query)
-                    .hint_text("Search commands by name")
-                    .font(egui::TextStyle::Heading)
-                    .margin(egui::vec2(8.0, 6.0))
-                    .desired_width(f32::INFINITY),
-            );
+            // The field draws its own outline: the stock one cannot be
+            // told from the popup behind it in the light theme.
+            let visuals = ui.visuals();
+            let outline = egui::Stroke::new(1.0, visuals.widgets.noninteractive.fg_stroke.color);
+            let search = egui::Frame::new()
+                .fill(visuals.text_edit_bg_color())
+                .stroke(outline)
+                .corner_radius(4)
+                .inner_margin(egui::Margin::symmetric(8, 6))
+                .show(ui, |ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.query)
+                            .hint_text("Search commands by name")
+                            .font(egui::TextStyle::Heading)
+                            .frame(egui::Frame::NONE)
+                            .desired_width(f32::INFINITY),
+                    )
+                })
+                .inner;
             if search.changed() {
                 self.selected = 0;
             }

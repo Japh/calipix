@@ -283,6 +283,9 @@ fn type_number(h: &mut H, label: &str, text: &str) {
 #[test]
 fn a_dialog_is_generated_for_every_parameter_type() {
     let mut h = harness(&["dialog.png", "dialog-mask.png"]);
+    // The controls counted below are the dialog's alone.
+    close_tab(&mut h, "Display");
+    close_tab(&mut h, "Histogram");
     h.get_by_role_and_label(Role::Button, "Demo").click();
     h.run();
     h.get_by_label("Parameter Gallery…").click();
@@ -307,8 +310,11 @@ fn a_dialog_is_generated_for_every_parameter_type() {
         "Report file",
         "Weights",
     ] {
+        // Panels behind the dialog may use the same word ("Count").
         assert!(
-            h.query_by_role_and_label(Role::Label, label).is_some(),
+            h.query_all_by_role_and_label(Role::Label, label)
+                .next()
+                .is_some(),
             "no label {label}"
         );
     }
@@ -411,7 +417,11 @@ fn an_invalid_value_is_marked_and_disables_ok() {
     h.run();
     let normalize = h.get_by_role_and_label(Role::CheckBox, "Normalize result");
     assert_eq!(normalize.accesskit_node().toggled(), Some(Toggled::False));
-    h.get_by_role_and_label(Role::Button, "Reset").click();
+    // The dialog's Reset, not the Display panel's behind it.
+    h.get_all_by_role_and_label(Role::Button, "Reset")
+        .last()
+        .unwrap()
+        .click();
     h.run();
     let normalize = h.get_by_role_and_label(Role::CheckBox, "Normalize result");
     assert_eq!(normalize.accesskit_node().toggled(), Some(Toggled::True));
@@ -645,8 +655,11 @@ fn menus_show_shortcuts_and_disable_what_cannot_run() {
 #[test]
 fn zoom_shortcuts_reach_the_viewer() {
     let mut h = harness(&["zoom.png"]);
-    // Fitted to the tab to begin with, which for a 2 x 1 image is large.
-    assert!(h.query_by_label("100%").is_none());
+    // A small image opens enlarged, at a standard zoom step that fits.
+    assert!(
+        h.query_by_label("100%").is_none(),
+        "a small image does not open as a speck"
+    );
     h.key_press(Key::Num1);
     h.run();
     assert!(
@@ -655,14 +668,15 @@ fn zoom_shortcuts_reach_the_viewer() {
     );
     h.key_press(Key::Plus);
     h.run();
-    assert!(h.query_by_label("200%").is_some(), "+ zooms in");
+    // The steps are ImageJ's: 100%, 150%, 200% and so on.
+    assert!(h.query_by_label("150%").is_some(), "+ zooms in");
     h.key_press(Key::Minus);
     h.run();
     h.key_press(Key::Minus);
     h.run();
-    assert!(h.query_by_label("50%").is_some(), "- zooms out");
+    assert!(h.query_by_label("75%").is_some(), "- zooms out");
     choose(&mut h, "View", "Fit to Window");
-    assert!(h.query_by_label("50%").is_none());
+    assert!(h.query_by_label("75%").is_none());
 
     // Ctrl+W closes the active image.
     h.key_press_modifiers(Modifiers::COMMAND, Key::W);

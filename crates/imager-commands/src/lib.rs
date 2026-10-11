@@ -3,6 +3,7 @@
 
 mod file;
 mod image;
+pub mod view;
 
 use imager_command::{DatasetId, Params, Registry, Result};
 
@@ -18,6 +19,7 @@ pub(crate) struct InputOnly {
 pub fn register(registry: &mut Registry) -> Result<()> {
     file::register(registry)?;
     image::register(registry)?;
+    view::register(registry)?;
     Ok(())
 }
 

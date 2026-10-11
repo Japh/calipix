@@ -24,11 +24,20 @@ Things deliberately left out of the milestone in which they came up.
 
 ## Viewer
 
+- A margin around the image for Fit to Window.
+
 - Optional smoothing when zoomed out (views below 100% are point-sampled).
 - Prefetching neighbouring tiles and planes.
 - Rendering CPU-fallback tiles off the interface thread.
 
 ## Application
+
+- Display labels for choice parameters, so generated dialogs show
+  "3-3-2 RGB" rather than `rgb332`.
+- The Display panel needs scrolling for three or more channels at the
+  default window size.
+- The native file dialog has not been observed on screen in testing, nor
+  tried on macOS or Linux.
 
 - On Windows the single binary is a console program, so launching it from
   Explorer also opens a console window. To be solved with the installer.

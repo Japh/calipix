@@ -43,18 +43,25 @@ pub struct MenuCommand {
     pub hint: Option<String>,
 }
 
+/// Parameters of display commands that say which plane is meant. The
+/// view answers them: the plane on screen is the one meant.
+pub const VIEW_PARAMS: [&str; 4] = ["channel", "slice", "frame", "press"];
+
 /// The parameters a person has to see to run `spec`: all of them, except
 /// that a command's only image parameter is filled with the active image
-/// without asking.
+/// without asking, and a display command is pointed at the plane on
+/// screen.
 pub fn dialog_params(spec: &CommandSpec) -> Vec<&ParamSpec> {
     let images = spec
         .inputs
         .iter()
         .filter(|p| p.ty == ParamType::Image)
         .count();
+    let display = imager_commands::view::DISPLAY_COMMANDS.contains(&spec.id.as_str());
     spec.inputs
         .iter()
         .filter(|p| !(p.ty == ParamType::Image && images == 1))
+        .filter(|p| !(display && VIEW_PARAMS.contains(&p.name.as_str())))
         .collect()
 }
 

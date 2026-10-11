@@ -31,21 +31,23 @@ contribute to it. Change this document first, then the code.
 | File  Edit  View  Image  Process  Analyze  Extensions  Window  Help |
 +--------------------------------------------+-----------------+
 |  [ image A ] [ image B ]                   |  Info           |
-|                                            |  Display        |
-|              image viewer                  |  Histogram      |
+|                                            +-----------------+
+|              image viewer                  |  Display        |
 |                                            |                 |
-|  Z ----o--------  T --o----------  C 1 2 3 |                 |
+|  C 1 2 3  Z ----o--------  T --o---------- +-----------------+
++--------------------------------------------+  Histogram      |
+|  History | Results | Log                   |                 |
 +--------------------------------------------+-----------------+
-|  History | Results | Log                                     |
-+--------------------------------------------------------------+
 | status message                    x, y, value   zoom   image |
 +--------------------------------------------------------------+
 ```
 
 - **Centre:** open images as tabs. Tabs can be dragged side by side or into
-  a grid to compare images.
+  a grid to compare images; *Window > Show Images Side by Side* does it in
+  one step.
 - **Right:** *Info* (name, size, type, calibration), *Display* (display
-  range, lookup table, channels) and *Histogram* for the active image.
+  range, lookup table, channels) and *Histogram* for the active image. The
+  column runs the full height of the window so that all three fit.
 - **Bottom:** *History* (every command run, with undo position), *Results*
   (measurement tables) and *Log*.
 - Every panel can be moved, hidden and shown again from the *Window* menu,
@@ -71,7 +73,8 @@ chosen by what it does, using these rules:
 
 - At most two levels: a menu and one submenu.
 - Within a menu, related commands are grouped by weight in steps of 10, with
-  a separator between groups 100 apart.
+  a separator wherever neighbours fall in different hundreds.
+- A menu this table does not name is placed just before Window.
 - A command appears in exactly one place.
 
 Differences from ImageJ worth knowing: *Invert* is under Process (it changes
@@ -119,17 +122,25 @@ parameters:
 - Invalid values are marked on the field with the reason; OK is disabled
   until they are fixed.
 - Values are remembered per command for the next use.
-- If the only missing parameter is a file path, the native file dialog opens
-  directly instead.
+- If the only thing to ask for is a file path (the active image aside), the
+  native file dialog opens directly instead. The window stays responsive
+  while it is open.
+- Dialogs ask only for what the interface cannot already answer: commands
+  that act on a plane or channel take them from the view.
 
 ## Viewer
 
 - Samples are never smoothed when zoomed in; pixels stay sharp.
+- A newly opened image is shown at the largest standard zoom step at which
+  all of it fits, so a small image is enlarged rather than shown as a speck.
 - Mouse wheel zooms about the cursor. Drag with the middle button, or hold
   Space and drag, to pan. Double-click the zoom readout to fit.
 - Shortcuts: `+` and `-` zoom, `0` fits the window, `1` shows 100%.
 - Sliders under the image step through Z and time; channels have toggle
-  buttons. Left and Right step the last-used slider; Shift+wheel does too.
+  buttons. Left and Right (*View > Previous Plane* and *Next Plane*) step
+  the last-used slider; Shift+wheel does too.
+- Dragging a display-range control updates the image as it moves and records
+  one History entry when released.
 - The status bar shows the position under the cursor in pixels and in
   calibrated units, and the sample value (all channels for composites).
 - An image larger than memory opens immediately and loads planes on demand.
@@ -144,7 +155,9 @@ parameters:
   the Log. They state what failed, on what, and why, in plain words. No
   modal error boxes.
 - **Unavailable commands** are disabled, with the reason on hover ("Open an
-  image first").
+  image first"). Menu items otherwise have no tooltips; summaries are shown
+  in the command palette.
+- **History:** clicking an entry undoes or redoes to that step.
 
 ## Shortcuts
 

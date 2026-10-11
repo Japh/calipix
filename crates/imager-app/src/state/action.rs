@@ -39,11 +39,16 @@ pub enum UiAction {
     Undo,
     Redo,
     Zoom(Zoom),
+    /// Step the plane on screen forward (1) or back (-1) along the
+    /// slider used last.
+    Step(i8),
     TogglePanel(Panel),
     /// Bring a panel into view; queued by the application itself when a
     /// command writes its results there.
     ShowPanel(Panel),
     ResetLayout,
+    /// Put each open image in a group of its own, next to the others.
+    TileImages,
     SetTheme(Theme),
     OpenPalette,
     About,
@@ -137,26 +142,51 @@ fn definitions() -> Vec<(CommandSpec, UiAction)> {
             UiAction::Zoom(Zoom::Actual),
         ),
         (
+            spec("view.previous_plane", "Previous Plane")
+                .summary("Steps back one slice or frame along the slider used last.")
+                .menu("View", 110.0)
+                .shortcut("Left")
+                .ijm_name("Previous Slice [<]"),
+            UiAction::Step(-1),
+        ),
+        (
+            spec("view.next_plane", "Next Plane")
+                .summary("Steps forward one slice or frame along the slider used last.")
+                .menu("View", 120.0)
+                .shortcut("Right")
+                .ijm_name("Next Slice [>]"),
+            UiAction::Step(1),
+        ),
+        // The display commands of the standard library sit between these
+        // and the theme, at weights 200 to 499.
+        (
             spec("view.theme_system", "System Theme")
                 .summary("Makes the interface follow the system's light or dark setting.")
-                .menu("View > Theme", 110.0),
+                .menu("View > Theme", 910.0),
             UiAction::SetTheme(Theme::System),
         ),
         (
             spec("view.theme_light", "Light Theme")
                 .summary("Switches the interface to light colours.")
-                .menu("View > Theme", 120.0),
+                .menu("View > Theme", 920.0),
             UiAction::SetTheme(Theme::Light),
         ),
         (
             spec("view.theme_dark", "Dark Theme")
                 .summary("Switches the interface to dark colours.")
-                .menu("View > Theme", 130.0),
+                .menu("View > Theme", 930.0),
             UiAction::SetTheme(Theme::Dark),
         ),
         (
+            spec("window.tile_images", "Show Images Side by Side")
+                .summary("Arranges the open images next to each other, to compare them.")
+                .menu("Window", 105.0)
+                .ijm_name("Tile"),
+            UiAction::TileImages,
+        ),
+        (
             spec("window.reset_layout", "Reset Layout")
-                .summary("Puts every panel back in its default place.")
+                .summary("Puts every panel back in its default place and the images back in tabs.")
                 .menu("Window", 110.0),
             UiAction::ResetLayout,
         ),
@@ -181,12 +211,13 @@ fn definitions() -> Vec<(CommandSpec, UiAction)> {
         ),
     ];
     for (index, panel) in Panel::ALL.into_iter().enumerate() {
-        all.push((
-            CommandSpec::new(panel.command_id(), format!("{} Panel", panel.title()))
-                .summary(format!("Shows or hides the {} panel.", panel.title()))
-                .menu("Window", 10.0 * (index + 1) as f64),
-            UiAction::TogglePanel(panel),
-        ));
+        let mut spec = CommandSpec::new(panel.command_id(), format!("{} Panel", panel.title()))
+            .summary(format!("Shows or hides the {} panel.", panel.title()))
+            .menu("Window", 10.0 * (index + 1) as f64);
+        if let Some(name) = panel.ijm_name() {
+            spec = spec.ijm_name(name);
+        }
+        all.push((spec, UiAction::TogglePanel(panel)));
     }
     all
 }

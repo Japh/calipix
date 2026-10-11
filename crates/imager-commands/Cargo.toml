@@ -12,6 +12,7 @@ imager-command.workspace = true
 imager-core.workspace = true
 imager-io.workspace = true
 imager-ops.workspace = true
+imager-render.workspace = true
 
 [lints]
 workspace = true
