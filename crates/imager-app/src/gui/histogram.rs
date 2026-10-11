@@ -14,10 +14,11 @@ use imager_core::{AxisKind, ColorModel};
 use super::{display, ui};
 use crate::state::{AppState, HistogramState, PlaneHistogram, view};
 
-const PLOT_HEIGHT: f32 = 104.0;
+const PLOT_HEIGHT: f32 = 84.0;
 
 /// One channel's histogram, ready to draw.
 struct Shown {
+    channel: usize,
     name: String,
     color: Color32,
     data: Arc<PlaneHistogram>,
@@ -48,15 +49,6 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
 
     let log_id = egui::Id::new("histogram_log_scale");
     let mut log = ui.data(|data| data.get_temp(log_id)).unwrap_or(false);
-    ui.horizontal(|ui| {
-        if ui
-            .checkbox(&mut log, "Log scale")
-            .on_hover_text("Show counts on a logarithmic scale, so that rare values show up")
-            .changed()
-        {
-            ui.data_mut(|data| data.insert_temp(log_id, log));
-        }
-    });
 
     if channels.is_empty() {
         return ui::empty(ui, "Every channel is hidden");
@@ -69,6 +61,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
         };
         match state.histogram(id, plane, false) {
             HistogramState::Ready(data) => shown.push(Shown {
+                channel,
                 name: display::channel_name(&image, channel),
                 color: if rgb {
                     let primary = [[255, 0, 0], [0, 255, 0], [0, 0, 255]][channel.min(2)];
@@ -91,6 +84,19 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             ui::weak(ui, "Counting…");
         }
         return;
+    }
+    // Channels are told apart by the colour of their lookup tables. Where
+    // two would look the same (the same table, or greys), each takes the
+    // colour ImageJ gives a channel by default instead.
+    let distinct = shown
+        .iter()
+        .enumerate()
+        .all(|(i, one)| shown[..i].iter().all(|other| other.color != one.color));
+    if !distinct {
+        for one in &mut shown {
+            let fallback = imager_render::default_channel_lut(one.channel);
+            one.color = ui::series_color(ui, &fallback.table);
+        }
     }
 
     let series: Vec<ui::Series<'_>> = shown
@@ -122,6 +128,17 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             if pending {
                 ui.label(RichText::new("Counting…").weak().small());
             }
+            // Between the two, where it takes no room of its own.
+            ui.with_layout(
+                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+                |ui| {
+                    let toggle = ui.checkbox(&mut log, RichText::new("Log scale").small());
+                    let hint = "Show counts on a logarithmic scale, so that rare values show up";
+                    if toggle.on_hover_text(hint).changed() {
+                        ui.data_mut(|data| data.insert_temp(log_id, log));
+                    }
+                },
+            );
         });
     });
     ui.add_space(2.0);
@@ -202,9 +219,35 @@ fn statistics(ui: &mut egui::Ui, shown: &[Shown]) {
         ("Max", |h| h.max),
         ("Mode", |h| h.mode),
     ];
+    let text = |histogram: &imager_render::Histogram, name: &str, pick: Pick| {
+        let text = ui::number_text(pick(histogram));
+        if name == "Mode" {
+            // With how many samples have that value.
+            format!("{text} ({})", histogram.mode_count)
+        } else {
+            text
+        }
+    };
+    if let [one] = shown {
+        // One channel: two statistics to a row, to keep them in view.
+        let histogram = &one.data.histogram;
+        egui::Grid::new("histogram_statistics")
+            .num_columns(4)
+            .spacing([ui::GAP, 1.0])
+            .show(ui, |ui| {
+                for row in 0..3 {
+                    for (name, pick) in [rows[row], rows[row + 3]] {
+                        ui::weak(ui, name);
+                        ui.label(text(histogram, name, pick));
+                    }
+                    ui.end_row();
+                }
+            });
+        return;
+    }
     egui::Grid::new("histogram_statistics")
         .num_columns(shown.len() + 1)
-        .spacing([ui::GAP, 3.0])
+        .spacing([ui::GAP, 1.0])
         .show(ui, |ui| {
             if shown.len() > 1 {
                 // The legend: each column is headed by its channel's
@@ -224,12 +267,7 @@ fn statistics(ui: &mut egui::Ui, shown: &[Shown]) {
             for (name, pick) in rows {
                 ui::weak(ui, name);
                 for one in shown {
-                    let histogram = &one.data.histogram;
-                    let mut text = ui::number_text(pick(histogram));
-                    if name == "Mode" {
-                        text = format!("{text} ({})", histogram.mode_count);
-                    }
-                    ui.label(text);
+                    ui.label(text(&one.data.histogram, name, pick));
                 }
                 ui.end_row();
             }

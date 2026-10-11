@@ -1055,15 +1055,40 @@ impl AppState {
                 ),
             }
         };
-        entries[index]
+        let entry = &entries[index];
+        let spec = self.spec(&entry.command);
+        // In the order the command declares its parameters, leaving out
+        // those left at their defaults: what is listed is what was chosen.
+        let mut names: Vec<&str> = match spec {
+            Some(spec) => spec.inputs.iter().map(|p| p.name.as_str()).collect(),
+            None => Vec::new(),
+        };
+        for (name, _) in entry.args.iter() {
+            if !names.contains(&name) {
+                names.push(name);
+            }
+        }
+        let images = entry
             .args
             .iter()
-            .map(|(name, value)| {
-                let text = match value {
-                    Value::Image(id) => name_then(*id),
-                    other => other.to_text(),
-                };
-                format!("{} {text}", name.replace('_', " "))
+            .filter(|(_, value)| matches!(value, Value::Image(_)))
+            .count();
+        names
+            .into_iter()
+            .filter_map(|name| {
+                let value = entry.args.get(name)?;
+                let default = spec
+                    .and_then(|s| s.param(name))
+                    .and_then(|p| p.default.as_ref());
+                if default == Some(value) {
+                    return None;
+                }
+                Some(match value {
+                    // A command's one image needs no label.
+                    Value::Image(id) if images == 1 => name_then(*id),
+                    Value::Image(id) => format!("{} {}", name.replace('_', " "), name_then(*id)),
+                    other => format!("{} {}", name.replace('_', " "), other.to_text()),
+                })
             })
             .collect::<Vec<_>>()
             .join(", ")

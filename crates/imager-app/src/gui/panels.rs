@@ -124,7 +124,7 @@ fn info(ui: &mut egui::Ui, state: &AppState) {
             if dataset.image.is_in_memory() {
                 format!("{size}, in memory")
             } else {
-                format!("{size}, read from the file as needed")
+                format!("{size}, read on demand")
             },
         );
     });

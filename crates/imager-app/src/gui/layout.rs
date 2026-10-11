@@ -157,22 +157,25 @@ impl Layout {
             .map(|(_, pane)| pane)
             .collect();
 
-        let mut top = images;
-        if !right.is_empty() {
-            let column = split(&mut tiles, LinearDir::Vertical, &right);
-            top = split(
-                &mut tiles,
-                LinearDir::Horizontal,
-                &[(images, 0.74), (column, 0.26)],
-            );
-        }
-        let mut root = top;
+        // The right column runs the full height of the window: three
+        // panels stacked need it more than the strip under the images
+        // needs the width.
+        let mut left = images;
         if !bottom.is_empty() {
             let strip = tiles.insert_tab_tile(bottom);
-            root = split(
+            left = split(
                 &mut tiles,
                 LinearDir::Vertical,
-                &[(top, 0.8), (strip, 0.2)],
+                &[(images, 0.8), (strip, 0.2)],
+            );
+        }
+        let mut root = left;
+        if !right.is_empty() {
+            let column = split(&mut tiles, LinearDir::Vertical, &right);
+            root = split(
+                &mut tiles,
+                LinearDir::Horizontal,
+                &[(left, 0.74), (column, 0.26)],
             );
         }
         Layout {
@@ -259,9 +262,9 @@ impl Layout {
         self.tree.tiles.set_visible(welcome, open.is_empty());
     }
 
-    /// Gives each open image a tab group of its own, side by side where
-    /// the image tabs are. Returns false if that place is not a row any
-    /// more (the person has rearranged it), in which case nothing moves.
+    /// Gives each image that shares a tab group with the first one a group
+    /// of its own, in a row where that group was. Returns false if there
+    /// was nothing to separate.
     pub fn tile_images(&mut self) -> bool {
         let mut images = self.image_tiles();
         images.sort_by_key(|(_, id)| *id);
@@ -272,40 +275,46 @@ impl Layout {
         let Some(group) = tiles.parent_of(first) else {
             return false;
         };
-        let Some(row) = tiles.parent_of(group) else {
-            return false;
-        };
         let together: Vec<TileId> = images[1..]
             .iter()
             .map(|(tile, _)| *tile)
             .filter(|tile| tiles.parent_of(*tile) == Some(group))
             .collect();
-        let count = together.len() + 1;
-        let mut previous = group;
-        for tile in together {
-            let beside = self.tree.tiles.insert_tab_tile(Vec::new());
-            let Some(Tile::Container(Container::Linear(linear))) = self.tree.tiles.get_mut(row)
-            else {
-                self.tree.tiles.remove(beside);
-                return false;
-            };
-            if linear.dir != LinearDir::Horizontal {
-                self.tree.tiles.remove(beside);
+        if together.is_empty() {
+            return false;
+        }
+        // A row takes the group's place, with the group as its first cell.
+        let parent = tiles.parent_of(group);
+        let row = tiles.insert_container(Linear::new(LinearDir::Horizontal, vec![group]));
+        let swap = |children: &mut Vec<TileId>| {
+            for child in children.iter_mut().filter(|child| **child == group) {
+                *child = row;
+            }
+        };
+        match parent.and_then(|parent| tiles.get_mut(parent)) {
+            Some(Tile::Container(Container::Linear(linear))) => {
+                let share = linear.shares[group];
+                swap(&mut linear.children);
+                linear.shares.set_share(row, share);
+            }
+            Some(Tile::Container(Container::Tabs(tabs))) => {
+                swap(&mut tabs.children);
+                if tabs.active == Some(group) {
+                    tabs.active = Some(row);
+                }
+            }
+            Some(_) => {
+                tiles.remove(row);
                 return false;
             }
-            // The images share the width the one group had.
-            let at = linear.children.iter().position(|c| *c == previous);
-            let share = linear.shares[group];
-            let each = if previous == group {
-                share / count as f32
-            } else {
-                share
-            };
-            linear.children.insert(at.map_or(0, |i| i + 1), beside);
-            linear.shares.set_share(group, each);
-            linear.shares.set_share(beside, each);
+            None => self.tree.root = Some(row),
+        }
+        for tile in together {
+            let beside = self.tree.tiles.insert_tab_tile(Vec::new());
+            if let Some(Tile::Container(Container::Linear(linear))) = self.tree.tiles.get_mut(row) {
+                linear.children.push(beside);
+            }
             self.tree.move_tile_to_container(tile, beside, 0, false);
-            previous = beside;
         }
         true
     }

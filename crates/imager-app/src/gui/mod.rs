@@ -314,15 +314,12 @@ impl Shell {
                     self.shown_active = None;
                 }
                 UiAction::TileImages => {
-                    self.state.status = if self.layout.tile_images() {
-                        Status::Done("Images shown side by side".to_string())
+                    let text = if self.layout.tile_images() {
+                        "Images shown side by side"
                     } else {
-                        Status::Done(
-                            "Show Images Side by Side: the image tabs have been rearranged; \
-                             use Window > Reset Layout first"
-                                .to_string(),
-                        )
+                        "Show Images Side by Side: the images are already apart"
                     };
+                    self.state.status = Status::Done(text.to_string());
                 }
                 UiAction::OpenPalette => self.palette.open(),
                 UiAction::About => self.about_open = true,

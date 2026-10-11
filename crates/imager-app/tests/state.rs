@@ -131,6 +131,7 @@ fn menus_follow_the_prescribed_order_and_grouping() {
             "History Panel",
             "Log Panel",
             "-",
+            "Show Images Side by Side",
             "Reset Layout"
         ]
     );

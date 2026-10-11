@@ -20,6 +20,7 @@
 //! - `log` prints the history, the status and what the viewer reports to
 //!   standard error, to check a script did what it meant to
 //! - `click:<x>,<y>` clicks at a position in the window, e.g. on a menu
+//! - `double:<x>,<y>` double-clicks there
 //! - `hover:<x>,<y>` moves the pointer there
 //! - `wait:<milliseconds>` lets time pass
 //!
@@ -53,6 +54,7 @@ enum Step {
     Drag(egui::Pos2, egui::Pos2),
     Log,
     Click(egui::Pos2),
+    Double(egui::Pos2),
     Hover(egui::Pos2),
     Wait(Duration),
 }
@@ -87,7 +89,8 @@ impl Step {
                     .context("position needs indices separated by commas")?,
             ),
             "hide" | "show" => Step::Visible(
-                rest.parse().context("hide and show need a channel number")?,
+                rest.parse()
+                    .context("hide and show need a channel number")?,
                 verb.trim() == "show",
             ),
             "drag" => {
@@ -102,6 +105,7 @@ impl Step {
             }
             "log" => Step::Log,
             "click" => Step::Click(position(rest)?),
+            "double" => Step::Double(position(rest)?),
             "hover" => Step::Hover(position(rest)?),
             "wait" => Step::Wait(Duration::from_millis(
                 rest.parse().context("wait needs milliseconds")?,
@@ -207,6 +211,19 @@ impl Capture {
     fn apply(&mut self, step: Step, shell: &mut Shell) {
         match step {
             Step::Hover(at) => self.pointer.push_back(vec![egui::Event::PointerMoved(at)]),
+            Step::Double(at) => {
+                let button = |pressed| egui::Event::PointerButton {
+                    pos: at,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                };
+                self.pointer.push_back(vec![egui::Event::PointerMoved(at)]);
+                for _ in 0..2 {
+                    self.pointer.push_back(vec![button(true)]);
+                    self.pointer.push_back(vec![button(false)]);
+                }
+            }
             Step::Click(at) => {
                 let button = |pressed| egui::Event::PointerButton {
                     pos: at,
@@ -289,7 +306,12 @@ impl Capture {
                 eprintln!("capture: status {:?}", state.status);
                 for (index, row) in state.history_rows().iter().enumerate() {
                     let mark = if row.undone { " (undone)" } else { "" };
-                    eprintln!("capture: history {} {}{mark}: {}", index + 1, row.title, row.detail);
+                    eprintln!(
+                        "capture: history {} {}{mark}: {}",
+                        index + 1,
+                        row.title,
+                        row.detail
+                    );
                 }
                 let view = shell.view();
                 eprintln!(

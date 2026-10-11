@@ -66,9 +66,9 @@ impl Panel {
     /// Share of its dock's length the panel gets in the default layout.
     pub fn share(self) -> f32 {
         match self {
-            Panel::Display => 1.3,
-            Panel::Histogram => 1.2,
-            Panel::Info => 1.0,
+            Panel::Info => 0.9,
+            Panel::Display => 1.1,
+            Panel::Histogram => 1.5,
             Panel::History | Panel::Log => 1.0,
         }
     }

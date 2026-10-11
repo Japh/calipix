@@ -116,7 +116,7 @@ pub fn property(ui: &mut egui::Ui, name: &str, value: impl Into<String>) {
 pub fn properties(ui: &mut egui::Ui, id: &str, add_rows: impl FnOnce(&mut egui::Ui)) {
     egui::Grid::new(id)
         .num_columns(2)
-        .spacing([GAP * 1.5, 4.0])
+        .spacing([GAP * 1.5, 2.0])
         .show(ui, add_rows);
 }
 
@@ -368,12 +368,13 @@ pub fn histogram_plot(
     let overlaid = series.len() > 1;
     for one in series {
         let histogram = one.histogram;
+        // Overlaid histograms are translucent, so that each shows through
+        // the others.
         let fill = if overlaid {
-            one.color.gamma_multiply(0.45)
+            one.color.gamma_multiply(0.6)
         } else {
             one.color.gamma_multiply(0.85)
         };
-        let mut outline = Vec::with_capacity(histogram.counts.len() * 2);
         for (bin, &count) in histogram.counts.iter().enumerate() {
             let left = plot.x_of(histogram.bin_start(bin));
             let right = plot.x_of(histogram.bin_start(bin + 1)).max(left + 1.0);
@@ -385,14 +386,6 @@ pub fn histogram_plot(
                     fill,
                 );
             }
-            outline.push(egui::pos2(left, y));
-            outline.push(egui::pos2(right, y));
-        }
-        if overlaid {
-            painter.add(egui::Shape::line(
-                outline,
-                egui::Stroke::new(1.0, one.color),
-            ));
         }
     }
     plot

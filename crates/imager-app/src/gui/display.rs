@@ -10,7 +10,7 @@
 //! ([`AppState::preview_display_range`]); letting go runs Set Display
 //! Range once, with where the drag ended.
 
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use imager_command::{Args, DatasetId};
 use imager_core::{AxisKind, ColorModel, Image};
 use imager_render::ChannelMode;
@@ -268,6 +268,11 @@ fn channel(
                 .add_sized([54.0, ui.spacing().interact_size.y], drag)
                 .labelled_by(text.id)
                 .on_hover_text(hint);
+            // Only a value the person changed is rounded: a range found
+            // by Auto may lie between whole numbers and stays as it is.
+            if response.changed() {
+                *value = snap(*value);
+            }
             fields_held |= response.dragged();
         };
         field(ui, "Min", &mut min, "Sample value shown darkest");
@@ -283,8 +288,6 @@ fn channel(
                 .clicked();
         });
     });
-    min = snap(min);
-    max = snap(max);
 
     if (min, max) != before {
         state.preview_display_range(id, channel, (min, max));
@@ -333,7 +336,14 @@ fn range_marks(ui: &egui::Ui, plot: &ui::Plot, (min, max): (f64, f64)) {
     outside(rect.left(), left);
     outside(right, rect.right());
     let ink = ui.visuals().strong_text_color();
+    // Edged in the background colour, so that a marker shows against
+    // bars of its own colour.
+    let edge = egui::Stroke::new(1.0, ui.visuals().extreme_bg_color);
     for (x, inward) in [(left, 1.0), (right, -1.0)] {
+        painter.line_segment(
+            [egui::pos2(x, rect.top()), egui::pos2(x, rect.bottom())],
+            egui::Stroke::new(3.5, edge.color),
+        );
         painter.line_segment(
             [egui::pos2(x, rect.top()), egui::pos2(x, rect.bottom())],
             egui::Stroke::new(1.5, ink),
@@ -345,11 +355,7 @@ fn range_marks(ui: &egui::Ui, plot: &ui::Plot, (min, max): (f64, f64)) {
             egui::pos2(x + 6.0 * inward, rect.top()),
             egui::pos2(x, rect.top() + 7.0),
         ];
-        painter.add(egui::Shape::convex_polygon(
-            flag,
-            ink,
-            egui::Stroke::new(0.0, Color32::TRANSPARENT),
-        ));
+        painter.add(egui::Shape::convex_polygon(flag, ink, edge));
     }
 }
 
@@ -366,14 +372,23 @@ fn lut_choice(
     let mut chosen = None;
     let mut invert = false;
     let name = channel_name(image, channel);
+    // Files name their tables as they please ("fire", "Custom"); what
+    // counts is whether the table is one of the built-in ones.
+    let built_in = imager_render::builtin_luts()
+        .iter()
+        .find(|lut| lut.lut().table == current.table);
+    let shown_name = match built_in {
+        Some(lut) => lut.name,
+        None if current.name.is_empty() => "Custom",
+        None => current.name.as_str(),
+    };
+    let built_in = built_in.map(|lut| lut.id);
     let combo = egui::ComboBox::from_id_salt("lut")
-        .selected_text(current.name.as_str())
+        .selected_text(shown_name)
         .width(112.0)
         .show_ui(ui, |ui| {
             for lut in imager_render::builtin_luts() {
-                // A table may share a name with a built-in one without
-                // being it (a file's own "Custom" never does).
-                let selected = lut.name == current.name && lut.lut().table == current.table;
+                let selected = built_in == Some(lut.id);
                 if ui.selectable_label(selected, lut.name).clicked() && !selected {
                     chosen = Some(lut.id);
                 }
@@ -388,7 +403,12 @@ fn lut_choice(
     combo
         .response
         .on_hover_text("Lookup table")
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, &info));
+        .widget_info(|| {
+            // Named for what it sets, with the table in use as its value.
+            let mut described = egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, &info);
+            described.current_text_value = Some(shown_name.to_string());
+            described
+        });
     if let Some(lut) = chosen {
         state.start_display(
             "view.set_lut",
