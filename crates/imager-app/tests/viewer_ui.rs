@@ -590,15 +590,23 @@ fn the_info_panel_describes_the_image() {
     assert!(contains(&h, "hyperstack_c3z4t5.tif"));
     assert!(contains(&h, "read on demand"));
 
-    // An image with ImageJ's Info text shows it.
+    // ImageJ's Info text, which this file carries, is shown as written,
+    // and its other properties are a click away.
+    assert_eq!(
+        meta.properties.get("Info").map(String::as_str),
+        Some(
+            "fixture=hyperstack_c3z4t5
+key=value"
+        )
+    );
+    assert!(h.query_by_role_and_label(Role::Label, "Info").is_some());
+    assert!(contains(&h, "fixture=hyperstack_c3z4t5"));
+    assert!(contains(&h, "Properties ("));
+
+    // The panel follows the active image.
     h.state_mut().state.open(fixture("gray8_calibrated.tif"));
     catch_up(&mut h);
-    let meta = image(&h).meta().clone();
-    if let Some(info) = meta.properties.get("Info") {
-        assert!(h.query_by_role_and_label(Role::Label, "Info").is_some());
-        let first_line = info.lines().next().unwrap_or_default().to_string();
-        assert!(h.query_by_label_contains(&first_line).is_some());
-    }
+    assert!(!contains(&h, "fixture=hyperstack_c3z4t5"));
     assert!(has_text(&h, "8-bit (u8)"));
 }
 
