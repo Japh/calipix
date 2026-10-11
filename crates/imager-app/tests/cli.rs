@@ -151,3 +151,77 @@ fn binary_exit_codes_and_streams() {
     assert!(bad.stdout.is_empty());
     assert!(String::from_utf8_lossy(&bad.stderr).contains("error: unknown command"));
 }
+
+/// A display command from the command line: the lookup table it sets is
+/// in the TIFF written, and the samples are the ones read.
+#[test]
+fn a_display_command_runs_headless_and_its_result_is_saved() {
+    let source =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/imagej/out/gray8.tif");
+    let (a, b) = (temp("a.tif"), temp("b.tif"));
+    std::fs::copy(&source, &a).unwrap();
+    let output = imager(&[
+        "run",
+        "view.set_lut",
+        "--input",
+        a.to_str().unwrap(),
+        "--lut",
+        "fire",
+        "-o",
+        b.to_str().unwrap(),
+    ])
+    .unwrap();
+    assert_eq!(output, "", "a display command reports nothing");
+
+    let (before, after) = (imager_io::open(&a).unwrap(), imager_io::open(&b).unwrap());
+    let fire = imager_render::builtin_lut("fire").unwrap();
+    assert_eq!(
+        after.meta().channels[0].lut.as_ref().unwrap().table,
+        fire.table
+    );
+    assert_eq!(after.read_plane(0).unwrap(), before.read_plane(0).unwrap());
+
+    // Ranges too, and the plane they are taken from is named as in ImageJ.
+    let stack = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/imagej/out/hyperstack_c3z4t5.tif");
+    let c = temp("c.tif");
+    imager(&[
+        "run",
+        "view.auto_contrast",
+        "--input",
+        stack.to_str().unwrap(),
+        "--channel",
+        "2",
+        "--slice",
+        "3",
+        "--frame=4",
+        "-o",
+        c.to_str().unwrap(),
+    ])
+    .unwrap();
+    let opened = imager_io::open(&stack).unwrap();
+    let expected = imager_render::auto_contrast(&opened, &[1, 2, 3], 1).unwrap();
+    let saved = imager_io::open(&c).unwrap();
+    assert_eq!(saved.meta().channels[1].display_range, Some(expected.range));
+    assert_eq!(
+        saved.meta().channels[0].display_range,
+        opened.meta().channels[0].display_range
+    );
+
+    let help = imager(&["commands", "view.set_lut"]).unwrap();
+    assert!(help.contains("Menu: View > Set Lookup Table"), "{help}");
+    assert!(help.contains("fire|grays|ice"), "{help}");
+    let error = imager(&[
+        "run",
+        "view.set_lut",
+        "--input",
+        a.to_str().unwrap(),
+        "--lut",
+        "plasma",
+    ])
+    .unwrap_err();
+    assert!(
+        format!("{error:#}").contains("`plasma` is not one of"),
+        "{error:#}"
+    );
+}
