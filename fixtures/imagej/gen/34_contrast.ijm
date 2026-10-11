@@ -1,6 +1,6 @@
 // Display ranges chosen by Process > Enhance Contrast (ContrastEnhancer.stretchHistogram).
 // The B&C "Auto" button (ContrastAdjuster.autoAdjust) needs the B&C window and cannot be
-// driven from a batch macro; its reference comes from crates/imager-render/tests/data/BcAuto.java.
+// driven from a batch macro; its reference comes from crates/calipix-render/tests/data/BcAuto.java.
 // Outputs:
 //   contrast.csv   image,scope,saturated,min,max
 //     scope "plane": run("Enhance Contrast", "saturated=<s>") on a single image

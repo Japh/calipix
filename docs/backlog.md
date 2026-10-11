@@ -48,7 +48,7 @@ Things deliberately left out of the milestone in which they came up.
 ## Fixtures
 
 - Let `cargo xtask gen` run Java harnesses, so the Brightness and Contrast
-  "Auto" reference (`crates/imager-render/tests/data/bc_auto.csv`) is
+  "Auto" reference (`crates/calipix-render/tests/data/bc_auto.csv`) is
   regenerated and verified with the rest.
 - Establish whether fixtures are byte-identical across operating systems
   and JDK versions.

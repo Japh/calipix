@@ -5,7 +5,7 @@
 //!   cargo xtask verify    regenerate into target/verify-out and compare with the manifest
 //!
 //! Java and ij.jar are needed only to run this tool. The generated files are committed, so
-//! neither is a build, test or runtime dependency of ImageR2.
+//! neither is a build, test or runtime dependency of Calipix.
 //!
 //! ImageJ cannot run these macros with `-Djava.awt.headless=true`; it is run with `-batch`,
 //! which creates no main window but needs a display. See docs/spikes/s4-s5-fixtures-tiff.md.

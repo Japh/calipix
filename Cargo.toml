@@ -10,14 +10,14 @@ repository = "https://github.com/Japh/imager2"
 rust-version = "1.99"
 
 [workspace.dependencies]
-imager-core = { path = "crates/imager-core" }
-imager-command = { path = "crates/imager-command" }
-imager-command-derive = { path = "crates/imager-command-derive" }
-imager-io = { path = "crates/imager-io" }
-imager-render = { path = "crates/imager-render" }
-imager-commands = { path = "crates/imager-commands" }
-imager-ops = { path = "crates/imager-ops" }
-imager-view = { path = "crates/imager-view" }
+calipix-core = { path = "crates/calipix-core" }
+calipix-command = { path = "crates/calipix-command" }
+calipix-command-derive = { path = "crates/calipix-command-derive" }
+calipix-io = { path = "crates/calipix-io" }
+calipix-render = { path = "crates/calipix-render" }
+calipix-commands = { path = "crates/calipix-commands" }
+calipix-ops = { path = "crates/calipix-ops" }
+calipix-view = { path = "crates/calipix-view" }
 
 anyhow = "1"
 bytemuck = { version = "1", features = ["derive"] }

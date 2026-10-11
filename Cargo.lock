@@ -488,6 +488,113 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
+name = "calipix-app"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "calipix-command",
+ "calipix-commands",
+ "calipix-core",
+ "calipix-io",
+ "calipix-render",
+ "calipix-view",
+ "chrono",
+ "clap",
+ "eframe",
+ "egui_kittest",
+ "egui_tiles",
+ "rfd",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "calipix-command"
+version = "0.1.0"
+dependencies = [
+ "calipix-command-derive",
+ "calipix-core",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "calipix-command-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "calipix-commands"
+version = "0.1.0"
+dependencies = [
+ "calipix-command",
+ "calipix-core",
+ "calipix-io",
+ "calipix-ops",
+ "calipix-render",
+]
+
+[[package]]
+name = "calipix-core"
+version = "0.1.0"
+dependencies = [
+ "num-complex",
+ "proptest",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "calipix-io"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "calipix-core",
+ "flate2",
+ "image",
+ "png",
+ "proptest",
+ "thiserror 2.0.21",
+ "tiff",
+ "weezl",
+]
+
+[[package]]
+name = "calipix-ops"
+version = "0.1.0"
+dependencies = [
+ "calipix-core",
+]
+
+[[package]]
+name = "calipix-render"
+version = "0.1.0"
+dependencies = [
+ "calipix-core",
+ "proptest",
+]
+
+[[package]]
+name = "calipix-view"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "calipix-core",
+ "calipix-io",
+ "calipix-render",
+ "eframe",
+ "egui",
+ "egui-wgpu",
+ "egui_kittest",
+ "png",
+ "pollster 1.0.1",
+ "proptest",
+]
+
+[[package]]
 name = "calloop"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1675,113 +1782,6 @@ dependencies = [
  "tiff",
  "zune-core",
  "zune-jpeg",
-]
-
-[[package]]
-name = "imager-app"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "eframe",
- "egui_kittest",
- "egui_tiles",
- "imager-command",
- "imager-commands",
- "imager-core",
- "imager-io",
- "imager-render",
- "imager-view",
- "rfd",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "imager-command"
-version = "0.1.0"
-dependencies = [
- "imager-command-derive",
- "imager-core",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "imager-command-derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
-]
-
-[[package]]
-name = "imager-commands"
-version = "0.1.0"
-dependencies = [
- "imager-command",
- "imager-core",
- "imager-io",
- "imager-ops",
- "imager-render",
-]
-
-[[package]]
-name = "imager-core"
-version = "0.1.0"
-dependencies = [
- "num-complex",
- "proptest",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "imager-io"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "flate2",
- "image",
- "imager-core",
- "png",
- "proptest",
- "thiserror 2.0.21",
- "tiff",
- "weezl",
-]
-
-[[package]]
-name = "imager-ops"
-version = "0.1.0"
-dependencies = [
- "imager-core",
-]
-
-[[package]]
-name = "imager-render"
-version = "0.1.0"
-dependencies = [
- "imager-core",
- "proptest",
-]
-
-[[package]]
-name = "imager-view"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "eframe",
- "egui",
- "egui-wgpu",
- "egui_kittest",
- "imager-core",
- "imager-io",
- "imager-render",
- "png",
- "pollster 1.0.1",
- "proptest",
 ]
 
 [[package]]

@@ -1,0 +1,17 @@
+[package]
+name = "calipix-command"
+description = "Typed command registry, executor and history for Calipix"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+calipix-command-derive.workspace = true
+calipix-core.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

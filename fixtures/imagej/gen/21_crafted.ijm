@@ -1,7 +1,7 @@
 // What ImageJ reads from the hand-built GIF and BMP files in gen/21_crafted_inputs, which hold
 // features ImageJ's own writers never produce (GIF disposal methods, transparency, interlacing,
 // local colour tables, partial frames; BMP bit depths, palettes and row order).
-// The inputs are built by crates/imager-io/tests/formats_craft.rs.
+// The inputs are built by crates/calipix-io/tests/formats_craft.rs.
 // Outputs, for each input <name>.<ext>:
 //   crafted_<name>_<s>.txt   pixel values of slice s as a text image (8-bit results)
 //   crafted_<name>_<s>.png   slice s (RGB results)

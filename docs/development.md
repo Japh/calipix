@@ -2,13 +2,13 @@
 
 ## Layout and ownership
 
-Crates depend downward only: `imager-core` at the bottom, then
-`imager-roi`/`imager-io`/`imager-ops`/`imager-render`, then
-`imager-command`, `imager-commands`, `imager-view`, and `imager-app` on top.
-`imager-ops` knows nothing about commands; `imager-command` knows nothing
+Crates depend downward only: `calipix-core` at the bottom, then
+`calipix-roi`/`calipix-io`/`calipix-ops`/`calipix-render`, then
+`calipix-command`, `calipix-commands`, `calipix-view`, and `calipix-app` on top.
+`calipix-ops` knows nothing about commands; `calipix-command` knows nothing
 about the GUI toolkit.
 
-The public APIs of `imager-core` and `imager-command` are shared by
+The public APIs of `calipix-core` and `calipix-command` are shared by
 everything. Extend them deliberately and additively.
 
 ## Rules for every change
@@ -43,9 +43,9 @@ counts; within 1e-5 relative error for floating point.
 
 ## Commands
 
-Every user-facing operation is a command in `imager-commands`, defined once
+Every user-facing operation is a command in `calipix-commands`, defined once
 with `CommandSpec` and a `#[derive(Params)]` struct. The conformance test in
-`crates/imager-commands/tests/standard.rs` checks that each command is
+`crates/calipix-commands/tests/standard.rs` checks that each command is
 usable from every frontend. Titles, summaries, ids and menu placement follow
 `docs/ux.md`.
 

@@ -52,7 +52,7 @@ wasmtime and wasmtime-wasi 49.0.2 (latest stable), wit-bindgen 0.62.0.
 4. **Sandbox defaults:** empty WASI context, sockets off, memory limit, epoch
    deadline re-armed before every call. After a trap, discard the instance
    and create a new one.
-5. **Version the ABI in the WIT package name** (`imager:plugin@0.1.0`) and
+5. **Version the ABI in the WIT package name** (`calipix:plugin@0.1.0`) and
    evolve it additively.
 6. **Ship an extension template** with `opt-level = 3`, LTO and `simd128`;
    the build flags make a five-fold difference.

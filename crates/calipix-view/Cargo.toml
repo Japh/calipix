@@ -1,0 +1,28 @@
+[package]
+name = "calipix-view"
+description = "GPU image viewer widget for Calipix"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+bytemuck.workspace = true
+egui.workspace = true
+egui-wgpu.workspace = true
+calipix-core.workspace = true
+calipix-render.workspace = true
+
+[dev-dependencies]
+eframe.workspace = true
+egui_kittest.workspace = true
+calipix-io.workspace = true
+proptest.workspace = true
+# Blocks on wgpu's adapter and device futures in the offscreen tests.
+pollster = "1"
+# Writes the example's self-screenshot.
+png = "0.18"
+
+[lints]
+workspace = true

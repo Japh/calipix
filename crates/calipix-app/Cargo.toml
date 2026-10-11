@@ -1,0 +1,40 @@
+[package]
+name = "calipix-app"
+description = "The Calipix application: desktop interface and command line"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "calipix"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+eframe = { workspace = true, optional = true }
+egui_tiles = { workspace = true, optional = true }
+calipix-command.workspace = true
+calipix-commands.workspace = true
+calipix-core.workspace = true
+calipix-io.workspace = true
+calipix-render.workspace = true
+calipix-view = { workspace = true, optional = true }
+rfd = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
+
+[features]
+default = ["gui"]
+# The desktop interface. Without it the binary is headless only.
+gui = ["dep:eframe", "dep:egui_tiles", "dep:calipix-view", "dep:rfd"]
+
+[dev-dependencies]
+egui_kittest.workspace = true
+calipix-io.workspace = true
+
+[lints]
+workspace = true

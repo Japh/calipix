@@ -69,13 +69,13 @@ jobs:
         include:
           - os: ubuntu-latest
             name: linux-x86_64
-            binary: imager2
+            binary: calipix
           - os: windows-latest
             name: windows-x86_64
-            binary: imager2.exe
+            binary: calipix.exe
           - os: macos-latest
             name: macos-arm64
-            binary: imager2
+            binary: calipix
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -85,7 +85,7 @@ jobs:
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev mesa-vulkan-drivers libvulkan1
-      - run: cargo build --release -p imager-app
+      - run: cargo build --release -p calipix-app
       - name: Check the binary runs
         run: target/release/${{ matrix.binary }} commands
       - name: Collect files
@@ -95,6 +95,6 @@ jobs:
           cp target/release/${{ matrix.binary }} LICENSE NOTICE README.md dist/
       - uses: actions/upload-artifact@v4
         with:
-          name: imager2-${{ matrix.name }}
+          name: calipix-${{ matrix.name }}
           path: dist
           if-no-files-found: error

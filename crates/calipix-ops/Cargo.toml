@@ -1,0 +1,14 @@
+[package]
+name = "calipix-ops"
+description = "Image processing algorithms for Calipix"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+calipix-core.workspace = true
+
+[lints]
+workspace = true

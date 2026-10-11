@@ -2,7 +2,7 @@
 //
 // Reading: what ImageJ makes of the hand-built PNG files in gen/22_png_inputs, which hold every
 // colour type and bit depth, palettes, transparency and interlacing. The inputs are built by
-// crates/imager-io/tests/png_craft.rs.
+// crates/calipix-io/tests/png_craft.rs.
 // Outputs, for each input <name>.png:
 //   png_<name>_<s>.txt     8-bit and 16-bit results: sample values of slice s as a text image
 //                          RGB results: the red (s=1), green (2) and blue (3) values

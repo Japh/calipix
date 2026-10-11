@@ -1,11 +1,13 @@
-# ImageR2
+# Calipix
 
-Open scientific N-dimensional image processing 🔬 🎇 in Rust.
+Calipers for pixels: open scientific N-dimensional image analysis 🔬 🎇 in
+Rust.
 
-ImageR2 is a Rust-based clone of the Java-based
-[ImageJ2](https://imagej.net/software/imagej2/) (hence the R): one
-application, one download, with results that match ImageJ. It is at an early
-stage; see [Status](#status).
+Calipix is a Rust reimplementation of
+[ImageJ2](https://imagej.net/software/imagej2/): one application, one
+download, with results that match ImageJ and files that open in both. It is
+an independent project, not affiliated with ImageJ. It is at an early stage;
+see [Status](#status).
 
 ## Try it
 
@@ -24,7 +26,7 @@ cargo run --release -- commands
 cargo run --release -- run image.invert --input in.png -o out.png
 ```
 
-`imager2 commands <id>` describes a command's parameters, and `--json` gives a
+`calipix commands <id>` describes a command's parameters, and `--json` gives a
 machine-readable description of every command.
 
 ## How it is put together
@@ -36,16 +38,16 @@ drift apart, and every run is recorded for undo and reproducibility.
 
 | Crate | Purpose |
 |---|---|
-| `imager-core` | N-dimensional image model: typed buffers, calibrated axes, lazy views |
-| `imager-command` | Command definitions, registry, executor, undo history |
-| `imager-ops` | Image processing algorithms |
-| `imager-io` | File formats |
-| `imager-render` | Reference renderer (samples to display colours) |
-| `imager-commands` | The built-in commands |
-| `imager-view` | GPU image viewer widget |
-| `imager-app` | The `imager2` binary: desktop interface and command line |
+| `calipix-core` | N-dimensional image model: typed buffers, calibrated axes, lazy views |
+| `calipix-command` | Command definitions, registry, executor, undo history |
+| `calipix-ops` | Image processing algorithms |
+| `calipix-io` | File formats |
+| `calipix-render` | Reference renderer (samples to display colours) |
+| `calipix-commands` | The built-in commands |
+| `calipix-view` | GPU image viewer widget |
+| `calipix-app` | The `calipix` binary: desktop interface and command line |
 
-The crates are an internal structure; ImageR2 ships as a single binary.
+The crates are an internal structure; Calipix ships as a single binary.
 
 ## Status
 
@@ -80,7 +82,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 Requires the Rust toolchain named in `rust-toolchain.toml` (installed
-automatically by rustup). `--no-default-features` on `imager-app` builds a
+automatically by rustup). `--no-default-features` on `calipix-app` builds a
 headless binary without the desktop interface.
 
 ## Licence

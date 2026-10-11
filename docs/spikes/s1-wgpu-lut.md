@@ -76,7 +76,7 @@ ui.painter().add(egui_wgpu::Callback::new_paint_callback(rect, callback));
    arithmetic the GPU was occasionally one LUT entry away from the CPU (for
    example 141 of 15,000,000 pixels). That is within 1 display level for grey
    LUTs but up to 7 for colour LUTs. The shader must implement the mapping in
-   `imager-render` exactly (see `docs/compat.md`), which for integer planes
+   `calipix-render` exactly (see `docs/compat.md`), which for integer planes
    means integer maths.
 4. **Detect the software renderer.** `adapter.get_info().device_type ==
    DeviceType::Cpu` identifies WARP. It is correct but 25 to 35 times slower;
