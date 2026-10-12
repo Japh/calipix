@@ -13,6 +13,10 @@ pub enum Panel {
     Display,
     Histogram,
     History,
+    /// The results tables of the session, one at a time.
+    Results,
+    /// Tables that are profiles, histograms or distributions, as charts.
+    Plot,
     Log,
 }
 
@@ -27,11 +31,13 @@ pub enum Dock {
 
 impl Panel {
     /// Every panel, in Window menu order.
-    pub const ALL: [Panel; 5] = [
+    pub const ALL: [Panel; 7] = [
         Panel::Info,
         Panel::Display,
         Panel::Histogram,
         Panel::History,
+        Panel::Results,
+        Panel::Plot,
         Panel::Log,
     ];
 
@@ -41,6 +47,8 @@ impl Panel {
             Panel::Display => "Display",
             Panel::Histogram => "Histogram",
             Panel::History => "History",
+            Panel::Results => "Results",
+            Panel::Plot => "Plot",
             Panel::Log => "Log",
         }
     }
@@ -52,6 +60,8 @@ impl Panel {
             Panel::Display => "display",
             Panel::Histogram => "histogram",
             Panel::History => "history",
+            Panel::Results => "results",
+            Panel::Plot => "plot",
             Panel::Log => "log",
         }
     }
@@ -59,7 +69,9 @@ impl Panel {
     pub fn dock(self) -> Dock {
         match self {
             Panel::Info | Panel::Display | Panel::Histogram => Dock::Right,
-            Panel::History | Panel::Log => Dock::Bottom,
+            // Tables and profiles are wide rather than tall, which is the
+            // shape of the strip under the images.
+            Panel::History | Panel::Results | Panel::Plot | Panel::Log => Dock::Bottom,
         }
     }
 
@@ -69,7 +81,7 @@ impl Panel {
             Panel::Info => 0.9,
             Panel::Display => 1.1,
             Panel::Histogram => 1.5,
-            Panel::History | Panel::Log => 1.0,
+            Panel::History | Panel::Results | Panel::Plot | Panel::Log => 1.0,
         }
     }
 
@@ -78,6 +90,7 @@ impl Panel {
         match self {
             // Its B&C window is where display ranges are adjusted.
             Panel::Display => Some("Brightness/Contrast..."),
+            Panel::Results => Some("Results"),
             _ => None,
         }
     }

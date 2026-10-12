@@ -16,6 +16,8 @@ pub const GAP: f32 = 10.0;
 pub const MARGIN: i8 = 8;
 /// Width of the text fields and drop-downs in dialogs.
 pub const FIELD_WIDTH: f32 = 240.0;
+/// Width of a field that holds one number.
+pub const NUMBER_WIDTH: f32 = 72.0;
 /// Fill of the button that carries out a dialog's purpose; white text
 /// reads on it in both themes.
 const ACCENT: Color32 = Color32::from_rgb(0, 102, 184);
@@ -149,7 +151,9 @@ pub fn number(ui: &mut egui::Ui, value: &mut f64, range: NumberRange) -> egui::R
         if range.integer {
             drag.fixed_decimals(0)
         } else {
+            // As a person would write it: `2`, not `2.0`, and `2.5`.
             drag.max_decimals(6)
+                .custom_formatter(|value, _| field_number(value))
         }
     }
     let (Some(min), Some(max)) = (range.min, range.max) else {
@@ -168,6 +172,17 @@ pub fn number(ui: &mut egui::Ui, value: &mut f64, range: NumberRange) -> egui::R
         ui.add(field(value, range)) | slid
     })
     .inner
+}
+
+/// A number as a field shows it: up to six decimals, none of them
+/// trailing zeros.
+pub fn field_number(value: f64) -> String {
+    let text = format!("{value:.6}");
+    let text = text.trim_end_matches('0').trim_end_matches('.');
+    match text {
+        "-0" | "" => "0".to_string(),
+        text => text.to_string(),
+    }
 }
 
 /// A small heading that starts a group of controls within a panel.

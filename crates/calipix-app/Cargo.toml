@@ -22,6 +22,7 @@ calipix-commands.workspace = true
 calipix-core.workspace = true
 calipix-io.workspace = true
 calipix-render.workspace = true
+calipix-roi.workspace = true
 calipix-view = { workspace = true, optional = true }
 rfd = { workspace = true, optional = true }
 serde.workspace = true

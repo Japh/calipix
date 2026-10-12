@@ -14,7 +14,7 @@ use calipix_render::DisplayOptions;
 use calipix_view::{ImageView, Probe, Renderer, ViewOptions, ViewerGpu};
 use eframe::egui;
 
-use super::ui;
+use super::{overlay, ui};
 use crate::state::{AppState, Zoom};
 
 /// What the viewer reports back for the status bar and tab handling.
@@ -158,6 +158,18 @@ impl Viewer {
                 slot.view.ui(ui, &image, gpu)
             })
             .inner;
+        // What lies over the picture is drawn with the mapping the widget
+        // has just used for it.
+        let place = overlay::ImagePlace::new(
+            shown.response.rect,
+            ui.ctx().pixels_per_point(),
+            slot.view.zoom(),
+            slot.view.center(),
+        );
+        let dataset = state.session().workspace.get(id).ok();
+        if let Some(roi) = dataset.and_then(|dataset| dataset.roi.as_ref()) {
+            overlay::selection(ui.painter(), &place, roi);
+        }
         if slot.opening {
             // The widget has just worked out the fitting zoom; step down to
             // a standard level and draw again.

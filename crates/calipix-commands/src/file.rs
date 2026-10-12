@@ -46,7 +46,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("file.save", "Save")
             .summary("Saves an image to the file it was opened from or last saved to.")
-            .menu("File", 20.0)
+            .menu("File", 110.0)
             .shortcut("Ctrl+S")
             .effects(Effects {
                 writes_fs: true,
@@ -67,7 +67,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("file.save_as", "Save As")
             .summary("Saves an image to a file in the format given by its extension.")
-            .menu("File", 21.0)
+            .menu("File", 120.0)
             .shortcut("Ctrl+Shift+S")
             .effects(Effects {
                 writes_fs: true,
@@ -83,7 +83,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("file.close", "Close")
             .summary("Closes an image without saving it.")
-            .menu("File", 30.0)
+            .menu("File", 210.0)
             .shortcut("Ctrl+W")
             .ijm_name("Close")
             .effects(Effects {

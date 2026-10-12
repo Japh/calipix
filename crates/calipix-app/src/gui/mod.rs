@@ -3,7 +3,9 @@
 //!
 //! - [`layout`]: the dockable workspace (the only user of the docking crate)
 //! - [`viewer`]: what an image tab shows (the only user of `calipix-view`)
-//! - [`panels`], [`display`], [`histogram`]: the panels around the images
+//! - [`panels`], [`display`], [`histogram`], [`results`], [`plot`]: the panels
+//!   around the images
+//! - [`overlay`]: what is drawn over an image, such as its selection
 //! - [`menu`], [`palette`], [`shortcuts`]: the three ways to choose a command
 //! - [`dialog`]: parameter dialogs generated from command specs
 //! - [`status`]: the status bar
@@ -15,8 +17,11 @@ pub mod display;
 pub mod histogram;
 pub mod layout;
 pub mod menu;
+pub mod overlay;
 pub mod palette;
 pub mod panels;
+pub mod plot;
+pub mod results;
 pub mod shortcuts;
 pub mod status;
 pub mod ui;
@@ -248,8 +253,12 @@ impl Shell {
         });
         self.state.open_files(dropped);
 
-        // Choosing commands: shortcuts, the palette, the menus.
+        // Choosing commands: shortcuts, the palette, the menus. While the
+        // Results table has the keyboard, its keys come first.
         if !self.modal_open() {
+            if self.state.table_was_drawn() {
+                results::keys(&ctx, &mut self.state);
+            }
             for id in shortcuts::pressed(&ctx, &self.state) {
                 self.invoke(&id, &Args::new());
             }
@@ -374,6 +383,10 @@ impl Shell {
         }
         if let Some(id) = chosen {
             self.invoke(&id, &Args::new());
+        }
+        // What the panels' own buttons asked for.
+        for (id, args) in self.state.take_requests() {
+            self.invoke(&id, &args);
         }
         for panel in Panel::ALL {
             self.state.set_panel_open(panel, self.layout.is_open(panel));

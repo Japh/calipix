@@ -7,6 +7,8 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use calipix_core::{Buffer, DType, Image, ImageMeta};
+
 use calipix_command::{
     Args, Command, CommandCtx, CommandSpec, Effects, Flags, Outputs, ParamSpec, ParamType,
     PathMode, Registry, Result, Value,
@@ -150,8 +152,63 @@ pub fn slow() -> Arc<dyn Command> {
     })
 }
 
+/// `demo.test_stack`: makes a stack of 8-bit planes, a ramp with noise on
+/// it, big enough for filters to take a while on.
+pub fn test_stack() -> Arc<dyn Command> {
+    let size = |name: &str, default: i64, max: f64| {
+        ParamSpec::new(name, ParamType::Int)
+            .default_value(default)
+            .min(1.0)
+            .max(max)
+    };
+    let spec = CommandSpec::new("demo.test_stack", "Test Stack")
+        .summary("Creates a stack of noisy 8-bit planes, for trying slow commands on.")
+        .menu("Demo", 30.0)
+        .input(size("width", 1024, 8192.0).unit("pixels"))
+        .input(size("height", 1024, 8192.0).unit("pixels"))
+        .input(size("slices", 20, 1000.0))
+        .output("output", ParamType::Image)
+        .effects(Effects {
+            image: calipix_command::ImageEffect::Creates,
+            ..Effects::default()
+        });
+    Arc::new(Demo {
+        spec,
+        run: |ctx: &mut CommandCtx<'_>, args: &Args| {
+            let int = |name: &str| match args.get(name) {
+                Some(Value::Int(value)) => *value as usize,
+                _ => unreachable!("the executor checked the arguments"),
+            };
+            let (width, height, slices) = (int("width"), int("height"), int("slices"));
+            let mut meta = ImageMeta::xyczt(DType::U8, width, height, 1, slices, 1)?;
+            meta.name = "Test Stack".to_string();
+            // A small generator, so that the stack is the same every time.
+            let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+            let planes = (0..slices)
+                .map(|slice| {
+                    let samples: Vec<u8> = (0..width * height)
+                        .map(|index| {
+                            seed ^= seed << 13;
+                            seed ^= seed >> 7;
+                            seed ^= seed << 17;
+                            let ramp = (index % width) * 160 / width + slice * 2;
+                            (ramp as u64 + seed % 64).min(255) as u8
+                        })
+                        .collect();
+                    Buffer::from_vec(samples)
+                })
+                .collect();
+            let id = ctx
+                .workspace_mut()
+                .insert(Image::from_planes(meta, planes)?, None);
+            Ok(Outputs::new().with("output", id))
+        },
+    })
+}
+
 /// Adds the demo commands to `registry`.
 pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(parameters())?;
-    registry.register(slow())
+    registry.register(slow())?;
+    registry.register(test_stack())
 }

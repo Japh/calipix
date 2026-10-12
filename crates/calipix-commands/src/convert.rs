@@ -74,6 +74,18 @@ struct TypeParams {
     #[param(
         label = "Pixel type",
         choices("u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "f32", "f64"),
+        labels(
+            "8-bit unsigned",
+            "8-bit signed",
+            "16-bit unsigned",
+            "16-bit signed",
+            "32-bit unsigned",
+            "32-bit signed",
+            "64-bit unsigned",
+            "64-bit signed",
+            "32-bit float",
+            "64-bit float"
+        ),
         ijm = "type"
     )]
     pixel_type: String,
@@ -486,7 +498,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         spec(
             "image.to_8bit",
             "Convert to 8-bit",
-            10.0,
+            30.0,
             "Converts an image to 8-bit grey, with values from 0 to 255.",
         )
         .doc(
@@ -503,7 +515,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         spec(
             "image.to_16bit",
             "Convert to 16-bit",
-            20.0,
+            40.0,
             "Converts an image to unsigned 16-bit, with values from 0 to 65535.",
         )
         .doc(
@@ -518,7 +530,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         spec(
             "image.to_32bit",
             "Convert to 32-bit Float",
-            30.0,
+            50.0,
             "Converts an image to 32-bit floating point, keeping its values.",
         )
         .doc("RGB images become the average of red, green and blue, or their weighted sum.")
@@ -529,7 +541,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         spec(
             "image.to_rgb",
             "Convert to RGB Color",
-            40.0,
+            60.0,
             "Converts an image to RGB colour as it is displayed.",
         )
         .doc(
@@ -544,7 +556,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         spec(
             "image.to_rgb_stack",
             "Convert to RGB Stack",
-            50.0,
+            70.0,
             "Splits an RGB image into red, green and blue channels shown in grey.",
         )
         .doc("The samples are unchanged; Convert to RGB Color puts them back together.")
@@ -555,7 +567,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         spec(
             "image.convert_type",
             "Convert Pixel Type",
-            60.0,
+            80.0,
             "Converts an image to any pixel type, keeping its values.",
         )
         .doc(

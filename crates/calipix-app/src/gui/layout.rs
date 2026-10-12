@@ -166,7 +166,7 @@ impl Layout {
             left = split(
                 &mut tiles,
                 LinearDir::Vertical,
-                &[(images, 0.8), (strip, 0.2)],
+                &[(images, 0.74), (strip, 0.26)],
             );
         }
         let mut root = left;
