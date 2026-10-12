@@ -96,3 +96,68 @@ pub fn default_strip_rows(halo: usize, rows: usize) -> usize {
     let per_thread = rows.div_ceil(rayon::current_num_threads().max(1) * 4);
     per_thread.max(2 * halo).max(16)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each sample plus the sample `reach` rows above it (or the top row).
+    fn add_row_above(strip: Strip<'_, u32>, reach: usize) -> Vec<u32> {
+        let Frame { width, rect: r, .. } = strip.frame;
+        let mut out = Vec::new();
+        for y in r.y..r.y + r.h {
+            for x in r.x..r.x + r.w {
+                let above = y.saturating_sub(reach);
+                out.push(strip.rows[y * width + x] + strip.rows[above * width + x]);
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn strips_of_any_height_give_the_same_plane() {
+        let (w, h) = (5, 11);
+        let src: Vec<u32> = (0..(w * h) as u32).map(|v| v * v).collect();
+        let frame = Frame::new(w, h, Rect::new(1, 2, 3, 8));
+        let whole = filter_strips(&src, frame, 3, 100, |s| Ok(add_row_above(s, 3))).unwrap();
+        // Outside the rectangle nothing changes; inside, rows are summed.
+        assert_eq!(whole[0..2 * w], src[0..2 * w]);
+        assert_eq!(whole[2 * w], src[2 * w]);
+        assert_eq!(whole[5 * w + 1], src[5 * w + 1] + src[2 * w + 1]);
+        assert_eq!(whole[2 * w + 1], src[2 * w + 1] + src[1]);
+        for rows in 1..10 {
+            let tiled = filter_strips(&src, frame, 3, rows, |s| Ok(add_row_above(s, 3)));
+            assert_eq!(tiled.unwrap(), whole, "strips of {rows}");
+        }
+        // Too small a halo shows: the filter reads a row it was not given.
+        let short = filter_strips(&src, frame, 1, 2, |s| Ok(add_row_above(s, 3))).unwrap();
+        assert_ne!(short, whole);
+    }
+
+    #[test]
+    fn strips_are_given_their_place_in_the_plane() {
+        let src = vec![0u8; 4 * 9];
+        let frame = Frame::new(4, 9, Rect::new(0, 3, 4, 5));
+        let out = filter_strips(&src, frame, 2, 2, |s| {
+            assert_eq!(s.rows.len(), s.frame.width * s.frame.height);
+            let first = (s.first_row + s.frame.rect.y) as u8;
+            Ok((0..s.frame.rect.h)
+                .flat_map(|j| [first + j as u8; 4])
+                .collect())
+        })
+        .unwrap();
+        let rows: Vec<u8> = out.chunks(4).map(|row| row[0]).collect();
+        assert_eq!(rows, [0, 0, 0, 3, 4, 5, 6, 7, 0]);
+    }
+
+    #[test]
+    fn mistakes_are_errors() {
+        let src = vec![0u8; 12];
+        let frame = Frame::whole(4, 3);
+        assert!(filter_strips(&src, frame, 0, 1, |_| Ok(vec![0u8; 3])).is_err());
+        assert!(filter_strips(&src, Frame::whole(5, 3), 0, 1, |s| Ok(s.rows.to_vec())).is_err());
+        let outside = Frame::new(4, 3, Rect::new(2, 0, 3, 1));
+        assert!(filter_strips(&src, outside, 0, 1, |s| Ok(s.rows.to_vec())).is_err());
+        assert!(default_strip_rows(40, 10) >= 80);
+    }
+}

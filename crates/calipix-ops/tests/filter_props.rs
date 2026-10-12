@@ -11,12 +11,14 @@ use calipix_ops::filter::{
 };
 use proptest::prelude::*;
 
+type Run = Box<dyn Fn(&Buffer, Frame) -> Result<Buffer> + Sync>;
+
 /// A filter of one plane, with the number of rows above and below a
 /// sample that its result can depend on.
 struct Filter {
     name: String,
     halo: usize,
-    run: Box<dyn Fn(&Buffer, Frame) -> Result<Buffer> + Sync>,
+    run: Run,
 }
 
 fn filter(

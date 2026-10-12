@@ -488,7 +488,7 @@ fn upscale_kernel(unit: usize) -> Vec<f32> {
 /// line.
 pub fn gaussian_kernel(sigma: f64, accuracy: f64, max_radius: usize) -> [Vec<f32>; 2] {
     let max_radius = max_radius.max(50);
-    let wanted = (sigma * (-2.0 * accuracy.ln()).sqrt()).ceil() as usize + 1;
+    let wanted = ((sigma * (-2.0 * accuracy.ln()).sqrt()).ceil() as usize).saturating_add(1);
     let k_radius = wanted.min(max_radius);
     let mut kernel: Vec<f32> = (0..k_radius)
         .map(|i| (-0.5 * i as f64 * i as f64 / sigma / sigma).exp() as f32)
@@ -505,9 +505,9 @@ pub fn gaussian_kernel(sigma: f64, accuracy: f64, max_radius: usize) -> [Vec<f32
                 break;
             }
         }
-        for r1 in r + 2..k_radius {
+        for (r1, k) in kernel.iter_mut().enumerate().skip(r + 2) {
             let d = k_radius - r1;
-            kernel[r1] = ((d * d) as f64 * sqrt_slope * sqrt_slope) as f32;
+            *k = ((d * d) as f64 * sqrt_slope * sqrt_slope) as f32;
         }
     }
     let sum = if k_radius < max_radius {

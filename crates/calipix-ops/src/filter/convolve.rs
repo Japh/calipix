@@ -105,9 +105,9 @@ impl Kernel {
     }
 }
 
-/// Convolves `frame.rect` of a plane with `kernel`, as Process > Filters
-/// > Convolve does (`Convolver.convolveFloat`; strictly a correlation, as
-/// the kernel is not flipped).
+/// Convolves `frame.rect` of a plane with `kernel`, as ImageJ's Convolve
+/// command does (`Convolver.convolveFloat`; strictly a correlation, as the
+/// kernel is not flipped).
 ///
 /// Products are formed in single precision and summed in double. With
 /// `normalize`, the sum is multiplied by [`Kernel::scale`]. See the module
