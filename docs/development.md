@@ -71,6 +71,11 @@ nothing of selections, scopes or commands. A command that changes the pixel
 type or the shape of an image replaces the whole image instead of using
 `apply`.
 
+Selection shapes, the pixels they cover and their geometry (bounds, length,
+Feret, convex hull) live in `calipix-roi`. `Roi::mask` gives the covered
+pixels for areas, points and wide lines; it is `None` for a thin line and
+for an area that covers no pixel centre.
+
 The selection is part of the image's state (`Dataset::roi`), not a
 parameter: commands read it from the workspace. Results go to tables in the
 workspace (`Workspace::table`, default name `Workspace::RESULTS`). Both are

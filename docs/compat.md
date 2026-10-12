@@ -106,6 +106,26 @@ Verified rows are bit-identical to ImageJ 1.54p, floats included.
 | `image.crop`, `duplicate`, `flip_*`, `rotate_right`, `rotate_left`, `flip_z`, `translate`, `canvas_size` | Image > Crop, Duplicate, Transform, Adjust > Canvas Size | Samples, calibration and origin | verified, 83 cases |
 | `image.rotate`, `scale`, `resize` | Rotate, Scale, Adjust > Size | None, bilinear and bicubic interpolation; averaging when downsizing; enlarge; Z scaling | verified, 175 cases |
 
+## Selections
+
+Verified against ImageJ 1.54p on 140 shapes: every selection type, with
+whole and sub-pixel coordinates, tiny, thin, self-crossing and
+edge-crossing cases. Files written by Calipix were opened in ImageJ and
+reported identical type, bounds, pixel count and length (45 of 45 lines).
+
+| Behaviour | ImageJ source | Status |
+|---|---|---|
+| Which pixels each shape covers: rectangle, rounded rectangle, oval, polygon, freehand, traced, ellipse, rotated rectangle, composite, points | `OvalRoi.getMask`, `PolygonFiller`, `ShapeRoi.getMask`, `PointRoi.getMask` | verified, pixel for pixel |
+| Thin line drawing; area of a wide line | `ImageProcessor.lineTo`, `Roi.convertLineToArea` | verified |
+| Bounds and outline coordinates, integer and sub-pixel | `Roi.getBounds`, `getFloatPolygon` | verified |
+| Perimeter and length per shape, calibrated and not | `getLength` and overrides | verified |
+| Feret diameters; ellipse fit; centroid | `Roi.getFeretValues`, `EllipseFitter` | verified |
+| Enlarge and shrink; Scale; Rotate; Fit Ellipse; Convex Hull; To Bounding Box; Line to Area | `RoiEnlarger`, `RoiScaler`, `RoiRotator`, `Selection` | verified |
+| Make Inverse | `Roi.getInverse` | verified, except tie pixels when the selection crosses the image border |
+| `.roi` reading and writing | `RoiDecoder`, `RoiEncoder` | verified; re-written files byte-identical except ellipses whose parameters are not exact floats |
+| ROI Manager `.zip` sets | `RoiManager` | verified both ways |
+| Pixel containment test; outline centroid; line sampling | `Roi.contains`, `getContourCentroid`, `ImageProcessor.getLine` | from source |
+
 ## Measurements
 
 Verified against ImageJ 1.54p on 303 cases (no selection, rectangles, and
@@ -169,6 +189,13 @@ ImageJ's own masks and outlines for ovals, polygons, lines and points).
 | RGB Color on channels shown one at a time | One RGB slice per channel | Refused, asks for composite mode | Not one picture |
 | Canvas Size, Rotate with enlarge, Size | Pixel origin unchanged | Origin moves or scales with the picture | Coordinates stay on the same features |
 | Flipping a calibrated stack | Origin toggled once per slice | Mirrored once | ImageJ bug |
+| Saved rotated rectangle | Reads back as a polygon | Stays a rotated rectangle | The file says what it was |
+| Inverse of a selection crossing the image edge | Tie pixels can be in both the selection and its inverse | Exact complement | One defined result |
+| Combining selections | Geometric | On masks, with the outline along pixel edges | Same pixels; perimeters of slanted shapes differ |
+| Enlarge with nothing left | Leaves the selection unchanged | Error saying so | Say what happened |
+| ROI set file timestamps | Current time | Fixed | Same input, same bytes |
+| Restore Selection | One global previous selection | Not available; use undo | No hidden state |
+| Spline-fit, text and image selections | Supported | Flag kept only, or refused | Not yet built |
 | Measurement settings | Global preference | Belong to the session, appear in History, undoable | A recorded workflow must not depend on hidden state |
 | Results text line endings | Platform-dependent | Always LF | Same file on every machine |
 | Set Scale "Global" | Also applies to images opened later | Applies to images open now | No hidden state |

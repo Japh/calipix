@@ -39,6 +39,14 @@ Things deliberately left out of the milestone in which they came up.
 - Voxel depth and frame interval cannot be stored on an image without a Z
   or time axis.
 
+## Selections
+
+- Spline-fit, text and image selections; Fit Spline, Fit Circle, Make Band,
+  Area to Line, Straighten, Interpolate.
+- Overlay entries keep only their shape: names, colours and positions from
+  ImageJ files are dropped.
+- Opening a `.zip` selection set (needs the ROI manager).
+
 ## Viewer
 
 - A margin around the image for Fit to Window.
