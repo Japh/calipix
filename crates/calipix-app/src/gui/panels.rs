@@ -1,17 +1,23 @@
 //! Contents of the workspace panels. To add a panel, add a variant to
-//! [`Panel`] and an arm to [`show`]. The Display and Histogram panels have
-//! modules of their own.
+//! [`Panel`] and an arm to [`show`]. The Display, Histogram, Results and
+//! Plot panels have modules of their own.
 
 use calipix_command::Dataset;
 use calipix_core::{AxisKind, ColorModel, DType, ImageMeta};
 use calipix_render::ChannelMode;
 use eframe::egui::{self, RichText};
 
-use super::{display, histogram, ui};
+use super::{display, histogram, plot, results, ui};
 use crate::state::{AppState, LogLevel, Panel};
 
 /// Draws a panel's contents.
 pub fn show(ui: &mut egui::Ui, panel: Panel, state: &mut AppState) {
+    // These two fill their tab and scroll within it in their own way.
+    match panel {
+        Panel::Results => return results::show(ui, state),
+        Panel::Plot => return plot::show(ui, state),
+        _ => {}
+    }
     ui::panel_frame().show(ui, |ui| {
         egui::ScrollArea::vertical()
             .id_salt(panel)
@@ -23,6 +29,7 @@ pub fn show(ui: &mut egui::Ui, panel: Panel, state: &mut AppState) {
                 Panel::Histogram => histogram::show(ui, state),
                 Panel::History => history(ui, state),
                 Panel::Log => log(ui, state),
+                Panel::Results | Panel::Plot => {}
             });
     });
 }

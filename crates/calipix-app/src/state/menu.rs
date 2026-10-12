@@ -52,21 +52,35 @@ pub fn answered_by_view(spec: &CommandSpec, param: &ParamSpec) -> bool {
             && calipix_commands::view::DISPLAY_COMMANDS.contains(&spec.id.as_str()))
 }
 
+/// True for a parameter that need not be asked about for the command to
+/// run: one kept under "More options" that has a default or may be left
+/// out. A command with nothing else to ask runs at once, as Measure does
+/// into the Results table.
+pub fn can_go_unasked(param: &ParamSpec) -> bool {
+    param.advanced && (param.default.is_some() || !param.required)
+}
+
 /// The parameters a person has to see to run `spec`: all of them, except
 /// that a command's only image parameter is filled with the active image
 /// without asking, and parameters that name a plane are pointed at the one
-/// on screen.
+/// on screen. If only advanced options with defaults are left, there is
+/// nothing to ask.
 pub fn dialog_params(spec: &CommandSpec) -> Vec<&ParamSpec> {
     let images = spec
         .inputs
         .iter()
         .filter(|p| p.ty == ParamType::Image)
         .count();
-    spec.inputs
+    let params: Vec<&ParamSpec> = spec
+        .inputs
         .iter()
         .filter(|p| !(p.ty == ParamType::Image && images == 1))
         .filter(|p| !answered_by_view(spec, p))
-        .collect()
+        .collect();
+    if params.iter().all(|p| can_go_unasked(p)) {
+        return Vec::new();
+    }
+    params
 }
 
 /// The parameters that are asked for unless already decided: all of them

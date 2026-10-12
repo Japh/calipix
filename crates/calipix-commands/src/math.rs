@@ -240,7 +240,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.add",
             "Add",
-            10.0,
+            30.0,
             "Add...",
             "Adds a number to every sample.",
         )
@@ -254,7 +254,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.subtract",
             "Subtract",
-            20.0,
+            40.0,
             "Subtract...",
             "Subtracts a number from every sample.",
         )
@@ -268,7 +268,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.multiply",
             "Multiply",
-            30.0,
+            50.0,
             "Multiply...",
             "Multiplies every sample by a number.",
         )
@@ -279,7 +279,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.divide",
             "Divide",
-            40.0,
+            60.0,
             "Divide...",
             "Divides every sample by a number.",
         )
@@ -293,7 +293,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.and",
             "AND",
-            50.0,
+            110.0,
             "AND...",
             "Combines every sample with a binary number, keeping the bits set in both.",
         )
@@ -304,7 +304,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.or",
             "OR",
-            60.0,
+            120.0,
             "OR...",
             "Combines every sample with a binary number, keeping the bits set in either.",
         )
@@ -315,7 +315,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.xor",
             "XOR",
-            70.0,
+            130.0,
             "XOR...",
             "Combines every sample with a binary number, keeping the bits set in exactly one.",
         )
@@ -326,7 +326,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.min",
             "Min",
-            80.0,
+            210.0,
             "Min...",
             "Raises every sample below a given value to that value.",
         ),
@@ -336,7 +336,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.max",
             "Max",
-            90.0,
+            220.0,
             "Max...",
             "Lowers every sample above a given value to that value.",
         ),
@@ -346,7 +346,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.gamma",
             "Gamma",
-            100.0,
+            310.0,
             "Gamma...",
             "Raises every sample to a power, changing the brightness of the mid-tones.",
         )
@@ -362,7 +362,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.set",
             "Set",
-            110.0,
+            230.0,
             "Set...",
             "Gives every sample the same value.",
         ),
@@ -372,7 +372,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.log",
             "Log",
-            120.0,
+            320.0,
             "Log",
             "Replaces every sample by its natural logarithm.",
         )
@@ -388,7 +388,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.exp",
             "Exp",
-            130.0,
+            330.0,
             "Exp",
             "Replaces every sample by its exponential, the inverse of Log.",
         )
@@ -399,7 +399,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.square",
             "Square",
-            140.0,
+            340.0,
             "Square",
             "Multiplies every sample by itself.",
         ),
@@ -409,7 +409,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.square_root",
             "Square Root",
-            150.0,
+            350.0,
             "Square Root",
             "Replaces every sample by its square root.",
         )
@@ -420,7 +420,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.reciprocal",
             "Reciprocal",
-            160.0,
+            360.0,
             "Reciprocal",
             "Replaces every sample of a float image by one divided by it.",
         )
@@ -431,7 +431,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.nan_background",
             "NaN Background",
-            170.0,
+            410.0,
             "NaN Background",
             "Sets the samples of a float image outside a range of values to NaN.",
         )
@@ -451,7 +451,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         math_spec(
             "math.abs",
             "Abs",
-            180.0,
+            370.0,
             "Abs",
             "Replaces every negative sample by its positive counterpart.",
         )
@@ -472,7 +472,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                  image 2 must have as many planes as image 1 or just one. The selection is \
                  ignored.",
             )
-            .menu("Process", 60.0)
+            .menu("Process", 40.0)
             .ijm_name("Image Calculator...")
             .output("image", ParamType::Image)
             .effects(Effects {

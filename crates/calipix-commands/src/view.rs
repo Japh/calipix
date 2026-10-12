@@ -272,6 +272,20 @@ struct SetLutParams {
         choices(
             "fire", "grays", "ice", "spectrum", "rgb332", "red", "green", "blue", "cyan",
             "magenta", "yellow", "redgreen"
+        ),
+        labels(
+            "Fire",
+            "Grays",
+            "Ice",
+            "Spectrum",
+            "3-3-2 RGB",
+            "Red",
+            "Green",
+            "Blue",
+            "Cyan",
+            "Magenta",
+            "Yellow",
+            "Red/Green"
         )
     )]
     lut: String,
@@ -301,6 +315,7 @@ struct ModeParams {
         label = "Mode",
         default = "composite",
         choices("composite", "color", "grayscale"),
+        labels("Composite", "Color", "Grayscale"),
         ijm = "display"
     )]
     mode: String,

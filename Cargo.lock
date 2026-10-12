@@ -497,6 +497,7 @@ dependencies = [
  "calipix-core",
  "calipix-io",
  "calipix-render",
+ "calipix-roi",
  "calipix-view",
  "chrono",
  "clap",

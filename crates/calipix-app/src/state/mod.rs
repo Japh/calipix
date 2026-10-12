@@ -9,6 +9,8 @@ pub mod palette;
 mod panel;
 pub mod settings;
 pub mod shortcut;
+pub mod table_commands;
+pub mod tables;
 mod task;
 pub mod view;
 
@@ -21,7 +23,7 @@ use calipix_command::{
     ParamType, PathMode, PositionAxis, Registry, Session, Value, Workspace,
 };
 use calipix_commands::view::DISPLAY_COMMANDS;
-use calipix_core::{AxisKind, ColorModel, Image};
+use calipix_core::{AxisKind, ColorModel, Image, Table};
 
 pub use action::{ActionQueue, Theme, UiAction, Zoom};
 pub use dialog::{Dialog, Draft, Field};
@@ -30,6 +32,7 @@ pub use menu::{MenuCommand, MenuEntry};
 pub use panel::{Dock, Panel};
 pub use settings::{SavedLayout, Settings};
 pub use shortcut::{KeyPress, Shortcut};
+pub use tables::{PlotData, PlotKind, RowClick, TableText};
 pub use task::{Running, Waker};
 pub use view::ImageViewState;
 
@@ -132,6 +135,10 @@ pub struct AppState {
     next_version: u64,
     gesture: Option<RangeGesture>,
     histograms: Histograms,
+    /// How the results tables are being looked at.
+    tables: tables::Tables,
+    /// Commands a panel asked for, to be chosen as from a menu.
+    requests: Vec<(String, Args)>,
 }
 
 /// One line of the History panel.
@@ -192,6 +199,7 @@ impl AppState {
             .expect("application commands are valid and unique")
             .into_iter()
             .collect();
+        table_commands::register(&mut registry).expect("table commands are valid and unique");
 
         let declared = registry
             .specs()
@@ -228,6 +236,8 @@ impl AppState {
             next_version: 0,
             gesture: None,
             histograms: Histograms::default(),
+            tables: tables::Tables::default(),
+            requests: Vec::new(),
         }
     }
 
@@ -401,7 +411,8 @@ impl AppState {
             .filter(|p| preset.get(&p.name).is_none())
             .collect();
         match asked.as_slice() {
-            [] => {
+            // Nothing to ask, or only options that have defaults.
+            all if all.iter().all(|p| menu::can_go_unasked(p)) => {
                 self.start(id, preset);
                 Invocation::Started
             }
@@ -461,9 +472,15 @@ impl AppState {
             title: spec.title.clone(),
             mode,
             directory: self.settings.last_dir.clone(),
-            file_name: image
-                .filter(|_| mode == PathMode::Save)
-                .map(|dataset| dataset.image.meta().name.clone()),
+            file_name: match (mode, args.get("table")) {
+                // A table is saved under its own name, as a spreadsheet
+                // will open it.
+                (PathMode::Save, Some(Value::Str(table))) if spec.param("table").is_some() => {
+                    Some(format!("{table}.csv"))
+                }
+                (PathMode::Save, _) => image.map(|dataset| dataset.image.meta().name.clone()),
+                _ => None,
+            },
             filters,
         }
     }
@@ -606,6 +623,12 @@ impl AppState {
         let before = std::mem::replace(&mut self.session, finished.session).workspace;
         let display_only = DISPLAY_COMMANDS.contains(&task.spec.id.as_str());
         self.note_changes(&before, display_only);
+        let raised = self.note_tables(&before, &outputs);
+        // A command that changed a table has shown what it did there.
+        let changed_tables = {
+            let entry = self.session.history().applied().last();
+            entry.is_some_and(|entry| !entry.table_changes.is_empty())
+        };
         self.note_auto_contrast(&task);
         if chosen != task.base_active
             && self.session.workspace.active() == task.base_active
@@ -623,14 +646,29 @@ impl AppState {
                 self.rebuild_menu();
             }
         }
-        match describe_outputs(&outputs) {
-            Some(results) => {
-                self.log_line(LogLevel::Info, format!("{title}: {results}"));
+        let results = describe_outputs(&outputs);
+        if let Some(results) = &results {
+            self.log_line(LogLevel::Info, format!("{title}: {results}"));
+        }
+        match (raised, results) {
+            // A table says more than the Log does, so it is what comes up.
+            (Some((panel, name)), _) => {
+                self.queue.push(UiAction::ShowPanel(panel));
+                self.apply_actions();
+                let rows = self.session.workspace.table(&name).map_or(0, Table::len);
+                let place = match panel {
+                    Panel::Plot => format!("{name} is in the Plot panel"),
+                    _ if rows == 1 => format!("{name} has 1 row"),
+                    _ => format!("{name} has {rows} rows"),
+                };
+                self.note(format!("{title} finished; {place}"));
+            }
+            (None, Some(_)) if !changed_tables => {
                 self.queue.push(UiAction::ShowPanel(Panel::Log));
                 self.apply_actions();
                 self.note(format!("{title} finished; its results are in the Log"));
             }
-            None => self.note(format!("{title} finished")),
+            (None, _) => self.note(format!("{title} finished")),
         }
     }
 
@@ -791,13 +829,43 @@ impl AppState {
     /// command's defaults: Set Display Range begins at the range in use.
     fn with_suggestions(&mut self, spec: &CommandSpec, preset: &Args) -> Args {
         let mut args = preset.clone();
-        if spec.id != "view.set_display_range" {
-            return args;
-        }
         let input = match preset.get("input") {
             Some(Value::Image(id)) => Some(*id),
             _ => self.session.workspace.active(),
         };
+        // A command's only image is the one in view; the dialog does not
+        // ask which.
+        let images = spec.inputs.iter().filter(|p| p.ty == ParamType::Image);
+        if let ([only], Some(input)) = (images.collect::<Vec<_>>().as_slice(), input)
+            && only.required
+            && args.get(&only.name).is_none()
+        {
+            args.insert(only.name.clone(), input);
+        }
+        // Sizes start from the size the image has, as they do in ImageJ.
+        if matches!(spec.id.as_str(), "image.resize" | "image.canvas_size")
+            && let Some(dataset) = input.and_then(|id| self.session.workspace.get(id).ok())
+        {
+            let meta = dataset.image.meta();
+            let (mut width, mut height) = (meta.width(), meta.height());
+            // Resize works on the selection if there is one.
+            if spec.id == "image.resize"
+                && let Some(rect) = dataset
+                    .roi
+                    .as_ref()
+                    .and_then(|roi| roi.pixel_bounds(width, height))
+            {
+                (width, height) = (rect.w, rect.h);
+            }
+            for (name, size) in [("width", width), ("height", height)] {
+                if spec.param(name).is_some() && args.get(name).is_none() {
+                    args.insert(name, size);
+                }
+            }
+        }
+        if spec.id != "view.set_display_range" {
+            return args;
+        }
         let channel = match preset.get("channel") {
             Some(Value::Int(c)) if *c >= 1 => *c as usize - 1,
             _ => 0,
@@ -1026,6 +1094,229 @@ impl AppState {
         self.views.entry(id).or_default().auto = found.then_some((image, press));
     }
 
+    // ---- Results tables and plots ----
+
+    /// Records what a finished command did to the tables, and says which
+    /// panel should come up for it, with the table to show there: the
+    /// Plot panel for a profile, histogram or distribution, the Results
+    /// panel for a table that is new or has gained rows.
+    fn note_tables(&mut self, before: &Workspace, outputs: &Outputs) -> Option<(Panel, String)> {
+        let workspace = &self.session.workspace;
+        // Plot Profile says what unit its distances are in.
+        if let (Some(Value::Str(table)), Some(Value::Str(unit))) =
+            (outputs.get("table"), outputs.get("unit"))
+        {
+            let note = tables::PlotNote {
+                x_unit: Some(unit.clone()),
+            };
+            self.tables.notes.insert(table.clone(), note);
+            self.tables.plot = None;
+        }
+        let (mut plot, mut result) = (None, None);
+        for name in tables::table_names(workspace) {
+            let Some(table) = workspace.table(&name) else {
+                continue;
+            };
+            let old = before.table(&name);
+            if old.is_some_and(|old| old.ptr_eq(table) || old == table) {
+                continue;
+            }
+            if tables::is_plot(table) {
+                plot = Some(name);
+            } else if old.is_none_or(|old| table.len() > old.len()) {
+                result = Some(name);
+            }
+        }
+        if let Some(name) = plot {
+            self.tables.shown_plot = Some(name.clone());
+            Some((Panel::Plot, name))
+        } else if let Some(name) = result {
+            self.show_table(&name);
+            Some((Panel::Results, name))
+        } else {
+            None
+        }
+    }
+
+    /// The tables the Results panel offers: Results first, then the rest
+    /// by name. The measurement settings are not among them.
+    pub fn table_names(&self) -> Vec<String> {
+        tables::table_names(&self.session.workspace)
+    }
+
+    /// The table the Results panel shows: the one last asked for if it
+    /// still exists, otherwise the first there is.
+    pub fn shown_table(&self) -> Option<String> {
+        let names = self.table_names();
+        match &self.tables.shown {
+            Some(shown) if names.contains(shown) => Some(shown.clone()),
+            _ => names.into_iter().next(),
+        }
+    }
+
+    /// Makes `name` the table the Results panel shows.
+    pub fn show_table(&mut self, name: &str) {
+        if self.shown_table().as_deref() != Some(name) {
+            self.tables.selected.clear();
+            self.tables.anchor = None;
+        }
+        self.tables.shown = Some(name.to_string());
+    }
+
+    /// The text of the table on show, as ImageJ would show and save it.
+    pub fn table_text(&mut self) -> Option<Arc<TableText>> {
+        let name = self.shown_table()?;
+        self.tables.text(&self.session.workspace, &name)
+    }
+
+    /// How often a table has been turned into text, to check that it is
+    /// done once per change and not once per frame.
+    pub fn tables_formatted(&self) -> u64 {
+        self.tables.formatted
+    }
+
+    /// The rows picked in the table on show, counted from 0.
+    pub fn selected_rows(&self) -> &BTreeSet<usize> {
+        &self.tables.selected
+    }
+
+    /// Picks a row of the table on show as a click on it does.
+    pub fn click_row(&mut self, row: usize, click: RowClick) {
+        let rows = self.table_text().map_or(0, |text| text.len());
+        self.tables.click(row, rows, click);
+    }
+
+    pub fn select_all_rows(&mut self) {
+        let rows = self.table_text().map_or(0, |text| text.len());
+        self.tables.selected = (0..rows).collect();
+        self.tables.anchor = None;
+    }
+
+    pub fn clear_row_selection(&mut self) {
+        self.tables.selected.clear();
+        self.tables.anchor = None;
+    }
+
+    /// True while the keyboard belongs to the table: Delete removes the
+    /// picked rows and Ctrl+A picks them all, rather than what those keys
+    /// do to the image.
+    pub fn table_has_attention(&self) -> bool {
+        self.tables.attention
+    }
+
+    pub fn set_table_attention(&mut self, attention: bool) {
+        self.tables.attention = attention;
+    }
+
+    /// Says that the table was drawn this frame. A table that is not on
+    /// screen (its panel hidden, or behind another tab) loses the
+    /// keyboard: see [`table_was_drawn`](Self::table_was_drawn).
+    pub fn note_table_drawn(&mut self) {
+        self.tables.drawn = true;
+    }
+
+    /// Whether the table has been drawn since the last call. If not, it
+    /// no longer has the keyboard's attention.
+    pub fn table_was_drawn(&mut self) -> bool {
+        let drawn = std::mem::take(&mut self.tables.drawn);
+        if !drawn {
+            self.tables.attention = false;
+        }
+        drawn
+    }
+
+    /// What Copy puts on the clipboard: the picked rows, or the whole
+    /// table if none is picked, as tab-separated text under the headings.
+    pub fn copy_table(&mut self) -> Option<String> {
+        let text = self.table_text()?;
+        let text = if self.tables.selected.is_empty() {
+            text.copy(0..text.len())
+        } else {
+            text.copy(self.tables.selected.iter().copied())
+        };
+        let rows = text.lines().count().saturating_sub(1);
+        self.note(match rows {
+            1 => "Copied 1 row".to_string(),
+            rows => format!("Copied {rows} rows"),
+        });
+        Some(text)
+    }
+
+    /// Removes the picked rows from the table on show, as a command, so
+    /// that it is in History and can be undone.
+    pub fn delete_selected_rows(&mut self) {
+        let Some(table) = self.shown_table() else {
+            return;
+        };
+        if self.tables.selected.is_empty() {
+            return self.note("Delete Rows: Select the rows to delete first");
+        }
+        let rows = tables::row_ranges(&self.tables.selected);
+        self.start(
+            table_commands::DELETE_ROWS,
+            &Args::new().with("table", table).with("rows", rows),
+        );
+    }
+
+    /// The tables that are also charts, in the order of
+    /// [`table_names`](Self::table_names).
+    pub fn plot_names(&self) -> Vec<String> {
+        let workspace = &self.session.workspace;
+        self.table_names()
+            .into_iter()
+            .filter(|name| workspace.table(name).is_some_and(tables::is_plot))
+            .collect()
+    }
+
+    /// The plot the Plot panel shows: the one last asked for if it still
+    /// exists, otherwise the first there is.
+    pub fn shown_plot(&self) -> Option<String> {
+        let names = self.plot_names();
+        match &self.tables.shown_plot {
+            Some(shown) if names.contains(shown) => Some(shown.clone()),
+            _ => names.into_iter().next(),
+        }
+    }
+
+    pub fn show_plot(&mut self, name: &str) {
+        self.tables.shown_plot = Some(name.to_string());
+    }
+
+    /// The plot on show, read from its table.
+    pub fn plot(&mut self) -> Option<Arc<PlotData>> {
+        let name = self.shown_plot()?;
+        self.tables.plot(&self.session.workspace, &name)
+    }
+
+    /// Shows a plot's numbers in the Results panel.
+    pub fn list_plot(&mut self, name: &str) {
+        self.show_table(name);
+        self.queue.push(UiAction::ShowPanel(Panel::Results));
+        self.apply_actions();
+    }
+
+    /// The rows of table `name` as text for the clipboard.
+    pub fn copy_plot(&mut self, name: &str) -> Option<String> {
+        let text = calipix_commands::measure::results_text(&self.session.workspace, name, '\t')?;
+        self.note(format!("Copied {name}"));
+        Some(text)
+    }
+
+    // ---- Requests from panels ----
+
+    /// Asks for a command to be chosen as from a menu, with `args` already
+    /// decided: it runs at once or asks for what it still needs. This is
+    /// how a panel's buttons run commands, since only the interface can
+    /// show a dialog.
+    pub fn request(&mut self, id: &str, args: Args) {
+        self.requests.push((id.to_string(), args));
+    }
+
+    /// The commands asked for since the last call.
+    pub fn take_requests(&mut self) -> Vec<(String, Args)> {
+        std::mem::take(&mut self.requests)
+    }
+
     // ---- History ----
 
     /// The History panel's lines, oldest first.
@@ -1103,7 +1394,17 @@ impl AppState {
                     // A command's one image needs no label.
                     Value::Image(id) if images == 1 => name_then(*id),
                     Value::Image(id) => format!("{} {}", name.replace('_', " "), name_then(*id)),
-                    other => format!("{} {}", name.replace('_', " "), other.to_text()),
+                    // Text over several lines (a kernel) is told on one.
+                    other => format!(
+                        "{} {}",
+                        name.replace('_', " "),
+                        other
+                            .to_text()
+                            .lines()
+                            .map(str::trim)
+                            .collect::<Vec<_>>()
+                            .join("; ")
+                    ),
                 })
             })
             .collect::<Vec<_>>()

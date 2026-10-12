@@ -17,7 +17,8 @@ pub enum Draft {
     Bool(bool),
     Int(i64),
     Float(f64),
-    /// Strings, choices, paths, and lists as comma-separated text.
+    /// Strings, choices, paths, lists as comma-separated text, and
+    /// numbers that may be left out (empty text means "not given").
     Text(String),
     Image(Option<DatasetId>),
 }
@@ -87,6 +88,19 @@ impl Field {
             (Draft::Text(text), ParamType::Str) if text.is_empty() && !param.required => {
                 return Ok(None);
             }
+            (Draft::Text(text), ParamType::Int | ParamType::Float) => {
+                let text = text.trim();
+                if text.is_empty() {
+                    if !param.required {
+                        return Ok(None);
+                    }
+                    return Err("Enter a number".to_string());
+                }
+                match not_a_number(&param.ty, text) {
+                    Some(problem) => return Err(problem),
+                    None => Value::parse_text(&param.ty, text).map_err(|e| sentence(&e))?,
+                }
+            }
             (Draft::Text(text), _) => Value::Str(text.clone()),
         };
         if let Some(problem) = out_of_range(param, &value) {
@@ -145,6 +159,22 @@ fn sentence(text: &str) -> String {
     }
 }
 
+/// True for a number that may be left out. It is edited as text, so that
+/// the field can be empty: zero is a value, not the absence of one.
+fn optional_number(param: &ParamSpec) -> bool {
+    !param.required && matches!(param.ty, ParamType::Int | ParamType::Float)
+}
+
+/// A number as a field shows it: `2`, not `2.0`, and `2.5`.
+pub fn number_text(value: f64) -> String {
+    if value == value.trunc() && value.abs() < 1e15 {
+        format!("{value:.0}")
+    } else {
+        // The shortest text that reads back as the same number.
+        format!("{value}")
+    }
+}
+
 /// The draft a parameter starts from when nothing better is known.
 fn blank(param: &ParamSpec) -> Draft {
     // Zero, moved into the allowed range.
@@ -153,6 +183,7 @@ fn blank(param: &ParamSpec) -> Draft {
             .min(param.max.unwrap_or(zero))
     };
     match &param.ty {
+        _ if optional_number(param) => Draft::Text(String::new()),
         ParamType::Bool => Draft::Bool(false),
         ParamType::Int => Draft::Int(within(0.0) as i64),
         ParamType::Float => Draft::Float(within(0.0)),
@@ -164,6 +195,8 @@ fn blank(param: &ParamSpec) -> Draft {
 
 fn draft_of(param: &ParamSpec, value: &Value) -> Option<Draft> {
     Some(match (param.check(value.clone()).ok()?, &param.ty) {
+        (Value::Int(i), _) if optional_number(param) => Draft::Text(i.to_string()),
+        (Value::Float(f), _) if optional_number(param) => Draft::Text(number_text(f)),
         (Value::Bool(b), _) => Draft::Bool(b),
         (Value::Int(i), _) => Draft::Int(i),
         (Value::Float(f), _) => Draft::Float(f),
@@ -234,22 +267,43 @@ impl Dialog {
 
     /// Restores the command's defaults, forgetting remembered values.
     pub fn reset(&mut self, workspace: &Workspace) {
-        // A plane the view has already chosen is not something to ask
-        // about; its value travels in the preset.
+        // What the view has already answered is not something to ask
+        // about; its value travels in the preset. That is the plane on
+        // show, "whole stack?" for an image with a single plane, and the
+        // image itself when the command takes only one.
         let preset = self.preset.clone();
-        let chosen_by_view = |param: &ParamSpec| {
-            matches!(
-                param.position,
-                Some(PositionAxis::Channel | PositionAxis::Slice | PositionAxis::Frame)
-            ) && preset.get(&param.name).is_some()
+        let images = self.spec.inputs.iter().filter(|p| p.ty == ParamType::Image);
+        let only_image = images.count() == 1;
+        let answered = |param: &ParamSpec| {
+            (param.position.is_some() || (param.ty == ParamType::Image && only_image))
+                && preset.get(&param.name).is_some()
         };
+        // Image parameters start on different images where there are
+        // several to choose from: the active one, then the others, most
+        // recently opened first.
+        let mut candidates: Vec<DatasetId> = workspace.active().into_iter().collect();
+        let others: Vec<DatasetId> = workspace.datasets().map(|d| d.id).collect();
+        candidates.extend(
+            others
+                .into_iter()
+                .rev()
+                .filter(|id| Some(*id) != workspace.active()),
+        );
+        let mut next_image = 0;
         self.fields = self
             .spec
             .inputs
             .iter()
-            .filter(|param| !chosen_by_view(param))
+            .filter(|param| !answered(param))
             .map(|param| {
                 let draft = match (&param.ty, &param.default) {
+                    (ParamType::Image, _) if param.required => {
+                        let image = candidates.get(next_image).or(candidates.first());
+                        next_image += 1;
+                        Draft::Image(image.copied())
+                    }
+                    // An image that may be left out is the active one if it
+                    // is, as the executor would fill it in.
                     (ParamType::Image, _) => Draft::Image(workspace.active()),
                     (_, Some(default)) => draft_of(param, default).unwrap_or_else(|| blank(param)),
                     (_, None) => blank(param),
@@ -260,11 +314,35 @@ impl Dialog {
                 }
             })
             .collect();
+        // "Whole stack?" is asked after what the command itself needs to
+        // know, though commands declare it with the image, first.
+        let is_stack = |field: &Field| {
+            field.param.position == Some(PositionAxis::Stack) && !field.param.advanced
+        };
+        if self.fields.first().is_some_and(is_stack) {
+            let last_basic = self.fields.iter().rposition(|f| !f.param.advanced);
+            let stack = self.fields.remove(0);
+            self.fields.insert(last_basic.unwrap_or(0), stack);
+        }
+        // Two images to choose are told apart by number.
+        if self.fields.iter().any(|f| f.param.label == "Image 2") {
+            for field in &mut self.fields {
+                if field.param.ty == ParamType::Image && field.param.label == "Image" {
+                    field.param.label = "Image 1".to_string();
+                }
+            }
+        }
         self.apply_preset(workspace);
     }
 
     pub fn field_mut(&mut self, name: &str) -> Option<&mut Field> {
         self.fields.iter_mut().find(|f| f.param.name == name)
+    }
+
+    /// True if a parameter's text runs over several lines, so that Enter
+    /// in its field starts a new line rather than accepting the dialog.
+    pub fn has_multiline(&self) -> bool {
+        self.fields.iter().any(|f| f.param.multiline)
     }
 
     pub fn has_advanced(&self) -> bool {

@@ -13,8 +13,8 @@ use calipix_ops::filter::{self, Direction, Frame, Kernel, Outliers, Rank};
 use crate::process::{PlaneInfo, PlaneScope};
 
 /// ImageJ's default kernel for Convolve, a 5 x 5 sharpening kernel.
-const DEFAULT_KERNEL: &str = "-1 -1 -1 -1 -1; -1 -1 -1 -1 -1; -1 -1 24 -1 -1; \
-                              -1 -1 -1 -1 -1; -1 -1 -1 -1 -1";
+const DEFAULT_KERNEL: &str = "-1 -1 -1 -1 -1\n-1 -1 -1 -1 -1\n-1 -1 24 -1 -1\n\
+                              -1 -1 -1 -1 -1\n-1 -1 -1 -1 -1";
 
 #[derive(Params)]
 struct ScopeOnly {
@@ -76,6 +76,7 @@ struct OutliersParams {
         label = "Which outliers",
         default = "bright",
         choices("bright", "dark"),
+        labels("Bright", "Dark"),
         ijm = "which"
     )]
     which: String,
@@ -110,7 +111,7 @@ struct ConvolveParams {
     /// rows by semicolons or line breaks, for example `1 2 1; 2 4 2; 1 2 1`.
     /// The numbers of rows and of columns must be odd. Without a row
     /// separator, 9, 25, 49... values make a square kernel.
-    #[param(default = DEFAULT_KERNEL, ijm = "text1")]
+    #[param(default = DEFAULT_KERNEL, multiline, ijm = "text1")]
     kernel: String,
     /// Divide each result by the sum of the coefficients, which keeps the
     /// image's brightness. Has no effect if they sum to zero.
@@ -159,6 +160,16 @@ struct ShadowsParams {
             "southwest",
             "west",
             "northwest"
+        ),
+        labels(
+            "North",
+            "Northeast",
+            "East",
+            "Southeast",
+            "South",
+            "Southwest",
+            "West",
+            "Northwest"
         )
     )]
     direction: String,
@@ -250,7 +261,7 @@ fn rank_command(
 
 pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
-        filter_spec("filter.gaussian_blur", "Gaussian Blur", 10.0, true)
+        filter_spec("filter.gaussian_blur", "Gaussian Blur", 20.0, true)
             .summary("Blurs an image with a Gaussian of a chosen width.")
             .doc(
                 "Each sample becomes a weighted mean of its surroundings, the weights falling \
@@ -270,7 +281,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
 
     rank_command(
         registry,
-        filter_spec("filter.median", "Median", 20.0, true)
+        filter_spec("filter.median", "Median", 30.0, true)
             .summary("Replaces each sample with the median of its circular neighbourhood.")
             .doc(
                 "Removes noise while keeping edges sharp. In float images, NaN neighbours \
@@ -282,7 +293,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     )?;
     rank_command(
         registry,
-        filter_spec("filter.mean", "Mean", 30.0, true)
+        filter_spec("filter.mean", "Mean", 40.0, true)
             .summary("Replaces each sample with the mean of its circular neighbourhood.")
             .ijm_name("Mean..."),
         Rank::Mean,
@@ -290,7 +301,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     )?;
     rank_command(
         registry,
-        filter_spec("filter.minimum", "Minimum", 40.0, true)
+        filter_spec("filter.minimum", "Minimum", 50.0, true)
             .summary("Replaces each sample with the smallest in its circular neighbourhood.")
             .doc("Shrinks bright regions and grows dark ones (grayscale erosion).")
             .ijm_name("Minimum..."),
@@ -299,7 +310,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     )?;
     rank_command(
         registry,
-        filter_spec("filter.maximum", "Maximum", 50.0, true)
+        filter_spec("filter.maximum", "Maximum", 60.0, true)
             .summary("Replaces each sample with the largest in its circular neighbourhood.")
             .doc("Grows bright regions and shrinks dark ones (grayscale dilation).")
             .ijm_name("Maximum..."),
@@ -308,7 +319,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     )?;
     rank_command(
         registry,
-        filter_spec("filter.variance", "Variance", 60.0, true)
+        filter_spec("filter.variance", "Variance", 70.0, true)
             .summary("Replaces each sample with the variance of its circular neighbourhood.")
             .doc(
                 "Highlights edges and texture. In integer images, results above the largest \
@@ -320,7 +331,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     )?;
 
     registry.register(typed(
-        filter_spec("filter.top_hat", "Top Hat", 70.0, true)
+        filter_spec("filter.top_hat", "Top Hat", 80.0, true)
             .summary("Removes the background, keeping structures smaller than a chosen radius.")
             .doc(
                 "Estimates the background with a grayscale opening (a minimum filter followed \
@@ -344,7 +355,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.convolve", "Convolve", 100.0, true)
+        filter_spec("filter.convolve", "Convolve", 110.0, true)
             .summary("Filters an image with a kernel of coefficients that you type in.")
             .doc(
                 "Each sample becomes the sum of its neighbours multiplied by the matching \
@@ -364,7 +375,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.unsharp_mask", "Unsharp Mask", 110.0, true)
+        filter_spec("filter.unsharp_mask", "Unsharp Mask", 120.0, true)
             .summary("Sharpens an image by subtracting a blurred copy of it.")
             .doc(
                 "With b the image blurred by a Gaussian of the given sigma and w the mask \
@@ -380,7 +391,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.smooth", "Smooth", 200.0, false)
+        filter_spec("filter.smooth", "Smooth", 210.0, false)
             .summary(
                 "Blurs an image slightly: each sample becomes the mean of its 3 x 3 neighbourhood.",
             )
@@ -393,7 +404,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.sharpen", "Sharpen", 210.0, false)
+        filter_spec("filter.sharpen", "Sharpen", 220.0, false)
             .summary("Strengthens fine detail with a 3 x 3 sharpening kernel.")
             .doc(
                 "Each sample becomes twelve times itself minus its eight neighbours, divided \
@@ -409,7 +420,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.find_edges", "Find Edges", 220.0, false)
+        filter_spec("filter.find_edges", "Find Edges", 230.0, false)
             .summary("Highlights sharp changes in intensity with a Sobel edge detector.")
             .doc(
                 "Each sample becomes the size of the intensity gradient there: the square \
@@ -424,7 +435,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.shadows", "Shadows", 230.0, false)
+        filter_spec("filter.shadows", "Shadows", 240.0, false)
             .summary("Embosses an image as if lit from one side.")
             .doc(
                 "Convolves with a 3 x 3 kernel that brightens edges facing the light and \
@@ -444,7 +455,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.despeckle", "Despeckle", 300.0, false)
+        filter_spec("filter.despeckle", "Despeckle", 310.0, false)
             .summary("Removes isolated bright and dark samples with a 3 x 3 median filter.")
             .ijm_name("Despeckle"),
         |ctx, p: ScopeOnly| {
@@ -455,7 +466,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.remove_outliers", "Remove Outliers", 310.0, true)
+        filter_spec("filter.remove_outliers", "Remove Outliers", 320.0, true)
             .summary("Replaces samples that stand out from their surroundings by the local median.")
             .doc(
                 "A sample is replaced by the median of its circular neighbourhood if it is \
@@ -484,7 +495,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     ))?;
 
     registry.register(typed(
-        filter_spec("filter.remove_nans", "Remove NaNs", 320.0, true)
+        filter_spec("filter.remove_nans", "Remove NaNs", 330.0, true)
             .summary("Replaces NaN samples of a float image by the median of their neighbours.")
             .doc(
                 "Each NaN (not a number) becomes the median of the samples in its circular \

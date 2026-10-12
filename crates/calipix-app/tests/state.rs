@@ -73,8 +73,8 @@ fn submenu<'a>(items: &'a [MenuEntry], name: &str) -> &'a [MenuEntry] {
 #[test]
 fn menus_follow_the_prescribed_order_and_grouping() {
     let state = demo_state();
-    // Missing menus (Analyze, Extensions) are absent; a menu the design
-    // does not name goes before Window.
+    // A missing menu (Extensions) is absent; a menu the design does not
+    // name goes before Window. The whole tree is checked in `tables.rs`.
     assert_eq!(
         labels(state.menu()),
         [
@@ -83,6 +83,7 @@ fn menus_follow_the_prescribed_order_and_grouping() {
             "View >",
             "Image >",
             "Process >",
+            "Analyze >",
             "Demo >",
             "Window >",
             "Help >"
@@ -90,7 +91,15 @@ fn menus_follow_the_prescribed_order_and_grouping() {
     );
     assert_eq!(
         labels(submenu(state.menu(), "File")),
-        ["Open…", "Open Recent >", "Save", "Save As…", "Close"]
+        [
+            "Open…",
+            "Open Recent >",
+            "-",
+            "Save",
+            "Save As…",
+            "-",
+            "Close"
+        ]
     );
     assert_eq!(
         labels(submenu(state.menu(), "Edit")),
@@ -132,6 +141,8 @@ fn menus_follow_the_prescribed_order_and_grouping() {
             "Display Panel",
             "Histogram Panel",
             "History Panel",
+            "Results Panel",
+            "Plot Panel",
             "Log Panel",
             "-",
             "Show Images Side by Side",
@@ -408,7 +419,7 @@ fn palette_ranks_prefix_and_word_start_matches_first() {
     // Title: whole, prefix, word start, initials.
     assert_eq!(first("invert"), Some("image.invert"));
     assert_eq!(first("inv"), Some("image.invert"));
-    assert_eq!(first("blur"), None);
+    assert_eq!(first("blur"), Some("filter.gaussian_blur"));
     assert_eq!(first("palette"), Some("help.command_palette"));
     assert_eq!(first("zi"), Some("view.zoom_in"));
     // Scattered letters still find it.
@@ -427,7 +438,10 @@ fn palette_ranks_prefix_and_word_start_matches_first() {
     // it, before anything that merely contains it.
     let re = ranked(&state, "re");
     let at = |id: &str| re.iter().position(|hit| *hit == id).unwrap_or(usize::MAX);
-    assert_eq!(&re[..2], ["edit.redo", "window.reset_layout"]);
+    assert_eq!(re[0], "edit.redo");
+    for starts_with_it in ["window.reset_layout", "image.resize", "math.reciprocal"] {
+        assert!(at(starts_with_it) < at("file.clear_recent"), "{re:?}");
+    }
     assert!(at("file.clear_recent") < at("image.invert"), "{re:?}");
     // "Open" itself beats "Open Recent"'s command and summary matches.
     assert_eq!(ranked(&state, "open")[0], "file.open");

@@ -763,7 +763,7 @@ struct ScaleParams {
     #[param(label = "Y scale", default = 0.5, ijm = "y")]
     y_scale: f64,
     /// Factor for the number of slices (or frames, without slices).
-    #[param(label = "Z scale", default = 1.0, ijm = "z")]
+    #[param(label = "Z scale", default = 1.0, advanced, ijm = "z")]
     z_scale: f64,
     /// New width; given together with a height, it replaces the factors.
     #[param(label = "Width", min = 1, unit = "pixels", no_persist, ijm = "width")]
@@ -772,7 +772,7 @@ struct ScaleParams {
     #[param(label = "Height", min = 1, unit = "pixels", no_persist, ijm = "height")]
     height: Option<i64>,
     /// New number of slices; it replaces the Z factor.
-    #[param(label = "Depth", min = 1, no_persist, ijm = "depth")]
+    #[param(label = "Depth", min = 1, no_persist, advanced, ijm = "depth")]
     depth: Option<i64>,
     /// How samples between pixel centres are estimated.
     #[param(
@@ -1074,10 +1074,10 @@ struct ResizeParams {
     #[param(label = "Height", min = 1, unit = "pixels", no_persist, ijm = "height")]
     height: Option<i64>,
     /// New number of slices; unchanged if left empty.
-    #[param(label = "Depth", min = 1, no_persist, ijm = "depth")]
+    #[param(label = "Depth", min = 1, no_persist, advanced, ijm = "depth")]
     depth: Option<i64>,
     /// New number of frames; unchanged if left empty.
-    #[param(label = "Frames", min = 1, no_persist, ijm = "time")]
+    #[param(label = "Frames", min = 1, no_persist, advanced, ijm = "time")]
     frames: Option<i64>,
     /// Keep the shape of the image: the height follows from the width.
     #[param(label = "Constrain aspect ratio", default = true, ijm = "constrain")]
@@ -1192,7 +1192,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                  image the image keeps its size and its contents are scaled about the \
                  centre of the selection.",
             )
-            .menu("Image", 130.0)
+            .menu("Image", 210.0)
             .ijm_name("Scale...")
             .output("image", ParamType::Image)
             .effects(creates()),
@@ -1206,7 +1206,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                  kept and resized. The pixel size is adjusted so that the image covers the \
                  same area.",
             )
-            .menu("Image", 140.0)
+            .menu("Image", 220.0)
             .ijm_name("Size...")
             .effects(modifies()),
         resize,
@@ -1214,7 +1214,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("image.canvas_size", "Canvas Size")
             .summary("Adds a border around an image, or cuts its edges, without scaling it.")
-            .menu("Image", 150.0)
+            .menu("Image", 230.0)
             .ijm_name("Canvas Size...")
             .effects(modifies()),
         canvas_size,
@@ -1223,7 +1223,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("image.flip_horizontal", "Flip Horizontally")
             .summary("Mirrors an image, or the selected part of it, left to right.")
-            .menu("Image > Transform", 10.0)
+            .menu("Image > Transform", 310.0)
             .ijm_name("Flip Horizontally")
             .effects(modifies()),
         |ctx, p: ScopeOnly| flip(ctx, &p.scope, true),
@@ -1231,7 +1231,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("image.flip_vertical", "Flip Vertically")
             .summary("Mirrors an image, or the selected part of it, top to bottom.")
-            .menu("Image > Transform", 20.0)
+            .menu("Image > Transform", 320.0)
             .ijm_name("Flip Vertically")
             .effects(modifies()),
         |ctx, p: ScopeOnly| flip(ctx, &p.scope, false),
@@ -1240,7 +1240,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         CommandSpec::new("image.flip_z", "Flip Z")
             .summary("Reverses the order of an image's slices.")
             .doc("An image without slices has the order of its frames reversed.")
-            .menu("Image > Transform", 30.0)
+            .menu("Image > Transform", 330.0)
             .ijm_name("Flip Z")
             .effects(modifies()),
         flip_z,
@@ -1248,7 +1248,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("image.rotate_right", "Rotate 90 Degrees Right")
             .summary("Turns every plane of an image a quarter turn clockwise.")
-            .menu("Image > Transform", 40.0)
+            .menu("Image > Transform", 410.0)
             .ijm_name("Rotate 90 Degrees Right")
             .effects(modifies()),
         |ctx, p: InputOnly| rotate_90(ctx, p, true),
@@ -1256,7 +1256,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("image.rotate_left", "Rotate 90 Degrees Left")
             .summary("Turns every plane of an image a quarter turn anticlockwise.")
-            .menu("Image > Transform", 50.0)
+            .menu("Image > Transform", 420.0)
             .ijm_name("Rotate 90 Degrees Left")
             .effects(modifies()),
         |ctx, p: InputOnly| rotate_90(ctx, p, false),
@@ -1268,7 +1268,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                 "The image keeps its size unless Enlarge image is set: corners that turn \
                  out of it are lost and the parts nothing turns into become 0.",
             )
-            .menu("Image > Transform", 60.0)
+            .menu("Image > Transform", 430.0)
             .ijm_name("Rotate... ")
             .effects(modifies()),
         rotate,
@@ -1277,7 +1277,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
         CommandSpec::new("image.translate", "Translate")
             .summary("Moves the contents of an image, or of the selection, by a given distance.")
             .doc("What moves out is lost, and what nothing moves into becomes 0.")
-            .menu("Image > Transform", 70.0)
+            .menu("Image > Transform", 510.0)
             .ijm_name("Translate...")
             .effects(modifies()),
         |ctx, p: TranslateParams| {

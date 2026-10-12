@@ -251,5 +251,6 @@ pub fn full_registry() -> Registry {
     let mut registry = calipix_commands::standard_registry();
     register(&mut registry, &ActionQueue::default())
         .expect("application commands are valid and unique");
+    super::table_commands::register(&mut registry).expect("table commands are valid and unique");
     registry
 }

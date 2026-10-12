@@ -612,8 +612,9 @@ struct SetScaleParams {
     input: DatasetId,
     /// A length measured on the image, in pixels.
     #[param(
-        label = "Distance in pixels",
+        label = "Distance",
         default = 0.0,
+        unit = "pixels",
         no_persist,
         ijm = "distance"
     )]
@@ -752,7 +753,7 @@ struct PropertiesParams {
     #[param(label = "Frame interval", no_persist, ijm = "frame")]
     frame_interval: Option<String>,
     /// The pixel position reported as (0, 0), as `x,y` or `x,y,z`.
-    #[param(label = "Origin (pixels)", no_persist)]
+    #[param(label = "Origin", unit = "pixels", no_persist)]
     origin: Option<String>,
 }
 
@@ -1152,7 +1153,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                 "The choice belongs to the session: it is recorded in History, undone with it, \
                  and starts from area, mean, minimum and maximum at three decimal places.",
             )
-            .menu("Analyze", 70.0)
+            .menu("Analyze", 210.0)
             .ijm_name("Set Measurements...")
             .output("measurements", ParamType::Str),
         |ctx, p: SetMeasurementsParams| {
@@ -1175,7 +1176,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
         CommandSpec::new("measure.clear_results", "Clear Results")
             .summary("Removes every row and column of the Results table.")
-            .menu("Analyze", 60.0)
+            .menu("Analyze", 110.0)
             .ijm_name("Clear Results")
             .output("rows", ParamType::Int),
         |ctx, p: TableParams| {
@@ -1192,7 +1193,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                  tab-separated text. Numbers are written as the Results table shows them, with \
                  the decimal places chosen in Set Measurements.",
             )
-            .menu("Analyze", 65.0)
+            .menu("Analyze", 120.0)
             .ijm_name("Results...")
             .output("rows", ParamType::Int)
             .effects(Effects {
@@ -1216,7 +1217,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                 "Adds rows with the mean, standard deviation, minimum and maximum of each \
                  column of the Results table.",
             )
-            .menu("Analyze", 30.0)
+            .menu("Analyze", 20.0)
             .ijm_name("Summarize")
             .output("rows", ParamType::Int),
         |ctx, p: TableParams| {
@@ -1244,7 +1245,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                 "The counts go to a table named after the column. With automatic binning the \
                  number of bins follows Scott's rule.",
             )
-            .menu("Analyze", 40.0)
+            .menu("Analyze", 30.0)
             .ijm_name("Distribution...")
             .output("table", ParamType::Str)
             .output("bins", ParamType::Int)
@@ -1273,7 +1274,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                      distance of 0, or the unit `pixel`, removes the scale. Sample values are \
                      not changed.",
                 )
-                .menu("Analyze", 110.0)
+                .menu("Analyze", 220.0)
                 .ijm_name("Set Scale..."),
         ),
         run_set_scale,
@@ -1290,7 +1291,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                     "Only what is given changes. A pixel width of 0 or the unit `none` removes \
                      the spatial calibration. Sample values are not changed.",
                 )
-                .menu("Image", 15.0)
+                .menu("Image", 20.0)
                 .ijm_name("Properties...")
                 .output("frame_interval", ParamType::Float),
         ),
@@ -1308,7 +1309,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                  number of samples, their mean, standard deviation, minimum, maximum and mode \
                  are returned.",
             )
-            .menu("Analyze", 130.0)
+            .menu("Analyze", 310.0)
             .ijm_name("Histogram")
             .output("table", ParamType::Str)
             .output("bins", ParamType::Int)
@@ -1332,7 +1333,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                 "The profile goes to a table named after the image, with the distance along \
                  the profile in calibrated units and the value there.",
             )
-            .menu("Analyze", 140.0)
+            .menu("Analyze", 320.0)
             .ijm_name("Plot Profile")
             .output("table", ParamType::Str)
             .output("points", ParamType::Int)

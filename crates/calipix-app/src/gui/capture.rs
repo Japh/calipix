@@ -17,6 +17,10 @@
 //! - `hide:<n>` and `show:<n>` hide or show channel n, counting from 1
 //! - `drag:<x1>,<y1>,<x2>,<y2>` presses at one position and releases at
 //!   another, as when dragging a range marker
+//! - `panel:<name>` brings a panel to the front: `results`, `plot`, `log`...
+//! - `table:<name>` and `plot:<name>` choose what the Results and Plot
+//!   panels show
+//! - `rows:<first>-<last>` selects rows of the table on show, from 1
 //! - `log` prints the history, the status and what the viewer reports to
 //!   standard error, to check a script did what it meant to
 //! - `click:<x>,<y>` clicks at a position in the window, e.g. on a menu
@@ -38,7 +42,8 @@ use calipix_core::{Buffer, ColorModel, DType, Image, ImageMeta};
 use eframe::egui;
 
 use super::Shell;
-use crate::state::Draft;
+use super::layout::Pane;
+use crate::state::{Draft, Panel, RowClick};
 
 #[derive(Clone, Debug, PartialEq)]
 enum Step {
@@ -52,6 +57,10 @@ enum Step {
     Position(Vec<usize>),
     Visible(usize, bool),
     Drag(egui::Pos2, egui::Pos2),
+    Panel(String),
+    Table(String),
+    Plot(String),
+    Rows(usize, usize),
     Log,
     Click(egui::Pos2),
     Double(egui::Pos2),
@@ -101,6 +110,17 @@ impl Step {
                 Step::Drag(
                     position(&format!("{x1},{y1}"))?,
                     position(&format!("{x2},{y2}"))?,
+                )
+            }
+            "panel" => Step::Panel(rest.trim().to_string()),
+            "table" => Step::Table(rest.to_string()),
+            "plot" => Step::Plot(rest.to_string()),
+            "rows" => {
+                let (first, last) = rest.split_once('-').unwrap_or((rest, rest));
+                let number = |text: &str| text.trim().parse::<usize>();
+                Step::Rows(
+                    number(first).context("rows needs row numbers")?,
+                    number(last).context("rows needs row numbers")?,
                 )
             }
             "log" => Step::Log,
@@ -301,6 +321,24 @@ impl Capture {
                 }
                 self.pointer.push_back(vec![button(to, false)]);
             }
+            Step::Panel(name) => match Panel::ALL.into_iter().find(|p| p.key() == name) {
+                Some(panel) => {
+                    shell.layout.set_open(panel, true);
+                    shell.layout.focus(Pane::Panel(panel));
+                }
+                None => eprintln!("warning: capture step panel:{name} names no panel"),
+            },
+            Step::Table(name) => shell.state.show_table(&name),
+            Step::Plot(name) => shell.state.show_plot(&name),
+            Step::Rows(first, last) => {
+                let (first, last) = (first.saturating_sub(1), last.saturating_sub(1));
+                shell.state.click_row(first, RowClick::default());
+                let extend = RowClick {
+                    extend: true,
+                    toggle: false,
+                };
+                shell.state.click_row(last, extend);
+            }
             Step::Log => {
                 let state = &shell.state;
                 eprintln!("capture: status {:?}", state.status);
@@ -323,6 +361,13 @@ impl Capture {
                 for entry in state.log() {
                     eprintln!("capture: log {:?} {}", entry.level, entry.text);
                 }
+                eprintln!(
+                    "capture: tables {:?}, showing {:?}; plots {:?}, showing {:?}",
+                    state.table_names(),
+                    state.shown_table(),
+                    state.plot_names(),
+                    state.shown_plot(),
+                );
             }
             Step::Wait(time) => self.hold_until = Some(Instant::now() + time),
         }
