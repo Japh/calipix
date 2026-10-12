@@ -61,6 +61,15 @@ impl Raw {
         }
     }
 
+    pub fn name(self) -> &'static str {
+        match self {
+            Raw::U8 => "8-bit",
+            Raw::U16 => "16-bit",
+            Raw::F32 => "32-bit",
+            Raw::Rgb => "RGB",
+        }
+    }
+
     fn bytes_per_pixel(self) -> usize {
         match self {
             Raw::U8 => 1,
