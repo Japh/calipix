@@ -336,9 +336,16 @@ pub fn with_convert_specials(name: &str, plane: &Buffer) -> Buffer {
 }
 
 /// A base image cropped to `rect`, in memory, with `edit` applied to each
-/// of its planes. Metadata, including the display range, is kept.
+/// of its planes. Metadata, including the display range, is kept; the
+/// calibration origin stays at zero, as when ImageJ crops an image that
+/// has none.
 pub fn cropped_base(name: &str, rect: Rect, edit: impl Fn(&Buffer) -> Buffer) -> Image {
-    let mut image = base(name).crop(rect).unwrap().materialize().unwrap();
+    let view = base(name).crop(rect).unwrap();
+    let mut meta = view.meta().clone();
+    for axis in 0..2 {
+        meta.axis_mut(axis).unwrap().origin = 0.0;
+    }
+    let mut image = view.with_meta(meta).unwrap().materialize().unwrap();
     for plane in 0..image.meta().plane_count() {
         let edited = edit(&image.read_plane(plane).unwrap());
         image = image.with_plane(plane, edited).unwrap();
