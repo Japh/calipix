@@ -184,11 +184,14 @@ pub fn keys(ctx: &egui::Context, state: &mut AppState) {
     let (delete, all, copied, escape) = ctx.input_mut(|input| {
         let delete = input.consume_key(Modifiers::NONE, Key::Delete)
             || input.consume_key(Modifiers::NONE, Key::Backspace);
+        // Select None, while the table has the keyboard, is about its
+        // rows; taken before Ctrl+A, which would match it too.
+        let none = input.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::A);
         let all = input.consume_key(Modifiers::COMMAND, Key::A);
         // The window system turns Ctrl+C into a copy event.
         let copy_event = input.events.iter().any(|e| matches!(e, egui::Event::Copy));
         let copied = input.consume_key(Modifiers::COMMAND, Key::C) || copy_event;
-        let escape = input.consume_key(Modifiers::NONE, Key::Escape);
+        let escape = input.consume_key(Modifiers::NONE, Key::Escape) || none;
         (delete, all, copied, escape)
     });
     if delete {

@@ -5,8 +5,8 @@
 use calipix_view::Probe;
 use eframe::egui;
 
+use super::ui;
 use super::viewer::ViewerResponse;
-use super::{overlay, ui};
 use crate::state::{AppState, Status};
 
 /// What the person did in the status bar.
@@ -116,9 +116,10 @@ fn readouts(ui: &mut egui::Ui, state: &AppState, view: &ViewerResponse) -> bool 
         meta.dtype().name(),
     ));
     ui.separator();
-    if let Some(roi) = &dataset.roi {
-        ui.label(overlay::bounds_text(roi))
-            .on_hover_text("The selection: width × height at left, top, in pixels");
+    if let Some(summary) = state.selection_summary() {
+        ui.label(summary).on_hover_text(
+            "The selection: its size and place in pixels, or the length and angle of a line",
+        );
         ui.separator();
     }
     if let Some(zoom) = view.zoom {

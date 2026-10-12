@@ -27,6 +27,21 @@
 //! - `double:<x>,<y>` double-clicks there
 //! - `hover:<x>,<y>` moves the pointer there
 //! - `wait:<milliseconds>` lets time pass
+//! - `tool:<name>` chooses a tool: `pointer`, `rectangle`, `oval`,
+//!   `polygon`, `freehand`, `line`, `segmented_line`, `point`
+//! - `key:<shortcut>` presses a key, written as shortcuts are: `Escape`,
+//!   `T`, `Alt+Right`, `Ctrl+Z`
+//! - `mods:<modifiers>` holds `shift`, `alt` or `ctrl` (joined by `+`)
+//!   down for the pointer steps that follow; `mods:none` lets go
+//! - `idrag:<x1>,<y1>,<x2>,<y2>`, `iclick:<x>,<y>`, `ihover:<x>,<y>`,
+//!   `ipress:<x>,<y>` and `irelease:<x>,<y>` are pointer steps at places
+//!   given in the active image's own coordinates, wherever it is on screen
+//! - `ipath:<x>,<y>,<x>,<y>,...` presses at the first place, moves through
+//!   the others with the button down and releases at the last
+//! - `wheel:<x>,<y>,<notches>` and `iwheel:<x>,<y>,<notches>` turn the
+//!   mouse wheel over a place; positive notches zoom in
+//! - `regions:<n>` gives the active image n generated regions
+//! - `pick:<first>-<last>` selects regions in the Regions panel, from 1
 //!
 //! `CALIPIX_CAPTURE_RUN=<command id>` is short for a single `run` step. The
 //! user's settings are neither read nor written while capturing, unless
@@ -43,7 +58,8 @@ use eframe::egui;
 
 use super::Shell;
 use super::layout::Pane;
-use crate::state::{Draft, Panel, RowClick};
+use crate::state::shortcut::Shortcut;
+use crate::state::{Draft, Panel, RowClick, Tool};
 
 #[derive(Clone, Debug, PartialEq)]
 enum Step {
@@ -66,6 +82,18 @@ enum Step {
     Double(egui::Pos2),
     Hover(egui::Pos2),
     Wait(Duration),
+    Tool(Tool),
+    Key(Shortcut),
+    Mods(egui::Modifiers),
+    /// A pointer step whose places are in image coordinates.
+    OnImage(Box<Step>),
+    Press(egui::Pos2),
+    Release(egui::Pos2),
+    /// Press, move through the places, release at the last.
+    Path(Vec<egui::Pos2>),
+    Wheel(egui::Pos2, f32),
+    Regions(usize),
+    Pick(usize, usize),
 }
 
 fn position(text: &str) -> Result<egui::Pos2> {
@@ -130,6 +158,68 @@ impl Step {
             "wait" => Step::Wait(Duration::from_millis(
                 rest.parse().context("wait needs milliseconds")?,
             )),
+            "tool" => Step::Tool(
+                Tool::from_key(rest.trim()).ok_or_else(|| anyhow!("`{rest}` is not a tool"))?,
+            ),
+            "key" => Step::Key(Shortcut::parse(rest.trim()).map_err(|e| anyhow!(e))?),
+            "mods" => {
+                let mut modifiers = egui::Modifiers::NONE;
+                for name in rest.split('+').map(str::trim) {
+                    match name {
+                        "shift" => modifiers.shift = true,
+                        "alt" => modifiers.alt = true,
+                        "ctrl" => {
+                            modifiers.ctrl = true;
+                            modifiers.command = true;
+                        }
+                        "none" | "" => {}
+                        other => bail!("`{other}` is not a modifier"),
+                    }
+                }
+                Step::Mods(modifiers)
+            }
+            "press" => Step::Press(position(rest)?),
+            "release" => Step::Release(position(rest)?),
+            "wheel" | "iwheel" => {
+                let numbers: Vec<&str> = rest.split(',').collect();
+                let [x, y, notches] = numbers.as_slice() else {
+                    bail!("`{text}` should be {verb}:<x>,<y>,<notches>");
+                };
+                let step = Step::Wheel(
+                    position(&format!("{x},{y}"))?,
+                    notches.trim().parse().context("wheel needs notches")?,
+                );
+                if verb.trim() == "iwheel" {
+                    Step::OnImage(Box::new(step))
+                } else {
+                    step
+                }
+            }
+            "ipath" => {
+                let numbers: Vec<f32> = rest
+                    .split(',')
+                    .map(|n| n.trim().parse())
+                    .collect::<Result<_, _>>()
+                    .context("ipath needs numbers separated by commas")?;
+                if numbers.len() < 4 || numbers.len() % 2 != 0 {
+                    bail!("`{text}` should be ipath:<x>,<y>,<x>,<y>,...");
+                }
+                let places = numbers.chunks(2).map(|p| egui::pos2(p[0], p[1])).collect();
+                Step::OnImage(Box::new(Step::Path(places)))
+            }
+            "idrag" | "iclick" | "ihover" | "ipress" | "irelease" | "idouble" => {
+                let plain = format!("{}:{rest}", &verb.trim()[1..]);
+                Step::OnImage(Box::new(Step::parse(&plain)?))
+            }
+            "regions" => Step::Regions(rest.trim().parse().context("regions needs a count")?),
+            "pick" => {
+                let (first, last) = rest.split_once('-').unwrap_or((rest, rest));
+                let number = |text: &str| text.trim().parse::<usize>();
+                Step::Pick(
+                    number(first).context("pick needs region numbers")?,
+                    number(last).context("pick needs region numbers")?,
+                )
+            }
             other => bail!("unknown capture step `{other}`"),
         })
     }
@@ -148,6 +238,8 @@ pub struct Capture {
     requested: bool,
     /// Pointer events to feed in, one batch per frame.
     pointer: VecDeque<Vec<egui::Event>>,
+    /// Modifier keys held down for the pointer steps.
+    held: egui::Modifiers,
 }
 
 /// Frames to let the interface settle after each step.
@@ -175,6 +267,7 @@ impl Capture {
             mid_run: false,
             requested: false,
             pointer: VecDeque::new(),
+            held: egui::Modifiers::NONE,
         }))
     }
 
@@ -202,7 +295,7 @@ impl Capture {
         let busy = (shell.state.running().is_some() || shell.view().loading)
             && !self.mid_run
             && !next_waits;
-        if self.settled < SETTLE || holding || busy || self.requested {
+        if self.settled < SETTLE || holding || busy || self.requested || !self.pointer.is_empty() {
             return false;
         }
         self.settled = 0;
@@ -228,15 +321,137 @@ impl Capture {
         }
     }
 
+    /// `step` with its places, given in the active image's coordinates,
+    /// turned into places in the window.
+    fn on_image(step: Step, shell: &Shell) -> Option<Step> {
+        let place = shell.view().place?;
+        let at = |p: egui::Pos2| place.screen([p.x as f64, p.y as f64]);
+        Some(match step {
+            Step::Drag(from, to) => Step::Drag(at(from), at(to)),
+            Step::Click(p) => Step::Click(at(p)),
+            Step::Double(p) => Step::Double(at(p)),
+            Step::Hover(p) => Step::Hover(at(p)),
+            Step::Press(p) => Step::Press(at(p)),
+            Step::Release(p) => Step::Release(at(p)),
+            Step::Wheel(p, notches) => Step::Wheel(at(p), notches),
+            Step::Path(places) => Step::Path(places.into_iter().map(at).collect()),
+            other => other,
+        })
+    }
+
     fn apply(&mut self, step: Step, shell: &mut Shell) {
+        let held = self.held;
+        let button_at = move |pos, pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: held,
+        };
         match step {
+            Step::OnImage(step) => match Capture::on_image(*step, shell) {
+                Some(step) => self.apply(step, shell),
+                None => eprintln!("warning: a capture step on the image found no image on show"),
+            },
+            Step::Tool(tool) => shell.invoke(&tool.command_id(), &Args::new()),
+            Step::Key(shortcut) => {
+                let Some(key) = egui::Key::from_name(&shortcut.key) else {
+                    return eprintln!("warning: capture step key:{} names no key", shortcut.key);
+                };
+                let modifiers = egui::Modifiers {
+                    alt: shortcut.alt,
+                    ctrl: shortcut.ctrl,
+                    shift: shortcut.shift,
+                    mac_cmd: false,
+                    command: shortcut.ctrl,
+                };
+                let event = |pressed| egui::Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed,
+                    repeat: false,
+                    modifiers,
+                };
+                self.pointer.push_back(vec![event(true)]);
+                self.pointer.push_back(vec![event(false)]);
+            }
+            Step::Mods(modifiers) => {
+                self.held = modifiers;
+                self.pointer
+                    .push_back(vec![egui::Event::ModifiersChanged(modifiers)]);
+            }
+            Step::Press(at) => {
+                self.pointer.push_back(vec![egui::Event::PointerMoved(at)]);
+                self.pointer.push_back(vec![button_at(at, true)]);
+            }
+            Step::Release(at) => {
+                self.pointer.push_back(vec![egui::Event::PointerMoved(at)]);
+                self.pointer.push_back(vec![button_at(at, false)]);
+            }
+            Step::Path(places) => {
+                let (Some(&first), Some(&last)) = (places.first(), places.last()) else {
+                    return;
+                };
+                self.pointer
+                    .push_back(vec![egui::Event::PointerMoved(first)]);
+                self.pointer.push_back(vec![button_at(first, true)]);
+                for pair in places.windows(2) {
+                    // A few steps along each leg, as a hand would move.
+                    for step in 1..=4 {
+                        let at = pair[0] + (pair[1] - pair[0]) * (step as f32 / 4.0);
+                        self.pointer.push_back(vec![egui::Event::PointerMoved(at)]);
+                    }
+                }
+                self.pointer.push_back(vec![button_at(last, false)]);
+            }
+            Step::Wheel(at, notches) => {
+                self.pointer.push_back(vec![egui::Event::PointerMoved(at)]);
+                for _ in 0..notches.abs() as usize {
+                    self.pointer.push_back(vec![egui::Event::MouseWheel {
+                        unit: egui::MouseWheelUnit::Line,
+                        delta: egui::vec2(0.0, notches.signum()),
+                        phase: egui::TouchPhase::Move,
+                        modifiers: egui::Modifiers::NONE,
+                    }]);
+                }
+            }
+            Step::Regions(count) => {
+                let Some(dataset) = shell.state.active() else {
+                    return eprintln!("warning: capture step regions needs an open image");
+                };
+                let meta = dataset.image.meta();
+                let entries = crate::demo::regions(count, meta.width(), meta.height());
+                let path = std::env::temp_dir().join(format!(
+                    "calipix-capture-regions-{}-{count}.zip",
+                    std::process::id()
+                ));
+                let written = calipix_roi::write_zip(&entries)
+                    .map_err(|e| e.to_string())
+                    .and_then(|bytes| std::fs::write(&path, bytes).map_err(|e| e.to_string()));
+                match written {
+                    Ok(()) => shell
+                        .state
+                        .start("regions.open", &Args::new().with("path", path)),
+                    Err(e) => eprintln!("warning: capture step regions failed: {e}"),
+                }
+            }
+            Step::Pick(first, last) => {
+                let (first, last) = (first.saturating_sub(1), last.saturating_sub(1));
+                shell.state.click_region(first, RowClick::default());
+                if last != first {
+                    let extend = RowClick {
+                        extend: true,
+                        toggle: false,
+                    };
+                    shell.state.click_region(last, extend);
+                }
+            }
             Step::Hover(at) => self.pointer.push_back(vec![egui::Event::PointerMoved(at)]),
             Step::Double(at) => {
                 let button = |pressed| egui::Event::PointerButton {
                     pos: at,
                     button: egui::PointerButton::Primary,
                     pressed,
-                    modifiers: egui::Modifiers::NONE,
+                    modifiers: held,
                 };
                 self.pointer.push_back(vec![egui::Event::PointerMoved(at)]);
                 for _ in 0..2 {
@@ -249,7 +464,7 @@ impl Capture {
                     pos: at,
                     button: egui::PointerButton::Primary,
                     pressed,
-                    modifiers: egui::Modifiers::NONE,
+                    modifiers: held,
                 };
                 self.pointer.push_back(vec![egui::Event::PointerMoved(at)]);
                 self.pointer.push_back(vec![button(true)]);
@@ -304,12 +519,7 @@ impl Capture {
                 }
             }
             Step::Drag(from, to) => {
-                let button = |pos, pressed| egui::Event::PointerButton {
-                    pos,
-                    button: egui::PointerButton::Primary,
-                    pressed,
-                    modifiers: egui::Modifiers::NONE,
-                };
+                let button = button_at;
                 self.pointer
                     .push_back(vec![egui::Event::PointerMoved(from)]);
                 self.pointer.push_back(vec![button(from, true)]);
@@ -360,6 +570,26 @@ impl Capture {
                 );
                 for entry in state.log() {
                     eprintln!("capture: log {:?} {}", entry.level, entry.text);
+                }
+                let regions = view.regions;
+                eprintln!(
+                    "capture: tool {}, selection {:?}; regions {}, {} outlined and {} as dots in {} µs",
+                    state.tool().title(),
+                    state
+                        .active()
+                        .and_then(|d| d.roi.as_ref())
+                        .map(|r| r.to_string()),
+                    regions.regions,
+                    regions.outlined,
+                    regions.dots,
+                    regions.micros,
+                );
+                if let Some(place) = view.place {
+                    eprintln!(
+                        "capture: image at {:?}, its corner at {:?}",
+                        place.rect,
+                        place.screen([0.0, 0.0])
+                    );
                 }
                 eprintln!(
                     "capture: tables {:?}, showing {:?}; plots {:?}, showing {:?}",

@@ -15,7 +15,7 @@ use calipix_view::{ImageView, Probe, Renderer, ViewOptions, ViewerGpu};
 use eframe::egui;
 
 use super::{overlay, ui};
-use crate::state::{AppState, Zoom};
+use crate::state::{Aim, AppState, Mods, Pointer, Zoom, regions};
 
 /// What the viewer reports back for the status bar and tab handling.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -30,6 +30,10 @@ pub struct ViewerResponse {
     pub loading: bool,
     /// True if the CPU renderer drew the picture rather than the GPU.
     pub on_cpu: bool,
+    /// Where the image is on the screen.
+    pub place: Option<overlay::ImagePlace>,
+    /// What drawing the image's regions took.
+    pub regions: overlay::RegionStats,
 }
 
 struct Slot {
@@ -42,6 +46,111 @@ struct Slot {
     reported: Option<String>,
     /// True until the first frame has chosen the opening zoom.
     opening: bool,
+    /// The primary button went down on the image with a tool, and has
+    /// not come up yet.
+    pressing: bool,
+    /// The bounds of the image's regions, kept between frames.
+    bounds: overlay::RegionBounds,
+}
+
+/// The pointer on the image as the tools see it.
+fn pointer(place: &overlay::ImagePlace, at: egui::Pos2, modifiers: egui::Modifiers) -> Pointer {
+    Pointer {
+        at: place.image(at),
+        zoom: place.zoom(),
+        reach: place.reach(6.0),
+        mods: Mods {
+            shift: modifiers.shift,
+            alt: modifiers.alt,
+        },
+    }
+}
+
+/// Passes what the pointer did on the image this frame to the tools, and
+/// sets the cursor to what a press would do. Returns the handle of the
+/// selection that is under the pointer.
+///
+/// A drag that pans (the middle button, or the primary one with Space
+/// held) belongs to the viewer widget and never reaches the tools; Space
+/// pressed in the middle of a tool's drag gives the drag up.
+fn tool_input(
+    ui: &egui::Ui,
+    state: &mut AppState,
+    id: DatasetId,
+    response: &egui::Response,
+    place: &overlay::ImagePlace,
+    pressing: &mut bool,
+) -> Option<usize> {
+    use egui::PointerButton::{Middle, Primary};
+    let (pressed, down, released, at, modifiers, space, panning) = ui.input(|i| {
+        (
+            i.pointer.button_pressed(Primary),
+            i.pointer.button_down(Primary),
+            i.pointer.button_released(Primary),
+            i.pointer.latest_pos(),
+            i.modifiers,
+            i.key_down(egui::Key::Space),
+            i.pointer.button_down(Middle),
+        )
+    });
+    let over = response.contains_pointer();
+    if let Some(at) = at {
+        let p = pointer(place, at, modifiers);
+        if pressed && over && !space && !panning {
+            *pressing = true;
+            state.pointer_pressed(id, p);
+        } else if *pressing && (space || panning) {
+            // The drag has become a pan.
+            *pressing = false;
+            state.cancel_gesture();
+        } else if *pressing && released {
+            *pressing = false;
+            state.pointer_released(id, p);
+        } else if *pressing && down {
+            state.pointer_dragged(id, p);
+        } else if *pressing {
+            // The button came up somewhere it was not seen.
+            *pressing = false;
+            state.cancel_gesture();
+        } else if over && !down {
+            state.pointer_hovered(id, p);
+        }
+        if state.gesture_active() {
+            // The rubber band follows the pointer.
+            ui.ctx().request_repaint();
+        }
+        if (over || *pressing) && !space && !panning {
+            let aim = state.aim(id, &p);
+            let boxed = state.canvas_view(id).selection.is_some_and(|roi| {
+                matches!(
+                    roi.kind(),
+                    calipix_roi::Kind::Rectangle | calipix_roi::Kind::Oval
+                )
+            });
+            let cursor = match aim {
+                Aim::Nothing => None,
+                Aim::Draw => Some(egui::CursorIcon::Crosshair),
+                Aim::Move => Some(egui::CursorIcon::Move),
+                Aim::Handle(handle) if boxed => Some(match handle % 4 {
+                    0 => egui::CursorIcon::ResizeNwSe,
+                    1 => egui::CursorIcon::ResizeVertical,
+                    2 => egui::CursorIcon::ResizeNeSw,
+                    _ => egui::CursorIcon::ResizeHorizontal,
+                }),
+                Aim::Handle(_) => Some(egui::CursorIcon::PointingHand),
+            };
+            if let Some(cursor) = cursor {
+                ui.ctx().set_cursor_icon(cursor);
+            }
+            if let Aim::Handle(handle) = aim {
+                return Some(handle);
+            }
+        }
+    } else if *pressing && !down {
+        *pressing = false;
+        state.cancel_gesture();
+    }
+    None
 }
 
 /// The zoom a newly opened image starts at: the largest standard step at
@@ -117,6 +226,8 @@ impl Viewer {
             shown: None,
             reported: None,
             opening: true,
+            pressing: false,
+            bounds: overlay::RegionBounds::default(),
         });
         if slot.opening {
             slot.view.fit();
@@ -166,10 +277,24 @@ impl Viewer {
             slot.view.zoom(),
             slot.view.center(),
         );
-        let dataset = state.session().workspace.get(id).ok();
-        if let Some(roi) = dataset.and_then(|dataset| dataset.roi.as_ref()) {
-            overlay::selection(ui.painter(), &place, roi);
+        let hovered = tool_input(ui, state, id, &shown.response, &place, &mut slot.pressing);
+        let mut region_stats = overlay::RegionStats::default();
+        if state.regions_shown()
+            && let Ok(dataset) = state.session().workspace.get(id)
+            && !dataset.overlay.is_empty()
+        {
+            let entries = &dataset.overlay;
+            let look = overlay::RegionLook {
+                entries,
+                bounds: slot.bounds.of(entries, state.regions_version(id)),
+                picked: state.selected_regions(id),
+                labels: state.region_labels(),
+            };
+            region_stats = overlay::regions(ui.painter(), &place, &look, |entry| {
+                regions::on_plane(&entry.props, meta, &position)
+            });
         }
+        overlay::selection(ui.painter(), &place, &state.canvas_view(id), hovered);
         if slot.opening {
             // The widget has just worked out the fitting zoom; step down to
             // a standard level and draw again.
@@ -206,6 +331,8 @@ impl Viewer {
             zoom: Some(shown.zoom),
             loading: shown.loading,
             on_cpu: shown.renderer == Renderer::Cpu,
+            place: Some(place),
+            regions: region_stats,
         }
     }
 

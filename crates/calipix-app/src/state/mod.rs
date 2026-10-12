@@ -2,16 +2,19 @@
 //! the GUI toolkit, so everything the interface can do is testable here.
 
 pub mod action;
+pub mod canvas;
 pub mod dialog;
 pub mod histogram;
 pub mod menu;
 pub mod palette;
 mod panel;
+pub mod regions;
 pub mod settings;
 pub mod shortcut;
 pub mod table_commands;
 pub mod tables;
 mod task;
+pub mod tools;
 pub mod view;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -24,8 +27,10 @@ use calipix_command::{
 };
 use calipix_commands::view::DISPLAY_COMMANDS;
 use calipix_core::{AxisKind, ColorModel, Image, Table};
+use calipix_roi::Roi;
 
 pub use action::{ActionQueue, Theme, UiAction, Zoom};
+pub use canvas::{CanvasKey, CanvasView, SelectionInfo};
 pub use dialog::{Dialog, Draft, Field};
 pub use histogram::{HistogramKey, HistogramState, Histograms, PlaneHistogram};
 pub use menu::{MenuCommand, MenuEntry};
@@ -34,6 +39,7 @@ pub use settings::{SavedLayout, Settings};
 pub use shortcut::{KeyPress, Shortcut};
 pub use tables::{PlotData, PlotKind, RowClick, TableText};
 pub use task::{Running, Waker};
+pub use tools::{Aim, Mods, Pointer, RegionLabels, Tool};
 pub use view::ImageViewState;
 
 use task::{Finished, Task};
@@ -139,6 +145,15 @@ pub struct AppState {
     tables: tables::Tables,
     /// Commands a panel asked for, to be chosen as from a menu.
     requests: Vec<(String, Args)>,
+    /// The tool the pointer uses on images.
+    tool: Tool,
+    /// The shape being drawn, moved or reshaped, and on which image.
+    interaction: Option<(DatasetId, tools::Interaction)>,
+    /// The selection a finished gesture asked for, shown until the
+    /// command that makes it so has run.
+    pending_selection: Option<(DatasetId, Option<Roi>)>,
+    /// How the regions of the open images are being looked at.
+    regions: regions::Regions,
 }
 
 /// One line of the History panel.
@@ -238,6 +253,10 @@ impl AppState {
             histograms: Histograms::default(),
             tables: tables::Tables::default(),
             requests: Vec::new(),
+            tool: Tool::default(),
+            interaction: None,
+            pending_selection: None,
+            regions: regions::Regions::default(),
         }
     }
 
@@ -356,14 +375,43 @@ impl AppState {
                     .inputs
                     .iter()
                     .any(|p| p.ty == ParamType::Image && p.required && args.get(&p.name).is_none());
-                (needs_image && self.active().is_none()).then(|| "Open an image first".to_string())
+                if needs_image && self.active().is_none() {
+                    return Some("Open an image first".to_string());
+                }
+                self.region_needs(id, args)
             }),
+        }
+    }
+
+    /// What a region command lacks to run on the image it would act on:
+    /// a selection to keep, or regions to act on.
+    fn region_needs(&self, id: &str, args: &Args) -> Option<String> {
+        let (needs_selection, needs_regions) = match id {
+            "regions.add" => (true, false),
+            "regions.update" => (true, true),
+            "regions.select" | "regions.rename" | "regions.set_color" | "regions.delete"
+            | "regions.clear" | "regions.save" | "regions.measure" => (false, true),
+            _ => return None,
+        };
+        let dataset = match args.get("input") {
+            Some(Value::Image(id)) => self.session.workspace.get(*id).ok(),
+            _ => self.active(),
+        }?;
+        if needs_selection && dataset.roi.is_none() {
+            Some("Make a selection first".to_string())
+        } else if needs_regions && dataset.overlay.is_empty() {
+            Some("The image has no regions".to_string())
+        } else {
+            None
         }
     }
 
     /// The on/off mark a command's menu item carries, if it has one.
     pub fn mark(&self, id: &str) -> Option<Mark> {
         match self.app_actions.get(id)? {
+            UiAction::SetTool(tool) => Some(Mark::Choice(self.tool == *tool)),
+            UiAction::ToggleRegions => Some(Mark::Toggle(self.regions_shown())),
+            UiAction::SetRegionLabels(labels) => Some(Mark::Choice(self.regions.labels == *labels)),
             UiAction::TogglePanel(panel) => Some(Mark::Toggle(self.panel_open(*panel))),
             UiAction::SetTheme(theme) => Some(Mark::Choice(self.settings.theme == *theme)),
             _ => None,
@@ -410,9 +458,16 @@ impl AppState {
             .into_iter()
             .filter(|p| preset.get(&p.name).is_none())
             .collect();
-        match asked.as_slice() {
+        // Options kept under "More options" need not be asked about; if a
+        // file is all that is left, the system's dialog asks for it.
+        let needed: Vec<_> = asked
+            .iter()
+            .copied()
+            .filter(|p| !menu::can_go_unasked(p))
+            .collect();
+        match needed.as_slice() {
             // Nothing to ask, or only options that have defaults.
-            all if all.iter().all(|p| menu::can_go_unasked(p)) => {
+            [] => {
                 self.start(id, preset);
                 Invocation::Started
             }
@@ -586,6 +641,7 @@ impl AppState {
         if let Some(task) = self.task.take() {
             task.cancel();
             self.pending.clear();
+            self.pending_selection = None;
             self.note(format!("{} cancelled", task.spec.title));
         }
     }
@@ -606,6 +662,9 @@ impl AppState {
         if self.gesture.as_ref().is_some_and(|g| g.committing) {
             self.gesture = None;
         }
+        // Likewise the selection a tool asked for: it is the image's now,
+        // or it is not to be.
+        self.pending_selection = None;
         let title = &task.spec.title;
         let finished = match outcome {
             Ok(finished) => finished,
@@ -623,6 +682,11 @@ impl AppState {
         let before = std::mem::replace(&mut self.session, finished.session).workspace;
         let display_only = DISPLAY_COMMANDS.contains(&task.spec.id.as_str());
         self.note_changes(&before, display_only);
+        let input = match task.args.get("input") {
+            Some(Value::Image(id)) => Some(*id),
+            _ => task.base_active,
+        };
+        self.note_region_command(&task.spec.id, input);
         let raised = self.note_tables(&before, &outputs);
         // A command that changed a table has shown what it did there.
         let changed_tables = {
@@ -662,6 +726,17 @@ impl AppState {
                     _ => format!("{name} has {rows} rows"),
                 };
                 self.note(format!("{title} finished; {place}"));
+            }
+            // What a region command did is on the image and in the list.
+            (None, Some(_)) if task.spec.id.starts_with("regions.") => {
+                let count = input
+                    .and_then(|id| self.session.workspace.get(id).ok())
+                    .map_or(0, |dataset| dataset.overlay.len());
+                let regions = match count {
+                    1 => "1 region".to_string(),
+                    count => format!("{count} regions"),
+                };
+                self.note(format!("{title} finished; the image has {regions}"));
             }
             (None, Some(_)) if !changed_tables => {
                 self.queue.push(UiAction::ShowPanel(Panel::Log));
@@ -1037,6 +1112,7 @@ impl AppState {
     /// given the workspace as it was before a change. `display_only` says
     /// that the change cannot have touched a sample.
     fn note_changes(&mut self, before: &Workspace, display_only: bool) {
+        self.note_region_changes(before);
         let workspace = &self.session.workspace;
         for dataset in workspace.datasets() {
             let unchanged = match before.image(dataset.id) {
@@ -1054,6 +1130,9 @@ impl AppState {
         self.histograms.retain(open);
         if self.gesture.as_ref().is_some_and(|g| !open(g.id)) {
             self.gesture = None;
+        }
+        if self.interaction.as_ref().is_some_and(|(id, _)| !open(*id)) {
+            self.interaction = None;
         }
     }
 
@@ -1184,6 +1263,7 @@ impl AppState {
     pub fn click_row(&mut self, row: usize, click: RowClick) {
         let rows = self.table_text().map_or(0, |text| text.len());
         self.tables.click(row, rows, click);
+        self.regions.attention = false;
     }
 
     pub fn select_all_rows(&mut self) {
@@ -1206,6 +1286,9 @@ impl AppState {
 
     pub fn set_table_attention(&mut self, attention: bool) {
         self.tables.attention = attention;
+        if attention {
+            self.regions.attention = false;
+        }
     }
 
     /// Says that the table was drawn this frame. A table that is not on
@@ -1394,17 +1477,17 @@ impl AppState {
                     // A command's one image needs no label.
                     Value::Image(id) if images == 1 => name_then(*id),
                     Value::Image(id) => format!("{} {}", name.replace('_', " "), name_then(*id)),
-                    // Text over several lines (a kernel) is told on one.
-                    other => format!(
-                        "{} {}",
-                        name.replace('_', " "),
-                        other
+                    // Text over several lines (a kernel) is told on one,
+                    // and a long value (a freehand outline) cut short.
+                    other => {
+                        let text = other
                             .to_text()
                             .lines()
                             .map(str::trim)
                             .collect::<Vec<_>>()
-                            .join("; ")
-                    ),
+                            .join("; ");
+                        format!("{} {}", name.replace('_', " "), shortened(&text))
+                    }
                 })
             })
             .collect::<Vec<_>>()
@@ -1526,6 +1609,16 @@ impl AppState {
                     self.rebuild_menu();
                     self.note("Recent files cleared");
                 }
+                UiAction::SetTool(tool) => self.set_tool(tool),
+                UiAction::ToggleRegions => {
+                    self.regions.hidden = !self.regions.hidden;
+                    self.note(if self.regions.hidden {
+                        "Regions hidden"
+                    } else {
+                        "Regions shown"
+                    });
+                }
+                UiAction::SetRegionLabels(labels) => self.regions.labels = labels,
                 UiAction::Zoom(_)
                 | UiAction::Step(_)
                 | UiAction::TileImages
@@ -1578,6 +1671,18 @@ fn describe_outputs(outputs: &Outputs) -> Option<String> {
         .map(|(name, value)| format!("{} {}", name.replace('_', " "), value.to_text()))
         .collect();
     (!parts.is_empty()).then(|| parts.join(", "))
+}
+
+/// `text` cut to a length that fits a line of the History panel.
+fn shortened(text: &str) -> String {
+    const LIMIT: usize = 72;
+    if text.chars().count() <= LIMIT {
+        return text.to_string();
+    }
+    let cut: String = text.chars().take(LIMIT).collect();
+    // End on a whole word (a whole coordinate pair) where there is one.
+    let cut = cut.rsplit_once(' ').map_or(cut.as_str(), |(head, _)| head);
+    format!("{cut} …")
 }
 
 /// True if the image has planes to step through besides its channels.

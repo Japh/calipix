@@ -12,6 +12,8 @@ pub enum Panel {
     Info,
     Display,
     Histogram,
+    /// The regions saved with the active image.
+    Regions,
     History,
     /// The results tables of the session, one at a time.
     Results,
@@ -31,10 +33,11 @@ pub enum Dock {
 
 impl Panel {
     /// Every panel, in Window menu order.
-    pub const ALL: [Panel; 7] = [
+    pub const ALL: [Panel; 8] = [
         Panel::Info,
         Panel::Display,
         Panel::Histogram,
+        Panel::Regions,
         Panel::History,
         Panel::Results,
         Panel::Plot,
@@ -46,6 +49,7 @@ impl Panel {
             Panel::Info => "Info",
             Panel::Display => "Display",
             Panel::Histogram => "Histogram",
+            Panel::Regions => "Regions",
             Panel::History => "History",
             Panel::Results => "Results",
             Panel::Plot => "Plot",
@@ -59,6 +63,7 @@ impl Panel {
             Panel::Info => "info",
             Panel::Display => "display",
             Panel::Histogram => "histogram",
+            Panel::Regions => "regions",
             Panel::History => "history",
             Panel::Results => "results",
             Panel::Plot => "plot",
@@ -68,7 +73,7 @@ impl Panel {
 
     pub fn dock(self) -> Dock {
         match self {
-            Panel::Info | Panel::Display | Panel::Histogram => Dock::Right,
+            Panel::Info | Panel::Display | Panel::Histogram | Panel::Regions => Dock::Right,
             // Tables and profiles are wide rather than tall, which is the
             // shape of the strip under the images.
             Panel::History | Panel::Results | Panel::Plot | Panel::Log => Dock::Bottom,
@@ -78,9 +83,10 @@ impl Panel {
     /// Share of its dock's length the panel gets in the default layout.
     pub fn share(self) -> f32 {
         match self {
-            Panel::Info => 0.9,
+            // Info shares its place with Regions, which is a list.
+            Panel::Info | Panel::Regions => 1.2,
             Panel::Display => 1.1,
-            Panel::Histogram => 1.5,
+            Panel::Histogram => 1.3,
             Panel::History | Panel::Results | Panel::Plot | Panel::Log => 1.0,
         }
     }
@@ -91,6 +97,20 @@ impl Panel {
             // Its B&C window is where display ranges are adjusted.
             Panel::Display => Some("Brightness/Contrast..."),
             Panel::Results => Some("Results"),
+            // Its ROI Manager is the nearest thing to the list of regions.
+            Panel::Regions => Some("ROI Manager..."),
+            _ => None,
+        }
+    }
+
+    /// The panel whose tab group this one joins in the default layout,
+    /// rather than taking a place of its own. A list of regions is tall
+    /// and narrow like the column on the right, which has no room for a
+    /// fourth panel; it sits behind Info and comes forward when a region
+    /// is added.
+    pub fn tabbed_with(self) -> Option<Panel> {
+        match self {
+            Panel::Regions => Some(Panel::Info),
             _ => None,
         }
     }

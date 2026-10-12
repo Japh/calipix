@@ -148,9 +148,24 @@ impl Layout {
                 .map(|panel| (panel, tiles.insert_pane(Pane::Panel(panel))))
                 .collect()
         };
-        let right: Vec<(TileId, f32)> = docked(&mut tiles, Dock::Right)
-            .into_iter()
-            .map(|(panel, pane)| (tiles.insert_tab_tile(vec![pane]), panel.share()))
+        // Each panel on the right has a tab group of its own, except
+        // those that join another's.
+        let on_right = docked(&mut tiles, Dock::Right);
+        let right: Vec<(TileId, f32)> = on_right
+            .iter()
+            .filter(|(panel, _)| panel.tabbed_with().is_none())
+            .map(|&(panel, pane)| {
+                let mut tabs = vec![pane];
+                let joining = on_right
+                    .iter()
+                    .filter(|(other, _)| other.tabbed_with() == Some(panel));
+                tabs.extend(joining.map(|(_, pane)| *pane));
+                let group = tiles.insert_tab_tile(tabs);
+                if let Some(Tile::Container(Container::Tabs(tabs))) = tiles.get_mut(group) {
+                    tabs.set_active(pane);
+                }
+                (group, panel.share())
+            })
             .collect();
         let bottom: Vec<TileId> = docked(&mut tiles, Dock::Bottom)
             .into_iter()
@@ -341,9 +356,14 @@ impl Layout {
             // Not in the tree at all, as in a layout saved before the
             // panel existed: put it beside a panel docked on the same side.
             None => {
-                let sibling = Panel::ALL
+                let sibling = panel
+                    .tabbed_with()
                     .into_iter()
-                    .filter(|other| other.dock() == panel.dock())
+                    .chain(
+                        Panel::ALL
+                            .into_iter()
+                            .filter(|other| other.dock() == panel.dock()),
+                    )
                     .find_map(|other| self.find(Pane::Panel(other)));
                 self.add_beside(Pane::Panel(panel), sibling);
             }

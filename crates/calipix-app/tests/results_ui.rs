@@ -327,7 +327,7 @@ fn rows_are_clicked_to_select_and_deleted_with_the_key() {
     press(&mut h, Modifiers::COMMAND, Key::A);
     assert!(h.state().state.active().unwrap().roi.is_some());
     assert!(
-        h.query_by_label("Selection 64 × 48 at 0, 0").is_some(),
+        h.query_by_label("Rectangle 64 × 48 at 0, 0").is_some(),
         "the status bar shows the selection's bounds"
     );
 }
@@ -340,7 +340,7 @@ fn plot_profile_draws_a_plot_and_list_shows_its_numbers() {
     let selection = Args::new().with("selection", "rectangle 2 10 60 30");
     h.state_mut().state.run("select.set", &selection);
     quiet(&mut h);
-    assert!(h.query_by_label("Selection 60 × 30 at 2, 10").is_some());
+    assert!(h.query_by_label("Rectangle 60 × 30 at 2, 10").is_some());
 
     choose(&mut h, "Analyze", "Plot Profile…");
     assert_eq!(checkbox(&h, "Vertical profile"), Some(false));
