@@ -128,8 +128,9 @@ reported identical type, bounds, pixel count and length (45 of 45 lines).
 
 ## Measurements
 
-Verified against ImageJ 1.54p on 303 cases (no selection, rectangles, and
-ImageJ's own masks and outlines for ovals, polygons, lines and points).
+Verified against ImageJ 1.54p on 921 cases through the commands, covering
+every kind of selection (17 kinds, from rectangles to composites, wide lines
+and multi-point), three calibrations and 8-bit, 16-bit, float and RGB images.
 
 | Behaviour | ImageJ source | Status |
 |---|---|---|
@@ -137,12 +138,28 @@ ImageJ's own masks and outlines for ovals, polygons, lines and points).
 | Centroid, centre of mass and bounding rectangle in calibrated units, with origin and Invert Y | `ImageStatistics`, `Calibration` | verified |
 | Best-fitting ellipse | `EllipseFitter` | verified |
 | Circularity, aspect ratio, roundness, solidity; convex hull; Feret diameters | `Analyzer.saveResults`, `Roi.getFeretValues` | verified |
-| Perimeter | `Roi.getLength` and overrides | verified for rectangles, ovals and lines |
-| Lines measured through their profile; points as the pixel they round to | `Analyzer.measureLength`, `measurePoint` | verified |
+| Perimeter, Feret diameters, convex hull and bounds of every shape | `Roi.getLength`, `getFeretValues`, `getConvexHull` | verified |
+| Thin lines measured through their profile; wide lines through the area they cover; angles | `Analyzer.measureLength`, `measureAngle` | verified |
+| Points: one row each, including points outside the image | `Analyzer.measurePoint` | verified per point; row layout from source |
+| Profiles along thin, wide, segmented and freehand lines and rotated rectangles | `ProfilePlot`, `Straightener` | verified, 168 profiles |
+| Histogram with a line or points selected | `ImagePlus.getStatistics` | from source |
 | Results columns, their order, row labels, number formatting, CSV and tab-separated text | `Analyzer`, `ResultsTable` | verified byte for byte |
 | Histogram within a selection; column, row and line profiles | `ImagePlus.getStatistics`, `ProfilePlot` | verified |
 | Set Scale and Properties | `ScaleDialog`, `Properties` | verified, 13 cases |
 | Summarize, Distribution | `Analyzer.summarize`, `Distribution` | from source |
+
+## Selections and commands
+
+Verified against ImageJ 1.54p on 221 cases, comparing every sample.
+
+| Behaviour | ImageJ source | Status |
+|---|---|---|
+| Filters and arithmetic change only the samples inside an area selection of any shape | `PlugInFilterRunner`, `SUPPORTS_MASKING` | verified |
+| Flip and Translate act on the selection's bounding rectangle | `Transformer`, `Translator` | verified |
+| With a line or points selected, the whole image is processed | `PlugInFilterRunner` | verified |
+| What becomes of the selection after Crop, Duplicate, quarter turns, Scale, Size, Canvas Size, type conversion and Image Calculator | `Resizer`, `Duplicator`, `Scaler`, `Converter` | verified |
+| Duplicating a rotated rectangle straightens it | `Duplicator.straightenRotatedRect` | verified |
+| Selection and overlay stored in a TIFF are attached on open and written on save | `TiffDecoder`, `TiffEncoder` | verified, including opening saved files in ImageJ |
 
 ## Commands
 
@@ -196,6 +213,10 @@ ImageJ's own masks and outlines for ovals, polygons, lines and points).
 | ROI set file timestamps | Current time | Fixed | Same input, same bytes |
 | Restore Selection | One global previous selection | Not available; use undo | No hidden state |
 | Spline-fit, text and image selections | Supported | Flag kept only, or refused | Not yet built |
+| A selection that covers no pixel, or lies outside the image | Does nothing, or measures NaN | Error saying which | Say what happened |
+| Plot Profile with an angle selection | Column average of its bounding box | Refused | Not a meaningful profile |
+| A selection cut by the image edge after Crop or Duplicate | Geometric intersection | Same pixels, outline along pixel edges | No geometric clipping yet |
+| Group columns in Results | Group, GroupName | Not present | Selections carry no group yet |
 | Measurement settings | Global preference | Belong to the session, appear in History, undoable | A recorded workflow must not depend on hidden state |
 | Results text line endings | Platform-dependent | Always LF | Same file on every machine |
 | Set Scale "Global" | Also applies to images opened later | Applies to images open now | No hidden state |

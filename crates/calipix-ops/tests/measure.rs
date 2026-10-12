@@ -10,9 +10,9 @@
 //! * `results_*.csv` and `.txt`: the Results table as ImageJ saves it.
 //! * `analyze_cases.txt`: histograms within a selection and profiles.
 //!
-//! For the shapes `calipix-roi` does not have yet, the pixels they cover
-//! come from masks ImageJ saved and their outlines from the vertices it
-//! listed.
+//! Selections are built with `calipix-roi`; the pixels they cover and the
+//! vertices of their outlines are compared with the masks ImageJ saved and
+//! the vertices it listed.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -21,8 +21,10 @@ use calipix_core::{AxisKind, Buffer, Cell, ColorModel, Image, Rect, Table};
 use calipix_ops::measure::{
     Calibration, HistogramSpec, MeasureSettings, Measured, Measurements, Outline, PlaneContext,
     Region, Row, Samples, TableFormat, append_row, column_average_profile, format_table,
-    line_profile, measure, row_average_profile, row_label, statistics,
+    line_profile, measure, outline_of, row_average_profile, row_label, selection_profile,
+    statistics,
 };
+use calipix_roi::Roi;
 
 fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -271,56 +273,53 @@ impl Selection {
             let b = case.numbers("bounds");
             Rect::new(b[0] as usize, b[1] as usize, b[2] as usize, b[3] as usize)
         };
-        let coords = || -> Vec<(f32, f32)> {
+        let coords = || -> Vec<(f64, f64)> {
             case.about("coords")
                 .unwrap_or("")
                 .split_whitespace()
                 .map(|pair| {
                     let (x, y) = pair.split_once(',').unwrap();
-                    (
-                        x.parse::<f64>().unwrap() as f32,
-                        y.parse::<f64>().unwrap() as f32,
-                    )
+                    (x.parse::<f64>().unwrap(), y.parse::<f64>().unwrap())
                 })
                 .collect()
         };
-        let (rect, mask, outline) = match words[0] {
-            "none" => (whole, None, Outline::whole(plane.width, plane.height)),
-            "rect" => (
-                Rect::new(
-                    args[0] as usize,
-                    args[1] as usize,
-                    args[2] as usize,
-                    args[3] as usize,
-                ),
-                None,
-                Outline::rectangle(args[0], args[1], args[2], args[3], cal),
-            ),
-            "oval" | "polygon" | "freehand" => {
-                let rect = bounds();
-                let mask = mask_within(case.about("mask").unwrap(), rect);
-                let outline = if words[0] == "oval" {
-                    Outline::oval(args[0], args[1], args[2], args[3], &coords(), cal)
-                } else {
-                    // The perimeter of a polygon or freehand outline is
-                    // the selection's own business; ImageJ's value is
-                    // passed on.
-                    Outline::polygon(
-                        &coords(),
-                        case.expected("Perim."),
-                        (rect.x as f64, rect.y as f64, rect.w as f64, rect.h as f64),
-                        cal,
-                    )
-                };
-                (rect, Some(mask), outline)
-            }
-            "line" => (
-                whole,
-                None,
-                Outline::line(args[0], args[1], args[2], args[3], cal),
-            ),
-            "point" => (whole, None, Outline::point(args[0], args[1])),
+        let pairs = || -> Vec<(f64, f64)> { args.chunks(2).map(|p| (p[0], p[1])).collect() };
+        let roi = match words[0] {
+            "none" => None,
+            "rect" => Some(Roi::rectangle(args[0], args[1], args[2], args[3])),
+            "oval" => Some(Roi::oval(args[0], args[1], args[2], args[3])),
+            "polygon" => Some(Roi::polygon(pairs())),
+            "freehand" => Some(Roi::Freehand { points: pairs() }),
+            "line" => Some(Roi::line(args[0], args[1], args[2], args[3])),
+            "point" => Some(Roi::point(args[0], args[1])),
             other => panic!("{}: unknown selection {other}", case.name),
+        };
+        let (rect, mask, outline) = match &roi {
+            None => (whole, None, Outline::whole(plane.width, plane.height)),
+            Some(roi) if roi.is_area() => {
+                let mask = roi.mask(plane.width, plane.height).unwrap();
+                if let Some(file) = case.about("mask") {
+                    // The selection covers the pixels ImageJ's did, lists
+                    // the vertices ImageJ listed and has its bounds.
+                    assert_eq!(mask.rect, bounds(), "{}", case.name);
+                    assert_eq!(mask.data, mask_within(file, mask.rect), "{}", case.name);
+                    // (The fixture lists vertices to nine decimal places.)
+                    let (ours, theirs) = (roi.outline(), coords());
+                    if case.about("coords").is_some() {
+                        assert_eq!(ours.len(), theirs.len(), "{}", case.name);
+                    }
+                    for (o, t) in ours.iter().zip(&theirs) {
+                        assert!(
+                            (o.0 - t.0).abs() < 1e-8 && (o.1 - t.1).abs() < 1e-8,
+                            "{}: vertex {o:?}, ImageJ {t:?}",
+                            case.name
+                        );
+                    }
+                }
+                let data = (!roi.is_rectangular()).then_some(mask.data);
+                (mask.rect, data, outline_of(roi, cal).unwrap())
+            }
+            Some(roi) => (whole, None, outline_of(roi, cal).unwrap()),
         };
         Selection {
             kind: words[0].to_string(),
@@ -811,4 +810,42 @@ fn profiles_match_imagej() {
     }
     report(&failures, compared);
     assert!(seen >= 32, "only {seen} profiles");
+}
+
+/// `profile_cases.txt` (`gen/81_line_profiles.ijm`): Plot Profile along
+/// straight, segmented and freehand lines, thin and wide, and rotated
+/// rectangles.
+#[test]
+fn profiles_along_every_kind_of_line_match_imagej() {
+    let (mut checked, mut compared) = (0, 0);
+    for case in &cases("profile_cases.txt") {
+        let plane = Plane::open(case.about("image").unwrap(), None);
+        let roi: Roi = match (case.about("roi_file"), case.about("roi")) {
+            (Some(file), _) => {
+                calipix_roi::decode(&std::fs::read(fixture(file)).unwrap())
+                    .unwrap()
+                    .roi
+            }
+            (None, Some(text)) => text.parse().unwrap(),
+            (None, None) => panic!("{}: no selection", case.name),
+        };
+        let interpolate = case.about("interpolate") != Some("0");
+        let ours = selection_profile(
+            plane.samples(),
+            plane.width,
+            plane.height,
+            &roi,
+            interpolate,
+        )
+        .unwrap_or_else(|e| panic!("{}: {e}", case.name));
+        let theirs = case.list("profile");
+        assert_eq!(ours.len(), theirs.len(), "{}", case.name);
+        for (i, (o, t)) in ours.iter().zip(&theirs).enumerate() {
+            assert!(close(*o, *t), "{} point {i}: {o}, ImageJ {t}", case.name);
+            compared += 1;
+        }
+        checked += 1;
+    }
+    assert!(checked >= 160, "only {checked} profiles");
+    assert!(compared > 9000, "only {compared} values");
 }

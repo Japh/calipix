@@ -3,8 +3,9 @@
 use calipix_core::{Buffer, Rect};
 use calipix_ops::measure::{
     Calibration, HistogramSpec, MeasureSettings, Measured, Measurements, Outline, PlaneContext,
-    Region, Samples, Statistics, measure, statistics,
+    Region, Samples, Statistics, measure, outline_of, statistics,
 };
+use calipix_roi::Roi;
 use proptest::prelude::*;
 
 /// A plane of one of the pixel types ImageJ has, from the same numbers.
@@ -170,7 +171,7 @@ proptest! {
         let selected = measure(
             image,
             Region::rect(Rect::new(0, 0, w, h)),
-            &Outline::rectangle(0.0, 0.0, w as f64, h as f64, &cal),
+            &outline_of(&Roi::rectangle(0.0, 0.0, w as f64, h as f64), &cal).unwrap(),
             &settings,
         )
         .unwrap();

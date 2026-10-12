@@ -333,7 +333,10 @@ pub fn statistics(
     histogram: HistogramSpec,
 ) -> Result<Statistics> {
     let rect = region.rect;
-    if !rect.fits(width, height) {
+    // An empty region is measured like any other, as ImageJ does when a
+    // selection leaves the processor with no pixels.
+    let empty = rect.w == 0 || rect.h == 0;
+    if !empty && !rect.fits(width, height) {
         return Err(Error::OutOfBounds(format!(
             "region {rect:?} outside {width}x{height} plane"
         )));
@@ -555,6 +558,12 @@ impl Job<'_> {
             hist[gray_level(r[i], g[i], b[i]) as usize] += 1
         });
         self.levels(&hist, stats);
+        if stats.pixel_count == 0 {
+            // getRawMinAndMax(0, 255) on an empty histogram, which
+            // ColorStatistics, unlike ByteStatistics, does not guard.
+            stats.min = 255.0;
+            stats.max = 0.0;
+        }
         self.shape(stats, |_| true);
         let mut m = Moments::default();
         self.region.for_each(self.width, |x, y, i| {
@@ -598,11 +607,19 @@ impl Job<'_> {
         let bins = self.histogram.bins;
         stats.histogram = vec![0; bins];
         let (Some(&(data_min, _)), Some(&(data_max, _))) = (counts.first(), counts.last()) else {
-            stats.min = f64::NAN;
-            stats.max = f64::NAN;
+            // An empty region. ShortStatistics.getRawMinAndMax runs off
+            // both ends of the 256 bins ShortProcessor.getHistogram2 gives
+            // it, and every quotient by the pixel count is 0/0.
+            stats.min = 255.0;
+            stats.max = 0.0;
             stats.mean = f64::NAN;
             stats.raw_mean = f64::NAN;
             stats.median = f64::NAN;
+            stats.skewness = f64::NAN;
+            stats.kurtosis = f64::NAN;
+            stats.x_center_of_mass = f64::NAN;
+            stats.y_center_of_mass = f64::NAN;
+            stats.area_fraction = f64::NAN;
             return;
         };
         stats.min = data_min;

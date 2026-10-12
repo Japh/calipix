@@ -2,6 +2,7 @@
 //! (`ij.gui.ProfilePlot`).
 
 use calipix_core::{Buffer, Error, RealPixel, Rect, Result, dispatch_real};
+use calipix_roi::Roi;
 
 use super::Samples;
 
@@ -152,6 +153,286 @@ pub fn line_profile(
     Ok(data)
 }
 
+/// The profile along a line selection, as `ij.gui.ProfilePlot` takes it:
+///
+/// * a straight line one pixel wide: [`line_profile`];
+/// * a segmented or freehand line one pixel wide: a sample for each unit
+///   of length walked along it (`ProfilePlot.getIrregularProfile`);
+/// * any line wider than one pixel: the line is straightened into an
+///   image as high as the line is wide, whose columns are averaged
+///   (`Straightener.straightenLine`, `ProfilePlot.getWideLineProfile`,
+///   `Line.getPixels`). Wide lines are always interpolated;
+/// * a rotated rectangle: the wide straight line along its axis.
+///
+/// The result is empty for a wide line too short to straighten.
+pub fn selection_profile(
+    samples: Samples<'_>,
+    width: usize,
+    height: usize,
+    roi: &Roi,
+    interpolate: bool,
+) -> Result<Vec<f64>> {
+    let (ends, stroke) = match roi {
+        Roi::Line {
+            x1,
+            y1,
+            x2,
+            y2,
+            width,
+        }
+        | Roi::RotatedRectangle {
+            x1,
+            y1,
+            x2,
+            y2,
+            width,
+        } => (Some(((*x1, *y1), (*x2, *y2))), *width),
+        Roi::Polyline { width, .. } | Roi::Freeline { width, .. } => (None, *width),
+        other => {
+            return Err(Error::Unsupported(format!(
+                "a {} selection has no profile along it",
+                other.kind()
+            )));
+        }
+    };
+    if let (Some((start, end)), true) = (ends, stroke <= 1.0) {
+        return line_profile(samples, width, height, start, end, interpolate);
+    }
+    let values = sample_values(samples)?;
+    check(&values, width, height)?;
+    let plane = Plane {
+        values: &values,
+        width,
+        height,
+    };
+    Ok(match ends {
+        // Line.getPixels hands the Straightener (int)getStrokeWidth().
+        Some((start, end)) => {
+            let line = Relative::float(&[start, end]);
+            plane.straightened(&line, line.length(), stroke as usize)
+        }
+        None => {
+            let line_width = java_round(stroke);
+            if line_width <= 1 {
+                plane.irregular(&roi.outline(), interpolate)
+            } else {
+                let vertices = roi.vertices().unwrap_or_default();
+                let whole = |v: f64| v == v.trunc() && v.abs() < 1.0e9;
+                let line = if vertices.iter().all(|&(x, y)| whole(x) && whole(y)) {
+                    Relative::int(&vertices)
+                } else {
+                    Relative::float(&vertices)
+                };
+                plane.straightened(&line, roi.length(), line_width as usize)
+            }
+        }
+    })
+}
+
+/// The vertices of a line as ImageJ's `PolygonRoi` holds them: in single
+/// precision relative to a base point.
+struct Relative {
+    xs: Vec<f32>,
+    ys: Vec<f32>,
+    /// `(float)Roi.getXBase()` and `getYBase()`.
+    base: (f32, f32),
+}
+
+impl Relative {
+    /// `PolygonRoi(float[], float[], n, type)`: relative to the smallest
+    /// coordinates.
+    fn float(points: &[(f64, f64)]) -> Relative {
+        let xs: Vec<f32> = points.iter().map(|p| p.0 as f32).collect();
+        let ys: Vec<f32> = points.iter().map(|p| p.1 as f32).collect();
+        let min_x = xs.iter().copied().fold(f32::MAX, f32::min);
+        let min_y = ys.iter().copied().fold(f32::MAX, f32::min);
+        Relative {
+            xs: xs.iter().map(|v| v - min_x).collect(),
+            ys: ys.iter().map(|v| v - min_y).collect(),
+            base: (min_x, min_y),
+        }
+    }
+
+    /// `PolygonRoi(int[], int[], n, type)`, converted to floats when a
+    /// spline is fitted.
+    fn int(points: &[(f64, f64)]) -> Relative {
+        let xs: Vec<i64> = points.iter().map(|p| p.0 as i64).collect();
+        let ys: Vec<i64> = points.iter().map(|p| p.1 as i64).collect();
+        let min_x = xs.iter().copied().min().unwrap_or(0);
+        let min_y = ys.iter().copied().min().unwrap_or(0);
+        Relative {
+            xs: xs.iter().map(|v| (v - min_x) as f32).collect(),
+            ys: ys.iter().map(|v| (v - min_y) as f32).collect(),
+            base: (min_x as f32, min_y as f32),
+        }
+    }
+
+    /// `PolygonRoi.getLength(xpf, ypf, n, false, null)`.
+    fn length(&self) -> f64 {
+        polyline_length(&self.xs, &self.ys)
+    }
+
+    /// `PolygonRoi.fitSplineForStraightening` followed by
+    /// `getFloatPolygon`: points about one pixel apart along a spline
+    /// through the vertices, in image coordinates. `length` is the line's
+    /// `getUncalibratedLength()`.
+    fn spline_for_straightening(&self, length: f64) -> (Vec<f32>, Vec<f32>) {
+        // A preliminary spline in half-pixel steps...
+        let evaluation_points = (length * 2.0) as usize + 1;
+        let (sx, sy) = self.spline(evaluation_points);
+        // ...read off at steps as close to one pixel as divide its length.
+        let (ex, ey) = equidistant_points(&sx, &sy, 1.0);
+        (
+            ex.iter().map(|v| v + self.base.0).collect(),
+            ey.iter().map(|v| v + self.base.1).collect(),
+        )
+    }
+
+    /// `PolygonRoi.getSpline` for an open line.
+    fn spline(&self, evaluation_points: usize) -> (Vec<f32>, Vec<f32>) {
+        let mut nodes = vec![0f32];
+        let mut last = 0f32;
+        for (x, y) in self.xs.windows(2).zip(self.ys.windows(2)) {
+            let (dx, dy) = (x[1] - x[0], y[1] - y[0]);
+            // The independent coordinate grows by the square root of the
+            // distance between vertices.
+            let mut step = f64::from(dx * dx + dy * dy).sqrt().sqrt() as f32;
+            if step < 0.001 {
+                step = 0.001;
+            }
+            last += step;
+            nodes.push(last);
+        }
+        let fit_x = SplineFitter::new(&nodes, &self.xs);
+        let fit_y = SplineFitter::new(&nodes, &self.ys);
+        let scale = f64::from(last) / (evaluation_points as f64 - 1.0);
+        (0..evaluation_points)
+            .map(|i| {
+                let at = i as f64 * scale;
+                (fit_x.eval(at) as f32, fit_y.eval(at) as f32)
+            })
+            .unzip()
+    }
+}
+
+/// `PolygonRoi.getLength(float[], float[], n, false, null)`.
+fn polyline_length(xs: &[f32], ys: &[f32]) -> f64 {
+    let mut length = 0.0;
+    for i in 1..xs.len().min(ys.len()) {
+        let dx = f64::from(xs[i] - xs[i - 1]);
+        let dy = f64::from(ys[i] - ys[i - 1]);
+        length += (dx * dx + dy * dy).sqrt();
+    }
+    length
+}
+
+/// `PolygonRoi.getEquidistantPoints` without calibration: points along the
+/// open polygon `xs`, `ys` at steps of about `segment_length`.
+fn equidistant_points(xs: &[f32], ys: &[f32], segment_length: f64) -> (Vec<f32>, Vec<f32>) {
+    let npoints = xs.len().min(ys.len());
+    if npoints == 0 {
+        return (Vec::new(), Vec::new());
+    }
+    let length = polyline_length(xs, ys);
+    let n_out = java_round(length / segment_length).max(0) as usize + 1;
+    let step = length / (n_out as f64 - 1.0);
+    let mut out_x = vec![0f32; n_out];
+    let mut out_y = vec![0f32; n_out];
+    out_x[0] = xs[0];
+    out_y[0] = ys[0];
+    let mut length_read = 0.0;
+    let mut written = 1;
+    let (mut x2, mut y2) = (f64::from(xs[0]), f64::from(ys[0]));
+    for i in 1..npoints {
+        let (x1, y1) = (x2, y2);
+        x2 = f64::from(xs[i]);
+        y2 = f64::from(ys[i]);
+        let (dx, dy) = (x2 - x1, y2 - y1);
+        let distance = (dx * dx + dy * dy).sqrt();
+        length_read += distance;
+        let mut over = length_read - written as f64 * step;
+        while (over >= 0.0 || i == npoints - 1) && written < n_out {
+            let fraction = if distance == 0.0 {
+                0.0
+            } else {
+                over / distance
+            };
+            out_x[written] = (x2 - fraction * dx) as f32;
+            out_y[written] = (y2 - fraction * dy) as f32;
+            over -= step;
+            written += 1;
+        }
+    }
+    (out_x, out_y)
+}
+
+/// `ij.measure.SplineFitter` for single-precision knots: a natural cubic
+/// spline through `(x[i], y[i])`, with `x` increasing.
+struct SplineFitter<'a> {
+    x: &'a [f32],
+    y: &'a [f32],
+    /// Second derivative at each knot.
+    y2: Vec<f64>,
+}
+
+impl<'a> SplineFitter<'a> {
+    fn new(x: &'a [f32], y: &'a [f32]) -> SplineFitter<'a> {
+        let n = x.len();
+        let mut y2 = vec![0.0f64; n];
+        let mut c_p = vec![0.0f64; n];
+        if n >= 2 {
+            let mut new_x = f64::from(x[1]);
+            let mut new_y = f64::from(y[1]);
+            let mut cj = f64::from(x[1] - x[0]);
+            let mut new_dj = f64::from(y[1] - y[0]) / cj;
+            let mut j = 1;
+            // Forward substitution.
+            while j < n - 1 {
+                let (old_x, old_y) = (new_x, new_y);
+                let aj = cj;
+                let old_dj = new_dj;
+                new_x = f64::from(x[j + 1]);
+                new_y = f64::from(y[j + 1]);
+                cj = new_x - old_x;
+                new_dj = (new_y - old_y) / cj;
+                let bj = 2.0 * (cj + aj);
+                let inv_denom = 1.0 / (bj - aj * c_p[j - 1]);
+                let dj = 6.0 * (new_dj - old_dj);
+                y2[j] = (dj - aj * y2[j - 1]) * inv_denom;
+                c_p[j] = cj * inv_denom;
+                j += 1;
+            }
+            // Backward substitution.
+            while j > 0 {
+                j -= 1;
+                y2[j] -= c_p[j] * y2[j + 1];
+            }
+        }
+        SplineFitter { x, y, y2 }
+    }
+
+    /// `SplineFitter.evalSpline`.
+    fn eval(&self, xp: f64) -> f64 {
+        let (mut ls, mut rs) = (0usize, self.x.len() - 1);
+        while rs > 1 + ls {
+            let m = (ls + rs) / 2;
+            if f64::from(self.x[m]) < xp {
+                ls = m;
+            } else {
+                rs = m;
+            }
+        }
+        let ba = f64::from(self.x[rs] - self.x[ls]);
+        let xa = xp - f64::from(self.x[ls]);
+        let bx = f64::from(self.x[rs]) - xp;
+        let ba2 = ba * ba;
+        let lower = xa * f64::from(self.y[rs]) + bx * f64::from(self.y[ls]);
+        let c = (xa * xa - ba2) * xa * self.y2[rs];
+        let d = (bx * bx - ba2) * bx * self.y2[ls];
+        (lower + (c + d) / 6.0) / ba
+    }
+}
+
 /// Java's `Math.round`: half rounds up.
 fn java_round(v: f64) -> i64 {
     (v + 0.5).floor() as i64
@@ -164,6 +445,102 @@ struct Plane<'a> {
 }
 
 impl Plane<'_> {
+    /// `ProfilePlot.getIrregularProfile`: walks the polyline `points` in
+    /// steps of a hundredth of a pixel and takes a sample each time it has
+    /// come a pixel further (within half a step). As in ImageJ, the
+    /// distance is first counted from the image's origin, so a line that
+    /// starts within a pixel of it starts its profile a little later.
+    fn irregular(&self, points: &[(f64, f64)], interpolate: bool) -> Vec<f64> {
+        const INC: f64 = 0.01;
+        let n = points.len();
+        let mut values = Vec::new();
+        let Some(&(mut x2, mut y2)) = points.first() else {
+            return values;
+        };
+        let (mut last_x, mut last_y) = (0.0f64, 0.0f64);
+        for &(next_x, next_y) in &points[1..] {
+            let (x1, y1) = (x2, y2);
+            let (mut x, mut y) = (x1, y1);
+            x2 = next_x;
+            y2 = next_y;
+            let (dx, dy) = (x2 - x1, y2 - y1);
+            let distance = (dx * dx + dy * dy).sqrt();
+            let xinc = dx * INC / distance;
+            let yinc = dy * INC / distance;
+            let mut n2 = (distance / INC) as i64;
+            if n == 2 {
+                n2 += 1;
+            }
+            loop {
+                let (dx, dy) = (x - last_x, y - last_y);
+                if (dx * dx + dy * dy).sqrt() >= 1.0 - INC / 2.0 {
+                    values.push(if interpolate {
+                        self.interpolated(x, y)
+                    } else {
+                        self.value(java_round(x), java_round(y))
+                    });
+                    last_x = x;
+                    last_y = y;
+                }
+                x += xinc;
+                y += yinc;
+                n2 -= 1;
+                if n2 <= 0 {
+                    break;
+                }
+            }
+        }
+        values
+    }
+
+    /// `Straightener.straightenLine` and the column averages
+    /// `ProfilePlot` takes of its result: at each point of the spline
+    /// fitted to `line`, `line_width` samples across the line, averaged.
+    fn straightened(&self, line: &Relative, length: f64, line_width: usize) -> Vec<f64> {
+        if line.xs.len() < 2 || line_width == 0 || !length.is_finite() {
+            return Vec::new();
+        }
+        let (px, py) = line.spline_for_straightening(length);
+        let n = px.len();
+        if n < 2 {
+            return Vec::new();
+        }
+        // The point before the first is extrapolated back one step.
+        let mut x2 = f64::from(px[0] - (px[1] - px[0]));
+        let mut y2 = f64::from(py[0] - (py[1] - py[0]));
+        let mut profile = Vec::with_capacity(n);
+        for i in 0..n {
+            let (x1, y1) = (x2, y2);
+            x2 = f64::from(px[i]);
+            y2 = f64::from(py[i]);
+            if line_width == 1 {
+                profile.push(f64::from(self.interpolated(x2, y2) as f32));
+                continue;
+            }
+            let mut dx = x2 - x1;
+            let mut dy = y1 - y2;
+            let length = f64::from((dx * dx + dy * dy).sqrt() as f32);
+            dx /= length;
+            dy /= length;
+            let mut x = x2 - dy * (line_width as f64 - 1.0) / 2.0;
+            let mut y = y2 - dx * (line_width as f64 - 1.0) / 2.0;
+            // The straightened image holds single-precision samples;
+            // those that are NaN are left out of the average.
+            let (mut sum, mut count) = (0.0f64, 0u32);
+            for _ in 0..line_width {
+                let v = self.interpolated(x, y) as f32;
+                if !v.is_nan() {
+                    sum += f64::from(v);
+                    count += 1;
+                }
+                x += dy;
+                y += dx;
+            }
+            profile.push(sum / f64::from(count));
+        }
+        profile
+    }
+
     /// `getPixelValue`: NaN outside the image.
     fn value(&self, x: i64, y: i64) -> f64 {
         if x >= 0 && y >= 0 && (x as usize) < self.width && (y as usize) < self.height {

@@ -66,6 +66,11 @@ every such command shares:
   function sees the whole plane and is told the selection's bounding
   rectangle, so filters can read neighbours outside the selection.
 
+ImageJ applies a few commands (Flip, Translate) to the selection's bounding
+rectangle whatever its shape; those call `apply_within` with
+`Extent::Bounds`. A line or point selection confines nothing: the whole
+image is processed.
+
 Algorithms live in `calipix-ops` and work on plain buffers; they know
 nothing of selections, scopes or commands. A command that changes the pixel
 type or the shape of an image replaces the whole image instead of using
