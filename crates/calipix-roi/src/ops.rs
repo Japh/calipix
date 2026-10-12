@@ -49,7 +49,7 @@ pub enum Combine {
 /// `data` is `width` x `height`, row-major, non-zero meaning selected,
 /// with its first pixel at image position `(x0, y0)`.
 pub(crate) fn from_mask(data: &[u8], width: usize, height: usize, x0: i32, y0: i32) -> Option<Roi> {
-    let polygons = path::trace_mask(data, width, height, x0, y0);
+    let polygons = crate::trace::trace_mask(data, width, height, x0, y0);
     simplify(Path::from_polygons(
         polygons
             .iter()
@@ -117,6 +117,31 @@ pub(crate) fn simplify(path: Path) -> Option<Roi> {
         None if guess == Guess::None => None,
         None => Some(Roi::Composite { path }),
     }
+}
+
+/// True if every edge of the path is horizontal or vertical between
+/// whole-number vertices.
+fn rectilinear(path: &Path) -> bool {
+    let whole = |v: f32| v == (v as i32) as f32;
+    let (mut last, mut start) = ((0.0f32, 0.0f32), (0.0f32, 0.0f32));
+    path.segments().iter().all(|s| match *s {
+        Segment::MoveTo(x, y) => {
+            last = (x, y);
+            start = last;
+            whole(x) && whole(y)
+        }
+        Segment::LineTo(x, y) => {
+            let ok = whole(x) && whole(y) && (x == last.0 || y == last.1);
+            last = (x, y);
+            ok
+        }
+        Segment::Close => {
+            let ok = start.0 == last.0 || start.1 == last.1;
+            last = start;
+            ok
+        }
+        Segment::QuadTo(..) | Segment::CubicTo(..) => false,
+    })
 }
 
 /// A mask on a canvas covering several selections.
@@ -431,8 +456,29 @@ impl Roi {
         if inside && self.is_rectangular() && f.w as usize == width && f.h as usize == height {
             return None;
         }
+        let shape = self.shape_path()?;
+        if rectilinear(&shape) {
+            // Outlines along pixel edges are exactly their masks, so the
+            // inverse can be traced, which also simplifies it to a
+            // rectangle or polygon where ImageJ would.
+            let x0 = f.x.min(0);
+            let y0 = f.y.min(0);
+            let x1 = (i64::from(f.x) + i64::from(f.w)).max(width as i64);
+            let y1 = (i64::from(f.y) + i64::from(f.h)).max(height as i64);
+            let (w, h) = (x1 - i64::from(x0), y1 - i64::from(y0));
+            if let Some(mut canvas) = Canvas::of(self, x0, y0, w, h) {
+                for row in 0..height {
+                    let at = (row as i64 - i64::from(y0)) as usize * canvas.w
+                        + (-i64::from(x0)) as usize;
+                    for v in &mut canvas.data[at..at + width] {
+                        *v = if *v == 0 { 255 } else { 0 };
+                    }
+                }
+                return canvas.roi();
+            }
+        }
         let mut segments = image.segments().to_vec();
-        segments.extend_from_slice(self.shape_path()?.segments());
+        segments.extend_from_slice(shape.segments());
         let inverse = Roi::Composite {
             path: Path::new(segments),
         };

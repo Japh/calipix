@@ -847,8 +847,10 @@ impl Roi {
         let mut diameter_sq = 0.0;
         for i in 0..n {
             for j in i + 1..n {
-                let dx = (px(i) - px(j)) * pw;
-                let dy = (py(i) - py(j)) * ph;
+                // The differences are taken in single precision, as in
+                // ImageJ; this decides between equal diagonals.
+                let dx = f64::from(hx[i] - hx[j]) * pw;
+                let dy = f64::from(hy[i] - hy[j]) * ph;
                 let d = dx * dx + dy * dy;
                 if d > diameter_sq {
                     diameter_sq = d;
@@ -1115,6 +1117,55 @@ impl Roi {
             if out.last() != Some(&p) {
                 out.push(p);
             }
+        }
+        Some(out)
+    }
+
+    /// The pixels ImageJ sets when it draws this selection one pixel wide
+    /// (`Roi.drawPixels`, which is also what filling a thin line
+    /// selection does): straight strokes between the vertices rounded to
+    /// whole pixels, each made as [`draw_line_pixels`] makes it, closed
+    /// for polygons. Pixels where strokes meet are listed once per
+    /// stroke. `None` for shapes that are not made of vertices.
+    pub fn drawn_pixels(&self) -> Option<Vec<(i32, i32)>> {
+        let vertices: Vec<(i32, i32)> = match self {
+            Roi::Line { x1, y1, x2, y2, .. } => {
+                vec![(jround(*x1), jround(*y1)), (jround(*x2), jround(*y2))]
+            }
+            Roi::Polygon { .. }
+            | Roi::Freehand { .. }
+            | Roi::Traced { .. }
+            | Roi::Polyline { .. }
+            | Roi::Freeline { .. }
+            | Roi::Angle { .. } => {
+                let poly = self.poly()?;
+                match &poly.coords {
+                    Coords::Int(x, y) => x
+                        .iter()
+                        .zip(y)
+                        .map(|(&x, &y)| (x + poly.frame.x, y + poly.frame.y))
+                        .collect(),
+                    Coords::Float(x, y) => x
+                        .iter()
+                        .zip(y)
+                        .map(|(&x, &y)| {
+                            (
+                                jround(poly.xbase() + f64::from(x)),
+                                jround(poly.ybase() + f64::from(y)),
+                            )
+                        })
+                        .collect(),
+                }
+            }
+            _ => return None,
+        };
+        let mut out = Vec::new();
+        for pair in vertices.windows(2) {
+            out.extend(draw_line_pixels(pair[0].0, pair[0].1, pair[1].0, pair[1].1));
+        }
+        if self.is_area() && vertices.len() > 1 {
+            let (last, first) = (vertices[vertices.len() - 1], vertices[0]);
+            out.extend(draw_line_pixels(last.0, last.1, first.0, first.1));
         }
         Some(out)
     }

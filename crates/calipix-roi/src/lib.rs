@@ -69,6 +69,7 @@ mod model;
 mod ops;
 mod path;
 mod text;
+mod trace;
 mod zip;
 
 pub use codec::{

@@ -679,83 +679,6 @@ pub(crate) fn quad_length(p: &[f64; 6]) -> f64 {
     (2.0 * polygon + chord) / 3.0
 }
 
-/// Traces the boundaries between selected and unselected pixels of a mask
-/// into closed polygons along pixel edges, outer boundaries and holes
-/// alike. Filling the result by the even-odd rule gives back the mask.
-///
-/// `data` is `width` x `height`, row-major, non-zero meaning selected;
-/// the polygons are offset by `(x0, y0)`. Vertices are corners only.
-/// Where two regions touch at a corner they are traced as separate
-/// polygons (regions are 4-connected, holes 8-connected).
-///
-/// This plays the role of ImageJ's `ThresholdToSelection`; the polygons
-/// enclose the same pixels but may start at different vertices.
-pub(crate) fn trace_mask(
-    data: &[u8],
-    width: usize,
-    height: usize,
-    x0: i32,
-    y0: i32,
-) -> Vec<Vec<(i32, i32)>> {
-    let inside = |x: i64, y: i64| {
-        x >= 0
-            && y >= 0
-            && (x as usize) < width
-            && (y as usize) < height
-            && data[y as usize * width + x as usize] != 0
-    };
-    // A directed boundary edge keeps the selected pixel on its right when
-    // walking in image coordinates (y down): rightwards along the top of a
-    // pixel, downwards along its right side, leftwards along its bottom,
-    // upwards along its left side. Directions: 0 right, 1 down, 2 left,
-    // 3 up. Each edge is identified by its start vertex and direction.
-    let vw = width + 1;
-    let mut visited = vec![false; vw * (height + 1) * 4];
-    let key = |x: i64, y: i64, d: usize| (y as usize * vw + x as usize) * 4 + d;
-    // True if there is a boundary edge leaving vertex (x, y) in direction d.
-    let edge = |x: i64, y: i64, d: usize| match d {
-        0 => inside(x, y) && !inside(x, y - 1),
-        1 => inside(x - 1, y) && !inside(x, y),
-        2 => inside(x - 1, y - 1) && !inside(x - 1, y),
-        _ => inside(x, y - 1) && !inside(x - 1, y - 1),
-    };
-    const STEP: [(i64, i64); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
-    let mut polygons = Vec::new();
-    for sy in 0..=height as i64 {
-        for sx in 0..=width as i64 {
-            for sd in 0..4 {
-                if !edge(sx, sy, sd) || visited[key(sx, sy, sd)] {
-                    continue;
-                }
-                let mut polygon = Vec::new();
-                let (mut x, mut y, mut d) = (sx, sy, sd);
-                loop {
-                    visited[key(x, y, d)] = true;
-                    let (nx, ny) = (x + STEP[d].0, y + STEP[d].1);
-                    // Prefer turning right (towards the selected pixel),
-                    // then straight, then left: this keeps regions that
-                    // touch only at a corner apart.
-                    let next = [(d + 1) % 4, d, (d + 3) % 4]
-                        .into_iter()
-                        .find(|&nd| edge(nx, ny, nd))
-                        .expect("a boundary edge always continues");
-                    if next != d {
-                        polygon.push((nx as i32 + x0, ny as i32 + y0));
-                    }
-                    x = nx;
-                    y = ny;
-                    d = next;
-                    if x == sx && y == sy && d == sd {
-                        break;
-                    }
-                }
-                polygons.push(polygon);
-            }
-        }
-    }
-    polygons
-}
-
 /// ImageJ's `Wand.autoOutline(x, y, 255, 255)` on a mask in legacy mode,
 /// as `OvalRoi.getPolygon` uses it: the outline of the 8-connected region
 /// found by walking right from the start pixel.
@@ -858,33 +781,5 @@ mod tests {
         // A segment cut short ends the path, as in ImageJ.
         let cut = Path::from_array(&[0.0, 1.0, 2.0, 1.0, 3.0]).unwrap();
         assert_eq!(cut.segments(), &[Segment::MoveTo(1.0, 2.0)]);
-    }
-
-    #[test]
-    fn tracing_gives_back_the_mask() {
-        // A ring with a hole, and a pixel touching it at a corner.
-        let rows = [
-            b"...#.", b"###..", b"#.#..", b"###..", b".....",
-        ];
-        let data: Vec<u8> = rows
-            .iter()
-            .flat_map(|r| r.iter().map(|&c| u8::from(c == b'#') * 255))
-            .collect();
-        let polygons = trace_mask(&data, 5, 5, 0, 0);
-        assert_eq!(polygons.len(), 3);
-        let path = Path::from_polygons(
-            polygons
-                .iter()
-                .map(|p| p.iter().map(|&(x, y)| (x as f32, y as f32))),
-        );
-        let roi = crate::Roi::Composite { path };
-        let mask = roi.mask(5, 5).unwrap();
-        let mut full = vec![0u8; 25];
-        for y in 0..mask.rect.h {
-            for x in 0..mask.rect.w {
-                full[(y + mask.rect.y) * 5 + x + mask.rect.x] = mask.data[y * mask.rect.w + x];
-            }
-        }
-        assert_eq!(full, data);
     }
 }

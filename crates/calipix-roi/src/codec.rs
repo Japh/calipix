@@ -572,7 +572,13 @@ pub fn decode(data: &[u8]) -> Result<RoiEntry, Error> {
                     }
                     Roi::Points { points }
                 }
-                T_FREEHAND if subtype == SUB_ELLIPSE || subtype == SUB_ROTATED_RECT => {
+                // ImageJ writes a rotated rectangle with the polygon type
+                // (and reads it back as a plain polygon, losing what it
+                // was); the subtype tells the two apart.
+                T_FREEHAND | T_POLYGON
+                    if (subtype == SUB_ELLIPSE && kind == T_FREEHAND)
+                        || subtype == SUB_ROTATED_RECT =>
+                {
                     let (x1, y1) = (finite(r.float(X1)?, "x1")?, finite(r.float(Y1)?, "y1")?);
                     let (x2, y2) = (finite(r.float(X2)?, "x2")?, finite(r.float(Y2)?, "y2")?);
                     let param = finite(r.float(FLOAT_PARAM)?, "the shape parameter")?;
@@ -848,13 +854,6 @@ pub fn encode(entry: &RoiEntry) -> Result<Vec<u8>, Error> {
         Roi::Angle { .. } => T_ANGLE,
         Roi::Points { .. } => T_POINT,
         Roi::Rectangle { .. } | Roi::RoundedRectangle { .. } | Roi::Composite { .. } => T_RECT,
-    };
-    // RotatedRectRoi is a POLYGON in ImageJ but is written as freehand
-    // with a subtype, which is how the decoder recognises it.
-    let kind = if matches!(roi, Roi::RotatedRectangle { .. }) {
-        T_FREEHAND
-    } else {
-        kind
     };
     if n > 65535 && kind != T_POINT {
         return Err(Error::Encode(format!(
