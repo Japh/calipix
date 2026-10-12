@@ -567,15 +567,32 @@ impl Job<'_> {
     /// `ShortStatistics`, generalised to any integer type by working on
     /// the distinct values in increasing order.
     fn integer<T: RealPixel>(&self, s: &[T], stats: &mut Statistics) {
-        let mut values: Vec<f64> = Vec::new();
-        self.region
-            .for_each(self.width, |_, _, i| values.push(s[i].to_f64()));
-        values.sort_unstable_by(f64::total_cmp);
+        // How often each value occurs, in increasing order of value.
         let mut counts: Vec<(f64, u64)> = Vec::new();
-        for v in values {
-            match counts.last_mut() {
-                Some((last, count)) if *last == v => *count += 1,
-                _ => counts.push((v, 1)),
+        if T::DTYPE.size() <= 2 {
+            // Few enough possible values to count into a table.
+            const OFFSET: i64 = 1 << 15;
+            let mut table = vec![0u64; 3 << 15];
+            self.region.for_each(self.width, |_, _, i| {
+                table[(s[i].to_f64() as i64 + OFFSET) as usize] += 1
+            });
+            counts.extend(
+                table
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, c)| **c != 0)
+                    .map(|(i, &c)| ((i as i64 - OFFSET) as f64, c)),
+            );
+        } else {
+            let mut values: Vec<f64> = Vec::new();
+            self.region
+                .for_each(self.width, |_, _, i| values.push(s[i].to_f64()));
+            values.sort_unstable_by(f64::total_cmp);
+            for v in values {
+                match counts.last_mut() {
+                    Some((last, count)) if *last == v => *count += 1,
+                    _ => counts.push((v, 1)),
+                }
             }
         }
         let bins = self.histogram.bins;
@@ -770,5 +787,183 @@ impl Job<'_> {
             }
         });
         stats.area_fraction = nonzero as f64 * 100.0 / total as f64;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use calipix_core::Complex32;
+
+    fn of(plane: &Buffer, width: usize, height: usize) -> Statistics {
+        statistics(
+            Samples::Gray(plane),
+            width,
+            height,
+            Region::whole(width, height),
+            &Calibration::default(),
+            Measurements::all(),
+            HistogramSpec::default(),
+        )
+        .unwrap()
+    }
+
+    /// Integer types ImageJ lacks are measured by its 16-bit rules.
+    #[test]
+    fn other_integers_follow_the_sixteen_bit_rules() {
+        let values: Vec<u16> = (0..35u32).map(|i| (i * i * 37 % 5000) as u16).collect();
+        let reference = of(&Buffer::from_vec(values.clone()), 7, 5);
+        let as_u32 = Buffer::from_vec(values.iter().map(|&v| v as u32).collect::<Vec<_>>());
+        let as_i64 = Buffer::from_vec(values.iter().map(|&v| v as i64).collect::<Vec<_>>());
+        assert_eq!(of(&as_u32, 7, 5), reference);
+        assert_eq!(of(&as_i64, 7, 5), reference);
+
+        // Signed samples: the same values moved down by 3000.
+        let signed = of(
+            &Buffer::from_vec(
+                values
+                    .iter()
+                    .map(|&v| v as i16 - 3000)
+                    .collect::<Vec<i16>>(),
+            ),
+            7,
+            5,
+        );
+        let wide = of(
+            &Buffer::from_vec(
+                values
+                    .iter()
+                    .map(|&v| v as i32 - 3000)
+                    .collect::<Vec<i32>>(),
+            ),
+            7,
+            5,
+        );
+        assert_eq!(signed, wide);
+        assert_eq!(signed.pixel_count, 35);
+        assert_eq!(signed.min, reference.min - 3000.0);
+        assert_eq!(signed.max, reference.max - 3000.0);
+        assert_eq!(signed.median, reference.median - 3000.0);
+        assert_eq!(signed.mode, reference.mode - 3000.0);
+        assert_eq!(signed.histogram, reference.histogram);
+        assert!((signed.mean - (reference.mean - 3000.0)).abs() < 1e-9);
+        assert!((signed.std_dev - reference.std_dev).abs() < 1e-9);
+    }
+
+    /// 64-bit floats are measured by the 32-bit rules.
+    #[test]
+    fn doubles_follow_the_float_rules() {
+        let values: Vec<f32> = (0..35).map(|i| (i * i) as f32 / 8.0 - 20.0).collect();
+        let single = of(&Buffer::from_vec(values.clone()), 5, 7);
+        let double = of(
+            &Buffer::from_vec(values.iter().map(|&v| v as f64).collect::<Vec<f64>>()),
+            5,
+            7,
+        );
+        assert_eq!(double, single);
+
+        let mut odd = vec![1.0f64, f64::NAN, f64::INFINITY, 3.0, 1e300, -2.0];
+        odd.extend([0.0; 3]);
+        let s = of(&Buffer::from_vec(odd), 3, 3);
+        assert_eq!(s.pixel_count, 7, "NaN and infinity are not counted");
+        assert_eq!((s.min, s.max), (-2.0, 1e300));
+        assert_eq!(s.median, 0.0);
+    }
+
+    #[test]
+    fn what_cannot_be_measured_says_why() {
+        let complex = Buffer::from_vec(vec![Complex32::new(1.0, 2.0); 4]);
+        let run = |samples: Samples<'_>, region: Region<'_>, bins: usize| {
+            statistics(
+                samples,
+                2,
+                2,
+                region,
+                &Calibration::default(),
+                Measurements::default(),
+                HistogramSpec { bins, range: None },
+            )
+            .unwrap_err()
+            .to_string()
+        };
+        let whole = Region::whole(2, 2);
+        assert!(run(Samples::Gray(&complex), whole, 256).contains("complex"));
+        let bytes = Buffer::from_vec(vec![1u8; 4]);
+        let outside = Region::rect(Rect::new(1, 1, 2, 2));
+        assert!(run(Samples::Gray(&bytes), outside, 256).contains("outside"));
+        let short_mask = Region {
+            rect: Rect::new(0, 0, 2, 2),
+            mask: Some(&[255]),
+        };
+        assert!(run(Samples::Gray(&bytes), short_mask, 256).contains("mask"));
+        assert!(run(Samples::Gray(&bytes), whole, 0).contains("bin"));
+        let words = Buffer::from_vec(vec![1u16; 4]);
+        let rgb = Samples::Rgb {
+            red: &words,
+            green: &words,
+            blue: &words,
+        };
+        assert!(run(rgb, whole, 256).contains("8-bit"));
+    }
+
+    /// A region with nothing selected has no statistics, and says so with
+    /// NaN rather than by failing.
+    #[test]
+    fn empty_mask() {
+        let bytes = Buffer::from_vec(vec![5u8; 6]);
+        let region = Region {
+            rect: Rect::new(0, 0, 3, 2),
+            mask: Some(&[0; 6]),
+        };
+        let s = statistics(
+            Samples::Gray(&bytes),
+            3,
+            2,
+            region,
+            &Calibration::default(),
+            Measurements::all(),
+            HistogramSpec::default(),
+        )
+        .unwrap();
+        assert_eq!(s.pixel_count, 0);
+        assert_eq!(s.area, 0.0);
+        assert!(s.mean.is_nan() && s.min.is_nan() && s.median.is_nan());
+    }
+
+    #[test]
+    fn calibration_from_axes() {
+        use calipix_core::{Axis, DType};
+        let meta = ImageMeta::new(
+            DType::U8,
+            vec![
+                (
+                    Axis {
+                        kind: AxisKind::X,
+                        scale: 0.5,
+                        origin: -1.5,
+                        unit: Some("mm".into()),
+                    },
+                    4,
+                ),
+                (Axis::calibrated(AxisKind::Y, 0.25, "mm"), 4),
+            ],
+        )
+        .unwrap();
+        let cal = Calibration::from_meta(&meta);
+        assert_eq!((cal.pixel_width, cal.pixel_height), (0.5, 0.25));
+        assert_eq!((cal.x_origin, cal.y_origin), (3.0, 0.0));
+        assert_eq!(cal.unit.as_deref(), Some("mm"));
+        assert_eq!(cal.x(8.0), 2.5);
+        assert_eq!(cal.y(6.0, 48), 1.5);
+        let up = Calibration {
+            invert_y: true,
+            ..cal.clone()
+        };
+        assert_eq!(up.y(6.0, 48), 41.0 * 0.25);
+        let from_origin = Calibration {
+            y_origin: 4.0,
+            ..up
+        };
+        assert_eq!(from_origin.y(6.0, 48), -0.5);
     }
 }
