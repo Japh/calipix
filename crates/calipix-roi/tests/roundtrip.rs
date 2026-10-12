@@ -86,10 +86,12 @@ fn roi(coord: BoxedStrategy<f64>) -> impl Strategy<Value = Roi> {
         }),
         points(c.clone(), 1).prop_map(Roi::points),
         (c.clone(), c.clone(), c.clone(), c.clone(), 1u32..=4)
-            .prop_filter("the axis has two ends", |(x1, y1, x2, y2, _)| (x1, y1) != (x2, y2))
+            .prop_filter("the axis has two ends", |(x1, y1, x2, y2, _)| (x1, y1)
+                != (x2, y2))
             .prop_map(|(x1, y1, x2, y2, r)| Roi::ellipse(x1, y1, x2, y2, f64::from(r) / 4.0)),
         (c.clone(), c.clone(), c.clone(), c.clone(), size())
-            .prop_filter("the axis has two ends", |(x1, y1, x2, y2, _)| (x1, y1) != (x2, y2))
+            .prop_filter("the axis has two ends", |(x1, y1, x2, y2, _)| (x1, y1)
+                != (x2, y2))
             .prop_map(|(x1, y1, x2, y2, w)| Roi::rotated_rectangle(x1, y1, x2, y2, w)),
         path(c32).prop_map(Roi::composite),
     ]
@@ -105,17 +107,19 @@ fn props() -> impl Strategy<Value = RoiProps> {
         0u16..=255,
         proptest::option::of("[a-z]{1,8}: [a-z0-9 ]{0,10}\n"),
     )
-        .prop_map(|(name, stroke_width, stroke, fill, position, group, properties)| {
-            let mut props = RoiProps::default();
-            props.name = name;
-            props.stroke_width = stroke_width;
-            props.stroke_color = stroke;
-            props.fill_color = fill;
-            (props.position, props.channel, props.slice, props.frame) = position;
-            props.group = group;
-            props.properties = properties;
-            props
-        })
+        .prop_map(
+            |(name, stroke_width, stroke, fill, position, group, properties)| {
+                let mut props = RoiProps::default();
+                props.name = name;
+                props.stroke_width = stroke_width;
+                props.stroke_color = stroke;
+                props.fill_color = fill;
+                (props.position, props.channel, props.slice, props.frame) = position;
+                props.group = group;
+                props.properties = properties;
+                props
+            },
+        )
 }
 
 /// What the file format keeps of an entry: a line's width is its stroke
@@ -237,7 +241,12 @@ fn wild() -> BoxedStrategy<f64> {
 fn exercise(roi: &Roi) {
     let _ = roi.mask(64, 48);
     let _ = roi.pixel_bounds(64, 48);
-    let _ = (roi.bounds(), roi.int_bounds(), roi.ij_type(), roi.vertices());
+    let _ = (
+        roi.bounds(),
+        roi.int_bounds(),
+        roi.ij_type(),
+        roi.vertices(),
+    );
     let _ = (roi.length(), roi.length_scaled(0.5, 0.25));
     // The hull and calipers compare every pair of vertices; outlines
     // with thousands of them (curves a billion pixels long) are left
@@ -248,7 +257,11 @@ fn exercise(roi: &Roi) {
     }
     let _ = (roi.contour_centroid(), roi.angle(), roi.rotation_center());
     let _ = (roi.contains(3, 4), roi.contains(-1, 1_000_000));
-    let _ = (roi.line_pixels(), roi.profile_positions(), roi.drawn_pixels());
+    let _ = (
+        roi.line_pixels(),
+        roi.profile_positions(),
+        roi.drawn_pixels(),
+    );
     let _ = roi.to_string();
     let _ = encode(&RoiEntry::new(roi.clone()));
     let _ = (roi.ellipse_fit(64, 48), roi.fitted_ellipse(64, 48));

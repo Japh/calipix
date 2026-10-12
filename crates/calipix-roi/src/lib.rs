@@ -72,9 +72,7 @@ mod text;
 mod trace;
 mod zip;
 
-pub use codec::{
-    ArrowHead, Color, OverlayOptions, RoiEntry, RoiProps, decode, decode_hex, encode,
-};
+pub use codec::{ArrowHead, Color, OverlayOptions, RoiEntry, RoiProps, decode, decode_hex, encode};
 pub use geometry::{Feret, draw_line_pixels, profile_pixel};
 pub use ops::{Combine, EllipseFit};
 pub use path::{Path, Segment};

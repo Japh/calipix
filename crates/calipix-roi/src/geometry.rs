@@ -44,7 +44,10 @@ pub(crate) fn convex_hull(xpoints: &[f32], ypoints: &[f32]) -> (Vec<f32>, Vec<f3
     if npoints == 0 {
         return (xx, yy);
     }
-    let smallest_y = ypoints.iter().copied().fold(f32::MAX, |a, b| if b < a { b } else { a });
+    let smallest_y = ypoints
+        .iter()
+        .copied()
+        .fold(f32::MAX, |a, b| if b < a { b } else { a });
     let mut smallest_x = f32::MAX;
     let mut p1 = 0;
     for i in 0..npoints {
@@ -145,8 +148,8 @@ fn length_f32(xs: &[f32], ys: &[f32], close: bool, pw: f64, ph: f64) -> f64 {
             .sqrt();
     }
     if close {
-        length +=
-            (sqr(f64::from(xs[0] - xs[n - 1]) * pw) + sqr(f64::from(ys[0] - ys[n - 1]) * ph)).sqrt();
+        length += (sqr(f64::from(xs[0] - xs[n - 1]) * pw) + sqr(f64::from(ys[0] - ys[n - 1]) * ph))
+            .sqrt();
     }
     length
 }
@@ -203,7 +206,10 @@ fn smoothed_length(coords: &Coords, close: bool, pw: f64, ph: f64) -> f64 {
                 f(yp[0] + yp[1] + yp[2]) / 3.0 - f(yp[0]),
             );
             for i in 1..n - 2 {
-                length += seg(f(xp[i + 2] - xp[i - 1]) / 3.0, f(yp[i + 2] - yp[i - 1]) / 3.0);
+                length += seg(
+                    f(xp[i + 2] - xp[i - 1]) / 3.0,
+                    f(yp[i + 2] - yp[i - 1]) / 3.0,
+                );
             }
             length += seg(
                 f(xp[n - 1]) - f(xp[n - 3] + xp[n - 2] + xp[n - 1]) / 3.0,
@@ -259,11 +265,7 @@ fn rectilinear(poly: &Poly) -> Option<(Vec<i32>, Vec<i32>)> {
     let (xp, yp) = match &poly.coords {
         Coords::Int(xp, yp) => (xp.clone(), yp.clone()),
         Coords::Float(xpf, ypf) => {
-            if xpf
-                .iter()
-                .chain(ypf)
-                .any(|&v| v != (v as i32) as f32)
-            {
+            if xpf.iter().chain(ypf).any(|&v| v != (v as i32) as f32) {
                 return None;
             }
             (
@@ -542,7 +544,12 @@ impl Roi {
                 height,
             } => (
                 vec![*x as f32, (x + width) as f32, (x + width) as f32, *x as f32],
-                vec![*y as f32, *y as f32, (y + height) as f32, (y + height) as f32],
+                vec![
+                    *y as f32,
+                    *y as f32,
+                    (y + height) as f32,
+                    (y + height) as f32,
+                ],
             ),
             Roi::RoundedRectangle {
                 corner_diameter, ..
@@ -627,10 +634,7 @@ impl Roi {
     /// two end points, or the four corners of its outline if it is wider
     /// than one pixel. Coordinates have single precision, as in ImageJ.
     pub fn outline(&self) -> Vec<Point> {
-        if let Roi::Line {
-            x1, y1, x2, y2, ..
-        } = self
-        {
+        if let Roi::Line { x1, y1, x2, y2, .. } = self {
             // getSelectionCoordinates reports a line's end points in
             // double precision whatever its width.
             return vec![(*x1, *y1), (*x2, *y2)];
@@ -963,8 +967,7 @@ impl Roi {
     ///
     /// `None` for other kinds.
     pub fn angle(&self) -> Option<f64> {
-        let direction =
-            |a: Point, b: Point| (180.0 / PI) * (a.1 - b.1).atan2(b.0 - a.0);
+        let direction = |a: Point, b: Point| (180.0 / PI) * (a.1 - b.1).atan2(b.0 - a.0);
         match self {
             Roi::Line { x1, y1, x2, y2, .. } => Some(direction((*x1, *y1), (*x2, *y2))),
             Roi::Angle { .. } => {
@@ -973,7 +976,9 @@ impl Roi {
                 // for sub-pixel selections.
                 let poly = self.poly()?;
                 let p: Vec<Point> = match &poly.coords {
-                    Coords::Int(x, y) => (0..3).map(|i| (f64::from(x[i]), f64::from(y[i]))).collect(),
+                    Coords::Int(x, y) => {
+                        (0..3).map(|i| (f64::from(x[i]), f64::from(y[i]))).collect()
+                    }
                     Coords::Float(x, y) => {
                         (0..3).map(|i| (f64::from(x[i]), f64::from(y[i]))).collect()
                     }
@@ -1107,7 +1112,7 @@ impl Roi {
         };
         let (dx, dy) = (x2 - x1, y2 - y1);
         let length = (dx * dx + dy * dy).sqrt();
-        if !(length <= MAX_LINE_SAMPLES) {
+        if length.is_nan() || length > MAX_LINE_SAMPLES {
             return None;
         }
         let n = length.ceil() as i64;
@@ -1198,7 +1203,7 @@ impl Roi {
         };
         let (dx, dy) = (x2 - x1, y2 - y1);
         let length = (dx * dx + dy * dy).sqrt();
-        if !(length <= MAX_LINE_SAMPLES) {
+        if length.is_nan() || length > MAX_LINE_SAMPLES {
             return None;
         }
         let n = jround(length).max(0);

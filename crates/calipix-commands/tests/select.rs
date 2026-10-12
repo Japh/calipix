@@ -74,7 +74,10 @@ fn every_kind_of_selection_can_be_specified_as_text() {
         ("points 5,5 20,30", Kind::Points),
         ("ellipse 10 10 50 35 0.5", Kind::Ellipse),
         ("rotated-rectangle 10 10 50 35 12", Kind::RotatedRectangle),
-        ("composite M 0,0 L 10,0 L 10,10 L 0,10 Z M 3,3 L 7,3 L 7,7 L 3,7 Z", Kind::Composite),
+        (
+            "composite M 0,0 L 10,0 L 10,10 L 0,10 Z M 3,3 L 7,3 L 7,7 L 3,7 Z",
+            Kind::Composite,
+        ),
     ] {
         select(&exec, &mut session, text);
         let roi = roi(&session, id).unwrap();
@@ -96,18 +99,21 @@ fn every_kind_of_selection_can_be_specified_as_text() {
 fn invert_follows_imagej_and_undoes() {
     let (exec, mut session, id) = setup();
     // Without a selection, Make Inverse selects everything.
-    exec.run(&mut session, "select.invert", &Args::new()).unwrap();
+    exec.run(&mut session, "select.invert", &Args::new())
+        .unwrap();
     assert_eq!(
         roi(&session, id),
         Some(Roi::rectangle(0.0, 0.0, WIDTH as f64, HEIGHT as f64))
     );
     // The inverse of everything is nothing.
-    exec.run(&mut session, "select.invert", &Args::new()).unwrap();
+    exec.run(&mut session, "select.invert", &Args::new())
+        .unwrap();
     assert_eq!(roi(&session, id), None);
 
     select(&exec, &mut session, "oval 10 8 25 20");
     let oval = roi(&session, id).unwrap();
-    exec.run(&mut session, "select.invert", &Args::new()).unwrap();
+    exec.run(&mut session, "select.invert", &Args::new())
+        .unwrap();
     let inverse = roi(&session, id).unwrap();
     assert_eq!(count(&inverse), WIDTH * HEIGHT - count(&oval));
     assert_eq!(
@@ -132,12 +138,24 @@ fn enlarge_scale_rotate_and_translate_match_imagej() {
             .unwrap_or_else(|e| panic!("{command}: {e}"));
     };
 
-    select(&exec, &mut session, "polygon 5,5 30,8 18,20 32,40 4,30 12,18");
-    run(&mut session, "select.enlarge", Args::new().with("pixels", 3));
+    select(
+        &exec,
+        &mut session,
+        "polygon 5,5 30,8 18,20 32,40 4,30 12,18",
+    );
+    run(
+        &mut session,
+        "select.enlarge",
+        Args::new().with("pixels", 3),
+    );
     assert_eq!(roi(&session, id), Some(imagej("enlarge_poly_3")));
 
     select(&exec, &mut session, "rectangle 10 8 20 12");
-    run(&mut session, "select.enlarge", Args::new().with("pixels", -3));
+    run(
+        &mut session,
+        "select.enlarge",
+        Args::new().with("pixels", -3),
+    );
     assert_eq!(roi(&session, id), Some(imagej("enlarge_rect_m3")));
     let err = exec
         .run(
@@ -158,7 +176,11 @@ fn enlarge_scale_rotate_and_translate_match_imagej() {
     assert_eq!(roi(&session, id), Some(imagej("scale_poly_centered")));
 
     select(&exec, &mut session, "polygon 40,5 60,10 50,40");
-    run(&mut session, "select.rotate", Args::new().with("angle", 90.0));
+    run(
+        &mut session,
+        "select.rotate",
+        Args::new().with("angle", 90.0),
+    );
     assert_eq!(roi(&session, id), Some(imagej("rotate_poly_90")));
     select(&exec, &mut session, "rectangle 20 14 24 12");
     run(
@@ -194,13 +216,21 @@ fn conversions_match_imagej() {
     };
     let same_pixels = |a: &Roi, b: &Roi| a.mask(WIDTH, HEIGHT) == b.mask(WIDTH, HEIGHT);
 
-    select(&exec, &mut session, "polygon 5,5 30,8 18,20 32,40 4,30 12,18");
+    select(
+        &exec,
+        &mut session,
+        "polygon 5,5 30,8 18,20 32,40 4,30 12,18",
+    );
     run(&mut session, "select.fit_ellipse");
     let fitted = roi(&session, id).unwrap();
     assert_eq!(fitted.kind(), Kind::Ellipse);
     assert!(same_pixels(&fitted, &imagej("fit_ellipse_poly")));
 
-    select(&exec, &mut session, "polygon 5,5 30,8 18,20 32,40 4,30 12,18");
+    select(
+        &exec,
+        &mut session,
+        "polygon 5,5 30,8 18,20 32,40 4,30 12,18",
+    );
     run(&mut session, "select.convex_hull");
     assert_eq!(roi(&session, id), Some(imagej("hull_poly")));
 
@@ -208,7 +238,11 @@ fn conversions_match_imagej() {
     run(&mut session, "select.to_bounding_box");
     assert_eq!(roi(&session, id), Some(imagej("box_oval_sub")));
 
-    select(&exec, &mut session, "polyline 5,5 20,30 40,10 60,40 width 6");
+    select(
+        &exec,
+        &mut session,
+        "polyline 5,5 20,30 40,10 60,40 width 6",
+    );
     run(&mut session, "select.line_to_area");
     assert_eq!(roi(&session, id), Some(imagej("area_polyline_wide")));
 
@@ -221,10 +255,26 @@ fn conversions_match_imagej() {
 
     // Each refuses what it cannot work on, and says why.
     for (selection, command, reason) in [
-        ("line 2 40 60 44", "select.fit_ellipse", "needs an area selection"),
-        ("line 2 40 60 44", "select.enlarge", "needs an area selection"),
-        ("line 2 40 60 44", "select.convex_hull", "a convex hull needs"),
-        ("oval 20 10 15 20", "select.line_to_area", "needs a line selection"),
+        (
+            "line 2 40 60 44",
+            "select.fit_ellipse",
+            "needs an area selection",
+        ),
+        (
+            "line 2 40 60 44",
+            "select.enlarge",
+            "needs an area selection",
+        ),
+        (
+            "line 2 40 60 44",
+            "select.convex_hull",
+            "a convex hull needs",
+        ),
+        (
+            "oval 20 10 15 20",
+            "select.line_to_area",
+            "needs a line selection",
+        ),
     ] {
         select(&exec, &mut session, selection);
         let err = exec.run(&mut session, command, &Args::new()).unwrap_err();
@@ -264,7 +314,14 @@ fn commands_that_need_a_selection_say_so() {
 #[test]
 fn selections_open_from_and_save_to_imagej_files() {
     let (exec, mut session, id) = setup();
-    for case in ["oval_int", "polyf_tri", "comp_hole", "line_wide", "points_sub", "ellipse"] {
+    for case in [
+        "oval_int",
+        "polyf_tri",
+        "comp_hole",
+        "line_wide",
+        "points_sub",
+        "ellipse",
+    ] {
         exec.run(
             &mut session,
             "select.open",
@@ -281,8 +338,12 @@ fn selections_open_from_and_save_to_imagej_files() {
         )
         .unwrap();
         exec.run(&mut session, "select.none", &Args::new()).unwrap();
-        exec.run(&mut session, "select.open", &Args::new().with("path", saved))
-            .unwrap();
+        exec.run(
+            &mut session,
+            "select.open",
+            &Args::new().with("path", saved),
+        )
+        .unwrap();
         assert_eq!(roi(&session, id), Some(imagej(case)), "{case}");
     }
     // Opening is undone like any other change of selection.
@@ -307,15 +368,22 @@ fn files_that_are_not_selections_are_refused() {
     let garbage = temp("garbage.roi");
     std::fs::write(&garbage, b"this is not a selection").unwrap();
     let message = open(&mut session, garbage);
-    assert!(message.contains("not a valid ImageJ selection"), "{message}");
+    assert!(
+        message.contains("not a valid ImageJ selection"),
+        "{message}"
+    );
 
     let truncated = temp("truncated.roi");
     let bytes = std::fs::read(fixture("poly_concave")).unwrap();
     std::fs::write(&truncated, &bytes[..70]).unwrap();
     let message = open(&mut session, truncated);
-    assert!(message.contains("not a valid ImageJ selection"), "{message}");
+    assert!(
+        message.contains("not a valid ImageJ selection"),
+        "{message}"
+    );
 
-    let set = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/imagej/out/roiset.zip");
+    let set =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/imagej/out/roiset.zip");
     let message = open(&mut session, set);
     assert!(message.contains("set of selections"), "{message}");
 

@@ -227,8 +227,7 @@ fn distance_map(data: &[u8], width: usize, height: usize) -> Vec<u8> {
         dist_sqr as f32
     }
     let line = |bufs: &mut [Vec<i32>; 2], dist: &mut [f32], y: usize| {
-        for pass in 0..2 {
-            let points = &mut bufs[pass];
+        for (pass, points) in bufs.iter_mut().enumerate() {
             let (mut p_prev, mut p_diag) = (NO_POINT, NO_POINT);
             for step in 0..width {
                 let x = if pass == 0 { step } else { width - 1 - step };
@@ -395,7 +394,12 @@ impl Roi {
                     let next = if i < 3 { i + 1 } else { 0 };
                     f64::from(v[i] + (v[next] - v[i]) / 2.0 + base)
                 };
-                Some([mid(xs, 3, fx), mid(ys, 3, fy), mid(xs, 1, fx), mid(ys, 1, fy)])
+                Some([
+                    mid(xs, 3, fx),
+                    mid(ys, 3, fy),
+                    mid(xs, 1, fx),
+                    mid(ys, 1, fy),
+                ])
             }
             _ => None,
         }
@@ -530,17 +534,19 @@ impl Roi {
     /// polygon's corner).
     fn snapped_mask(&self) -> (Frame, Vec<u8>) {
         let original = self.frame();
-        let snapped: Option<Poly> = self.poly().and_then(|poly| match (&poly.coords, poly.fbounds) {
-            (Coords::Float(..), Some(b)) => {
-                let fb = [0.0, 0.0, b[2], b[3]];
-                Some(Poly {
-                    frame: int_bounds(fb, false),
-                    fbounds: Some(fb),
-                    coords: poly.coords.clone(),
-                })
-            }
-            _ => None,
-        });
+        let snapped: Option<Poly> =
+            self.poly()
+                .and_then(|poly| match (&poly.coords, poly.fbounds) {
+                    (Coords::Float(..), Some(b)) => {
+                        let fb = [0.0, 0.0, b[2], b[3]];
+                        Some(Poly {
+                            frame: int_bounds(fb, false),
+                            fbounds: Some(fb),
+                            coords: poly.coords.clone(),
+                        })
+                    }
+                    _ => None,
+                });
         match snapped {
             Some(poly) => {
                 let (mut w, mut h) = (poly.frame.w.max(0), poly.frame.h.max(0));
@@ -594,7 +600,10 @@ impl Roi {
             Roi::Rectangle { .. } | Roi::RoundedRectangle { .. } | Roi::Oval { .. }
         ) {
             let f = self.frame();
-            let (w, h) = (f64::from(f.w) + 2.0 * f64::from(n), f64::from(f.h) + 2.0 * f64::from(n));
+            let (w, h) = (
+                f64::from(f.w) + 2.0 * f64::from(n),
+                f64::from(f.h) + 2.0 * f64::from(n),
+            );
             if w <= 0.0 || h <= 0.0 {
                 return None;
             }
@@ -631,9 +640,13 @@ impl Roi {
         }
         let edm = distance_map(&work, w, h);
         let selected: Vec<u8> = if n > 0 {
-            edm.iter().map(|&d| u8::from(i32::from(d) <= n) * 255).collect()
+            edm.iter()
+                .map(|&d| u8::from(i32::from(d) <= n) * 255)
+                .collect()
         } else {
-            edm.iter().map(|&d| u8::from(i32::from(d) > -n) * 255).collect()
+            edm.iter()
+                .map(|&d| u8::from(i32::from(d) > -n) * 255)
+                .collect()
         };
         from_mask(
             &selected,
@@ -693,14 +706,12 @@ impl Roi {
             }
             // RoiScaler.scaleShape, centred: the shape is scaled about
             // its own corner and placed so that its bounds grow evenly.
-            let local = path
-                .local(f)
-                .mapped(|x, y| {
-                    (
-                        (f64::from(x) * x_scale) as f32,
-                        (f64::from(y) * y_scale) as f32,
-                    )
-                });
+            let local = path.local(f).mapped(|x, y| {
+                (
+                    (f64::from(x) * x_scale) as f32,
+                    (f64::from(y) * y_scale) as f32,
+                )
+            });
             let lf = local.frame();
             let xbase = (f64::from(f.x) - (f64::from(f.w) * x_scale - f64::from(f.w)) / 2.0) as i32;
             let ybase = (f64::from(f.y) - (f64::from(f.h) * y_scale - f64::from(f.h)) / 2.0) as i32;
@@ -726,7 +737,11 @@ impl Roi {
         }
         let width = self.line_width();
         self.rebuilt(&xs, &ys, None)
-            .with_line_width(if width > 1.0 { width * x_scale } else { width.max(1.0) })
+            .with_line_width(if width > 1.0 {
+                width * x_scale
+            } else {
+                width.max(1.0)
+            })
     }
 
     /// The centre ImageJ rotates a selection about by default
@@ -764,9 +779,10 @@ impl Roi {
             _ => None,
         };
         let (mut xs, mut ys) = match (self, self.axis_params()) {
-            (Roi::RotatedRectangle { .. }, Some(p)) => {
-                (vec![p[0] as f32, p[2] as f32], vec![p[1] as f32, p[3] as f32])
-            }
+            (Roi::RotatedRectangle { .. }, Some(p)) => (
+                vec![p[0] as f32, p[2] as f32],
+                vec![p[1] as f32, p[3] as f32],
+            ),
             _ => self.transform_points(),
         };
         for (x, y) in xs.iter_mut().zip(ys.iter_mut()) {
@@ -868,7 +884,10 @@ impl Roi {
         if w <= 0 || h <= 0 {
             return None;
         }
-        let (full_w, full_h) = (w.min(i64::from(i32::MAX)) as i32, h.min(i64::from(i32::MAX)) as i32);
+        let (full_w, full_h) = (
+            w.min(i64::from(i32::MAX)) as i32,
+            h.min(i64::from(i32::MAX)) as i32,
+        );
         if let Some((cw, ch)) = clip {
             w = w.min(cw as i64);
             h = h.min(ch as i64);
@@ -964,6 +983,8 @@ impl Roi {
     /// `height` image: ImageJ's `EllipseFitter`. `None` if the selection
     /// is not an area or covers no pixel.
     pub fn ellipse_fit(&self, width: usize, height: usize) -> Option<EllipseFit> {
+        // The value ImageJ's EllipseFitter uses, digits and all.
+        #[allow(clippy::approx_constant)]
         const HALF_PI: f64 = 1.5707963267949;
         if !self.is_area() {
             return None;

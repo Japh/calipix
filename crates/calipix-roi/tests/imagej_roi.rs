@@ -178,9 +178,16 @@ fn filled(roi: &Roi) -> Option<Vec<bool>> {
 
 /// Fails with every collected disagreement, so that one run shows them all.
 fn report(problems: Vec<String>) {
-    assert!(problems.is_empty(), "{} problems:
-{}", problems.len(), problems.join("
-"));
+    assert!(
+        problems.is_empty(),
+        "{} problems:
+{}",
+        problems.len(),
+        problems.join(
+            "
+"
+        )
+    );
 }
 
 #[test]
@@ -191,11 +198,20 @@ fn every_case_decodes_to_the_kind_and_bounds_imagej_reports() {
     for c in &cases {
         let roi = c.roi();
         if roi.ij_type() != c.int("type") {
-            problems.push(format!("{}: type {} vs {}", c.name, roi.ij_type(), c.int("type")));
+            problems.push(format!(
+                "{}: type {} vs {}",
+                c.name,
+                roi.ij_type(),
+                c.int("type")
+            ));
         }
         let theirs = (c.int("bx"), c.int("by"), c.int("bw"), c.int("bh"));
         if roi.int_bounds() != theirs {
-            problems.push(format!("{}: bounds {:?} vs {theirs:?}", c.name, roi.int_bounds()));
+            problems.push(format!(
+                "{}: bounds {:?} vs {theirs:?}",
+                c.name,
+                roi.int_bounds()
+            ));
         }
         let (x, y, w, h) = roi.bounds();
         for (ours, key) in [(x, "fx"), (y, "fy"), (w, "fw"), (h, "fh")] {
@@ -358,11 +374,24 @@ fn fitted_ellipses_and_centroids_equal_imagej() {
             continue;
         }
         let fit = roi.ellipse_fit(WIDTH, HEIGHT).unwrap();
-        for (ours, key) in [(fit.major, "Major"), (fit.minor, "Minor"), (fit.angle, "Angle")] {
-            assert!(close(ours, c.get(key)), "{}: {key} {ours} vs {}", c.name, c.get(key));
+        for (ours, key) in [
+            (fit.major, "Major"),
+            (fit.minor, "Minor"),
+            (fit.angle, "Angle"),
+        ] {
+            assert!(
+                close(ours, c.get(key)),
+                "{}: {key} {ours} vs {}",
+                c.name,
+                c.get(key)
+            );
         }
         let (x, y) = roi.scale_center(WIDTH, HEIGHT).unwrap();
-        assert!(close(x, c.get("X")) && close(y, c.get("Y")), "{}: centroid", c.name);
+        assert!(
+            close(x, c.get("X")) && close(y, c.get("Y")),
+            "{}: centroid",
+            c.name
+        );
     }
 }
 
@@ -399,7 +428,10 @@ fn reencoding_gives_imagej_bytes() {
         }
         // Whatever the bytes, nothing is lost on the way.
         if decode(&ours).as_ref() != Ok(&c.entry) {
-            different.push(format!("{}: decoding our bytes gives another selection", c.name));
+            different.push(format!(
+                "{}: decoding our bytes gives another selection",
+                c.name
+            ));
         }
     }
     assert_eq!(different, Vec::<String>::new());
@@ -414,14 +446,20 @@ fn ellipses_built_from_the_same_numbers_are_saved_as_imagej_saves_them() {
     for (name, roi) in [
         ("ellipse_sub", parse("ellipse 20.5 40.2 40.1 5.7 0.3")),
         ("ellipse_cross", parse("ellipse -10 10 40 60 0.6")),
-        ("fit_ellipse_poly", fitted(parse("polygon 5,5 30,8 18,20 32,40 4,30 12,18"))),
+        (
+            "fit_ellipse_poly",
+            fitted(parse("polygon 5,5 30,8 18,20 32,40 4,30 12,18")),
+        ),
         ("fit_ellipse_rect", fitted(parse("rectangle 10 8 20 12"))),
         ("fit_ellipse_oval", fitted(parse("oval 10 10 40 13"))),
         ("fit_ellipse_comp", fitted(or)),
     ] {
         assert!(INEXACT_ELLIPSES.contains(&name));
         let ours = encode(&RoiEntry::new(roi)).unwrap();
-        assert!(ours == case(name).bytes, "{name}: bytes differ from ImageJ's");
+        assert!(
+            ours == case(name).bytes,
+            "{name}: bytes differ from ImageJ's"
+        );
     }
 }
 
@@ -429,19 +467,16 @@ fn ellipses_built_from_the_same_numbers_are_saved_as_imagej_saves_them() {
 /// what single precision holds.
 fn assert_same_shape(name: &str, ours: &Roi, theirs: &Roi) {
     let (a, b) = (ours.to_string(), theirs.to_string());
-    let words = |s: &str| -> Vec<String> {
-        s.split([' ', ','])
-            .map(str::to_string)
-            .collect()
-    };
+    let words = |s: &str| -> Vec<String> { s.split([' ', ',']).map(str::to_string).collect() };
     let (wa, wb) = (words(&a), words(&b));
     let same = wa.len() == wb.len()
-        && wa.iter().zip(&wb).all(|(x, y)| {
-            match (x.parse::<f64>(), y.parse::<f64>()) {
+        && wa
+            .iter()
+            .zip(&wb)
+            .all(|(x, y)| match (x.parse::<f64>(), y.parse::<f64>()) {
                 (Ok(x), Ok(y)) => (x - y).abs() <= 2e-5 * x.abs().max(y.abs()).max(1.0),
                 _ => x == y,
-            }
-        });
+            });
     assert!(same, "{name}:\n  ours   {a}\n  ImageJ {b}");
 }
 
@@ -475,16 +510,28 @@ const DIRECT: &[(&str, &str)] = &[
     ("poly_star", "polygon 32,4 44,42 12,18 52,18 20,42"),
     ("poly_cross", "polygon -10,5 30,-8 70,30 20,60"),
     ("poly_thin", "polygon 5,5 60,6 5,7"),
-    ("poly_rectilinear", "polygon 5,5 25,5 25,15 15,15 15,30 5,30"),
+    (
+        "poly_rectilinear",
+        "polygon 5,5 25,5 25,15 15,15 15,30 5,30",
+    ),
     ("poly_small_box", "polygon 10,10 14,10 14,13 10,13"),
     ("poly_tiny", "polygon 3,3 5,3 4,5"),
     ("poly_all", "polygon 0,0 64,0 64,48 0,48"),
     ("poly_parallelogram", "polygon 8,40 20,4 56,4 44,40"),
     ("polyf_tri", "polygon 10.5,5.25 40.75,8.5 22.3,30.9"),
-    ("polyf_cross", "polygon -6.5,5.5 30.25,-8.25 70.4,30.7 20.6,60.1"),
+    (
+        "polyf_cross",
+        "polygon -6.5,5.5 30.25,-8.25 70.4,30.7 20.6,60.1",
+    ),
     ("polyf_small", "polygon 3.2,3.2 5.9,3.4 4.1,6.8"),
-    ("polyf_bowtie", "polygon 10.3,10.2 50.6,40.7 50.1,10.4 10.9,40.3"),
-    ("polyf_half_box", "polygon 10.5,10.5 20.5,10.5 20.5,20.5 10.5,20.5"),
+    (
+        "polyf_bowtie",
+        "polygon 10.3,10.2 50.6,40.7 50.1,10.4 10.9,40.3",
+    ),
+    (
+        "polyf_half_box",
+        "polygon 10.5,10.5 20.5,10.5 20.5,20.5 10.5,20.5",
+    ),
     ("polyf_mixed", "polygon 10,10 20.5,10 20,20 10,20"),
     (
         "free_int",
@@ -508,9 +555,15 @@ const DIRECT: &[(&str, &str)] = &[
     ("line_wide", "line 5 5 50 30 width 7"),
     ("line_wide_horizontal", "line 8 40 56 40 width 4"),
     ("polyline_int", "polyline 5,5 20,30 40,10 60,40"),
-    ("polyline_sub", "polyline 5.5,5.5 20.25,30.25 40.75,10.5 60.1,40.9"),
+    (
+        "polyline_sub",
+        "polyline 5.5,5.5 20.25,30.25 40.75,10.5 60.1,40.9",
+    ),
     ("polyline_wide", "polyline 5,5 20,30 40,10 60,40 width 6"),
-    ("freeline_int", "freeline 5,40 9,30 15,24 22,22 30,26 36,34 44,38"),
+    (
+        "freeline_int",
+        "freeline 5,40 9,30 15,24 22,22 30,26 36,34 44,38",
+    ),
     (
         "freeline_sub",
         "freeline 5.5,40.1 9.2,30.6 15.8,24.3 22.1,22.8 30.6,26.2 36.3,34.5 44.9,38.4",
@@ -520,7 +573,10 @@ const DIRECT: &[(&str, &str)] = &[
     ("point_int", "points 33,17"),
     ("point_sub", "points 10.5,20.25"),
     ("points_int", "points 5,5 20,30 40,12 63,47"),
-    ("points_sub", "points 5.5,5.5 20.25,30.25 40.75,12.75 62.4,46.6"),
+    (
+        "points_sub",
+        "points 5.5,5.5 20.25,30.25 40.75,12.75 62.4,46.6",
+    ),
     ("points_cross", "points -3,5 20,30 70,50"),
     ("ellipse", "ellipse 10 10 50 35 0.5"),
     ("ellipse_sub", "ellipse 20.5 40.2 40.1 5.7 0.3"),
@@ -622,10 +678,20 @@ fn combined_areas_cover_what_imagej_s_cover() {
     for (name, a, b, how) in [
         ("comp_or", "rectangle 5 5 20 15", "oval 15 10 25 25", Or),
         ("comp_hole", "rectangle 5 5 40 30", "oval 15 10 20 15", Not),
-        ("comp_two", "rectangle 2 2 12 10", "rectangle 30 20 20 15", Or),
+        (
+            "comp_two",
+            "rectangle 2 2 12 10",
+            "rectangle 30 20 20 15",
+            Or,
+        ),
         ("comp_and", "rectangle 5 5 30 20", "oval 20 12 30 25", And),
         ("comp_xor", "rectangle 5 5 30 20", "oval 20 12 30 25", Xor),
-        ("comp_combine", "rectangle 5 5 30 20", "oval 20 12 30 25", Or),
+        (
+            "comp_combine",
+            "rectangle 5 5 30 20",
+            "oval 20 12 30 25",
+            Or,
+        ),
     ] {
         let ours = assert_covers(name, parse(a).combined(&parse(b), how));
         // Both sides traced pixel edges here, so the kinds agree too.
@@ -636,18 +702,33 @@ fn combined_areas_cover_what_imagej_s_cover() {
 #[test]
 fn enlarged_selections_equal_imagej_s() {
     for (name, source, pixels) in [
-        ("enlarge_poly_3", "polygon 5,5 30,8 18,20 32,40 4,30 12,18", 3),
-        ("enlarge_poly_m2", "polygon 5,5 30,8 18,20 32,40 4,30 12,18", -2),
+        (
+            "enlarge_poly_3",
+            "polygon 5,5 30,8 18,20 32,40 4,30 12,18",
+            3,
+        ),
+        (
+            "enlarge_poly_m2",
+            "polygon 5,5 30,8 18,20 32,40 4,30 12,18",
+            -2,
+        ),
         ("enlarge_oval_4", "oval 20 10 15 20", 4),
         ("enlarge_rect_m3", "rectangle 10 8 20 12", -3),
-        ("enlarge_polyf_5", "polygon 10.5,5.25 40.75,8.5 22.3,30.9", 5),
+        (
+            "enlarge_polyf_5",
+            "polygon 10.5,5.25 40.75,8.5 22.3,30.9",
+            5,
+        ),
         ("enlarge_ellipse_m4", "ellipse 10 10 50 35 0.5", -4),
     ] {
         let ours = assert_covers(name, parse(source).enlarged(pixels));
         let theirs = case(name);
         // Not only the same pixels: the same selection, vertex for vertex.
         assert_eq!(&ours, theirs.roi(), "{name}");
-        assert!(close(ours.length(), theirs.get("Perim")), "{name}: perimeter");
+        assert!(
+            close(ours.length(), theirs.get("Perim")),
+            "{name}: perimeter"
+        );
     }
     let hole = parse("rectangle 5 5 40 30")
         .combined(&parse("oval 15 10 20 15"), calipix_roi::Combine::Not)
@@ -662,7 +743,13 @@ fn scaled_selections_equal_imagej_s() {
     let centre = |roi: &Roi| roi.scale_center(WIDTH, HEIGHT);
     for (name, source, x, y, centered) in [
         ("scale_poly", "polygon 40,5 60,10 50,40", 0.5, 0.75, false),
-        ("scale_poly_centered", "polygon 40,5 60,10 50,40", 0.5, 0.75, true),
+        (
+            "scale_poly_centered",
+            "polygon 40,5 60,10 50,40",
+            0.5,
+            0.75,
+            true,
+        ),
         ("scale_oval_centered", "oval 20 10 15 20", 1.5, 1.25, true),
         ("scale_rect", "rectangle 10 8 20 12", 1.5, 0.5, false),
         ("scale_line", "line 2 40 60 44", 0.5, 0.5, false),
@@ -680,11 +767,18 @@ fn scaled_selections_equal_imagej_s() {
     assert_same_shape("scale_comp", &scaled, case("scale_comp").roi());
     assert_covers("scale_comp", Some(scaled));
     let scaled = traced.scaled(0.75, 0.5, centre(&traced));
-    assert_same_shape("scale_comp_centered", &scaled, case("scale_comp_centered").roi());
+    assert_same_shape(
+        "scale_comp_centered",
+        &scaled,
+        case("scale_comp_centered").roi(),
+    );
     assert_covers("scale_comp_centered", Some(scaled));
     let hole = case("comp_hole").entry.roi;
     assert_covers("scale_hole", Some(hole.scaled(0.75, 0.5, None)));
-    assert_covers("scale_hole_centered", Some(hole.scaled(0.75, 0.5, centre(&hole))));
+    assert_covers(
+        "scale_hole_centered",
+        Some(hole.scaled(0.75, 0.5, centre(&hole))),
+    );
 }
 
 #[test]
@@ -694,7 +788,11 @@ fn rotated_selections_equal_imagej_s() {
         ("rotate_oval_m45", "oval 20 10 15 20", -45.0),
         ("rotate_poly_90", "polygon 40,5 60,10 50,40", 90.0),
         ("rotate_line_15", "line 2 40 60 44", 15.0),
-        ("rotate_rotrect_20", "rotated-rectangle 10 10 50 35 12", 20.0),
+        (
+            "rotate_rotrect_20",
+            "rotated-rectangle 10 10 50 35 12",
+            20.0,
+        ),
         ("rotate_points_10", "points 5,5 20,30 40,12 60,40", 10.0),
     ] {
         let source = parse(source);
@@ -703,7 +801,10 @@ fn rotated_selections_equal_imagej_s() {
         assert_same_shape(name, &rotated, case(name).roi());
         assert_covers(name, Some(rotated));
     }
-    for (name, source) in [("rotate_comp_25", "comp_or"), ("rotate_hole_25", "comp_hole")] {
+    for (name, source) in [
+        ("rotate_comp_25", "comp_or"),
+        ("rotate_hole_25", "comp_hole"),
+    ] {
         let source = case(source).entry.roi;
         let (xc, yc) = source.rotation_center();
         assert_covers(name, Some(source.rotated(25.0, xc, yc)));
@@ -718,7 +819,10 @@ fn fitted_ellipses_hulls_and_boxes_equal_imagej_s() {
             .unwrap()
     };
     for (name, source) in [
-        ("fit_ellipse_poly", parse("polygon 5,5 30,8 18,20 32,40 4,30 12,18")),
+        (
+            "fit_ellipse_poly",
+            parse("polygon 5,5 30,8 18,20 32,40 4,30 12,18"),
+        ),
         ("fit_ellipse_rect", parse("rectangle 10 8 20 12")),
         ("fit_ellipse_oval", parse("oval 10 10 40 13")),
         ("fit_ellipse_comp", or()),
@@ -731,7 +835,10 @@ fn fitted_ellipses_hulls_and_boxes_equal_imagej_s() {
         .combined(&parse("oval 15 10 20 15"), calipix_roi::Combine::Not)
         .unwrap();
     for (name, source) in [
-        ("hull_poly", parse("polygon 5,5 30,8 18,20 32,40 4,30 12,18")),
+        (
+            "hull_poly",
+            parse("polygon 5,5 30,8 18,20 32,40 4,30 12,18"),
+        ),
         ("hull_oval", parse("oval 20 10 15 20")),
         ("hull_points", parse("points 5,5 20,30 40,12 60,40 30,20")),
         ("hull_comp", hole),
@@ -757,7 +864,10 @@ fn lines_become_the_areas_imagej_makes() {
     for (name, source) in [
         ("area_line_wide", "line 5 5 50 30 width 7"),
         ("area_line_thin", "line 2 40 60 44"),
-        ("area_polyline_wide", "polyline 5,5 20,30 40,10 60,40 width 6"),
+        (
+            "area_polyline_wide",
+            "polyline 5,5 20,30 40,10 60,40 width 6",
+        ),
         ("area_polyline_thin", "polyline 5,5 20,30 40,10 60,40"),
         (
             "area_freeline_sub",
@@ -768,7 +878,10 @@ fn lines_become_the_areas_imagej_makes() {
         let theirs = case(name);
         assert_same_shape(name, &area, theirs.roi());
         assert_eq!(area.int_bounds(), theirs.roi().int_bounds(), "{name}");
-        assert!(close(area.length(), theirs.get("Perim")), "{name}: perimeter");
+        assert!(
+            close(area.length(), theirs.get("Perim")),
+            "{name}: perimeter"
+        );
     }
     assert_eq!(parse("oval 1 2 3 4").to_area(), None);
 }
@@ -830,9 +943,15 @@ fn stored_properties_are_read() {
 #[test]
 fn thin_lines_are_drawn_as_imagej_draws_them() {
     let line = parse("line 2 40 60 44");
-    assert_eq!(line.drawn_pixels().unwrap(), draw_line_pixels(2, 40, 60, 44));
+    assert_eq!(
+        line.drawn_pixels().unwrap(),
+        draw_line_pixels(2, 40, 60, 44)
+    );
     assert_eq!(draw_line_pixels(3, 3, 3, 3), [(3, 3)]);
-    assert_eq!(draw_line_pixels(0, 0, 3, 1), [(0, 0), (1, 0), (2, 1), (3, 1)]);
+    assert_eq!(
+        draw_line_pixels(0, 0, 3, 1),
+        [(0, 0), (1, 0), (2, 1), (3, 1)]
+    );
     // Line.PointIterator visits each pixel once, end points included.
     let pixels = line.line_pixels().unwrap();
     assert_eq!(pixels.first(), Some(&(2, 40)));

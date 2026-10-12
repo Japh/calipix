@@ -168,9 +168,7 @@ impl Roi {
         if !self.local_mask(frame, window, &mut data) {
             data.fill(255);
         }
-        data.iter()
-            .any(|&v| v != 0)
-            .then_some(Mask { rect, data })
+        data.iter().any(|&v| v != 0).then_some(Mask { rect, data })
     }
 
     /// The mask of the whole selection, not clipped to any image, with

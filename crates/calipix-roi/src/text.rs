@@ -159,7 +159,11 @@ impl FromStr for Roi {
                 let &[x, y, width, height] = numbers(&words)?.as_slice() else {
                     return Err(fail(&format!(
                         "{} takes x, y, width and height",
-                        if kind == "oval" { "an oval" } else { "a rectangle" }
+                        if kind == "oval" {
+                            "an oval"
+                        } else {
+                            "a rectangle"
+                        }
                     )));
                 };
                 if !(width > 0.0 && height > 0.0) {
@@ -180,7 +184,7 @@ impl FromStr for Roi {
                 if !(width > 0.0 && height > 0.0) {
                     return Err(fail("width and height must be positive"));
                 }
-                if !(diameter >= 1.0 && diameter <= 65535.0 && diameter.fract() == 0.0) {
+                if !((1.0..=65535.0).contains(&diameter) && diameter.fract() == 0.0) {
                     return Err(fail("the corner diameter must be a whole number of pixels"));
                 }
                 Ok(Roi::RoundedRectangle {
@@ -250,7 +254,7 @@ impl FromStr for Roi {
                 if x1 == x2 && y1 == y2 {
                     return Err(fail("the two ends of the centre line must differ"));
                 }
-                if !(width > 0.0) {
+                if width.is_nan() || width <= 0.0 {
                     return Err(fail("the width must be positive"));
                 }
                 Ok(Roi::rotated_rectangle(x1, y1, x2, y2, width))

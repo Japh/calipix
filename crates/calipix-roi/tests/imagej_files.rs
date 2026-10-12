@@ -69,7 +69,7 @@ fn a_roi_manager_set_written_by_imagej_is_read() {
 /// the stored selections as hexadecimal text in the image properties.
 #[test]
 fn the_selection_and_overlay_of_an_imagej_tiff_are_read() {
-    let image = calipix_io::open(&fixture("gray8_roi_overlay.tif")).unwrap();
+    let image = calipix_io::open(fixture("gray8_roi_overlay.tif")).unwrap();
     let properties = &image.meta().properties;
     let selection = decode_hex(&properties["imagej.roi"]).unwrap();
     assert_eq!(selection.roi, parse("oval 20 10 15 20"));
@@ -113,13 +113,22 @@ const FOR_IMAGEJ: &[(&str, &str)] = &[
     // Crossing the top and left edges only: ImageJ opens a selection that
     // reaches past the right or bottom edge in a new, larger image.
     ("polygon_cross", "polygon -10,5 30,-8 60,30 20,45"),
-    ("freehand", "freehand 10,12 14,6 22,4 30,8 36,16 34,28 26,36 15,34 8,22"),
+    (
+        "freehand",
+        "freehand 10,12 14,6 22,4 30,8 36,16 34,28 26,36 15,34 8,22",
+    ),
     ("traced", "traced 5,5 9,5 9,7 12,7 12,12 8,12 8,10 5,10"),
     ("line", "line 2 40 60 44"),
     ("line_sub_wide", "line 2.5 3.25 40.75 30.5 width 5"),
     ("polyline", "polyline 5,5 20,30 40,10 60,40"),
-    ("polyline_sub_wide", "polyline 5.5,5.5 20.25,30.25 40.75,10.5 width 4"),
-    ("freeline", "freeline 5,40 9,30 15,24 22,22 30,26 36,34 44,38"),
+    (
+        "polyline_sub_wide",
+        "polyline 5.5,5.5 20.25,30.25 40.75,10.5 width 4",
+    ),
+    (
+        "freeline",
+        "freeline 5,40 9,30 15,24 22,22 30,26 36,34 44,38",
+    ),
     ("angle", "angle 10,40 30,10 50,35"),
     ("point", "points 33,17"),
     ("points_sub", "points 5.5,5.5 20.25,30.25 40.75,12.75"),

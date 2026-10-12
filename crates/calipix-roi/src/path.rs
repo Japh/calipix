@@ -186,7 +186,14 @@ impl Path {
                     add(cx, cy);
                 }
                 Segment::QuadTo(a, b, x, y) => {
-                    let p = [cx, cy, f64::from(a), f64::from(b), f64::from(x), f64::from(y)];
+                    let p = [
+                        cx,
+                        cy,
+                        f64::from(a),
+                        f64::from(b),
+                        f64::from(x),
+                        f64::from(y),
+                    ];
                     for axis in 0..2 {
                         let (p0, p1, p2) = (p[axis], p[2 + axis], p[4 + axis]);
                         let d = p0 - 2.0 * p1 + p2;
@@ -545,7 +552,11 @@ pub(crate) fn ellipse_segments(x: f64, y: f64, w: f64, h: f64) -> Vec<[f64; 6]> 
 /// `Ellipse2D.getPathIterator` gives it.
 pub(crate) fn ellipse_path(x: f64, y: f64, w: f64, h: f64) -> Vec<PathStep> {
     let mut out = vec![PathStep::Move(x + w, y + 0.5 * h)];
-    out.extend(ellipse_segments(x, y, w, h).into_iter().map(PathStep::Cubic));
+    out.extend(
+        ellipse_segments(x, y, w, h)
+            .into_iter()
+            .map(PathStep::Cubic),
+    );
     out.push(PathStep::Close);
     out
 }
@@ -584,21 +595,15 @@ pub(crate) fn round_rect_path(x: f64, y: f64, w: f64, h: f64, arc: f64) -> Vec<P
     vec![
         PathStep::Move(start.0, start.1),
         line(0.0, 0.0, 1.0, -0.5),
-        cubic([
-            0.0, 0.0, 1.0, -acv, 0.0, acv, 1.0, 0.0, 0.0, 0.5, 1.0, 0.0,
-        ]),
+        cubic([0.0, 0.0, 1.0, -acv, 0.0, acv, 1.0, 0.0, 0.0, 0.5, 1.0, 0.0]),
         line(1.0, -0.5, 1.0, 0.0),
         cubic([
             1.0, -acv, 1.0, 0.0, 1.0, 0.0, 1.0, -acv, 1.0, 0.0, 1.0, -0.5,
         ]),
         line(1.0, 0.0, 0.0, 0.5),
-        cubic([
-            1.0, 0.0, 0.0, acv, 1.0, -acv, 0.0, 0.0, 1.0, -0.5, 0.0, 0.0,
-        ]),
+        cubic([1.0, 0.0, 0.0, acv, 1.0, -acv, 0.0, 0.0, 1.0, -0.5, 0.0, 0.0]),
         line(0.0, 0.5, 0.0, 0.0),
-        cubic([
-            0.0, acv, 0.0, 0.0, 0.0, 0.0, 0.0, acv, 0.0, 0.0, 0.0, 0.5,
-        ]),
+        cubic([0.0, acv, 0.0, 0.0, 0.0, 0.0, 0.0, acv, 0.0, 0.0, 0.0, 0.5]),
         PathStep::Close,
     ]
 }

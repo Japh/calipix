@@ -37,9 +37,13 @@ fn u16_at(data: &[u8], at: usize) -> Result<usize, Error> {
 }
 
 fn u32_at(data: &[u8], at: usize) -> Result<u32, Error> {
-    data.get(at..at.checked_add(4).ok_or_else(|| bad("an offset overflows"))?)
-        .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-        .ok_or_else(|| bad("it ends unexpectedly"))
+    data.get(
+        at..at
+            .checked_add(4)
+            .ok_or_else(|| bad("an offset overflows"))?,
+    )
+    .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+    .ok_or_else(|| bad("it ends unexpectedly"))
 }
 
 /// Reads the `.roi` entries of a ZIP archive written by ImageJ's ROI
@@ -116,9 +120,7 @@ pub fn read_zip(data: &[u8]) -> Result<RoiSet, Error> {
                     out
                 }
                 other => {
-                    return Err(bad(format!(
-                        "`{name}` uses compression method {other}"
-                    )));
+                    return Err(bad(format!("`{name}` uses compression method {other}")));
                 }
             };
             let mut check = flate2::Crc::new();
@@ -283,6 +285,11 @@ mod tests {
             damaged[i] ^= 0x5a;
             let _ = read_zip(&damaged);
         }
-        assert_eq!(read_zip(&write_zip(&[]).unwrap()).map(|s| s.entries.len()).ok(), None);
+        assert_eq!(
+            read_zip(&write_zip(&[]).unwrap())
+                .map(|s| s.entries.len())
+                .ok(),
+            None
+        );
     }
 }

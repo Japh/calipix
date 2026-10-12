@@ -98,8 +98,10 @@ fn build_edge_table(polygon: &Polygon<'_>) -> Edges {
                     poly_start = i + 1;
                     continue;
                 }
-                let (mut y1f, mut y2f) = (f64::from(y[i]) + y_offset, f64::from(y[next]) + y_offset);
-                let (mut x1f, mut x2f) = (f64::from(x[i]) + x_offset, f64::from(x[next]) + x_offset);
+                let (mut y1f, mut y2f) =
+                    (f64::from(y[i]) + y_offset, f64::from(y[next]) + y_offset);
+                let (mut x1f, mut x2f) =
+                    (f64::from(x[i]) + x_offset, f64::from(x[next]) + x_offset);
                 let mut y1 = java_round(y1f);
                 let mut y2 = java_round(y2f);
                 if y1 == y2 || (y1 <= 0 && y2 <= 0) {

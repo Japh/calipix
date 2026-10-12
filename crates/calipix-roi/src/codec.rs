@@ -284,10 +284,14 @@ impl Reader<'_> {
             return None;
         }
         let (offset, length) = (offset as usize, length as usize);
-        let bytes = self.data.get(offset..offset.checked_add(length.checked_mul(2)?)?)?;
+        let bytes = self
+            .data
+            .get(offset..offset.checked_add(length.checked_mul(2)?)?)?;
         let units: Vec<u16> = bytes
-            .chunks_exact(2)
-            .map(|b| u16::from_be_bytes([b[0], b[1]]))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|b| u16::from_be_bytes(*b))
             .collect();
         Some(String::from_utf16_lossy(&units))
     }
@@ -374,8 +378,7 @@ pub fn decode(data: &[u8]) -> Result<RoiEntry, Error> {
         };
         props.name = r.string(r.int(h + NAME_OFFSET)?, r.int(h + NAME_LENGTH)?);
         if version >= 224 && h + ROI_PROPS_LENGTH + 4 <= size {
-            props.properties =
-                r.string(r.int(h + ROI_PROPS_OFFSET)?, r.int(h + ROI_PROPS_LENGTH)?);
+            props.properties = r.string(r.int(h + ROI_PROPS_OFFSET)?, r.int(h + ROI_PROPS_LENGTH)?);
         }
     }
     // RoiDecoder.getStrokeWidthAndColor
@@ -415,7 +418,7 @@ pub fn decode(data: &[u8]) -> Result<RoiEntry, Error> {
             ));
         }
         let count = shape_size as usize;
-        r.bytes(COORDINATES, count.checked_mul(4).unwrap_or(usize::MAX))?;
+        r.bytes(COORDINATES, count.saturating_mul(4))?;
         let array = (0..count)
             .map(|i| r.float(COORDINATES + 4 * i))
             .collect::<Result<Vec<f32>, Error>>()?;
@@ -620,9 +623,7 @@ pub fn decode(data: &[u8]) -> Result<RoiEntry, Error> {
             }
         }
         other => {
-            return Err(Error::Format(format!(
-                "{other} is not a selection type"
-            )));
+            return Err(Error::Format(format!("{other} is not a selection type")));
         }
     };
     if !matches!(
@@ -674,7 +675,7 @@ pub fn decode(data: &[u8]) -> Result<RoiEntry, Error> {
 /// `imagej.roi` and `imagej.overlay.N`.
 pub fn decode_hex(hex: &str) -> Result<RoiEntry, Error> {
     let hex = hex.trim();
-    if hex.len() % 2 != 0 || !hex.is_ascii() {
+    if !hex.len().is_multiple_of(2) || !hex.is_ascii() {
         return Err(Error::Format(
             "expected an even number of hexadecimal digits".to_string(),
         ));
@@ -743,7 +744,11 @@ pub fn encode(entry: &RoiEntry) -> Result<Vec<u8>, Error> {
         options
             | if o.labels { OVERLAY_LABELS } else { 0 }
             | if o.names { OVERLAY_NAMES } else { 0 }
-            | if o.backgrounds { OVERLAY_BACKGROUNDS } else { 0 }
+            | if o.backgrounds {
+                OVERLAY_BACKGROUNDS
+            } else {
+                0
+            }
             | if o.bold { OVERLAY_BOLD } else { 0 }
             | if o.scale_labels { SCALE_LABELS } else { 0 }
     };
@@ -812,7 +817,11 @@ pub fn encode(entry: &RoiEntry) -> Result<Vec<u8>, Error> {
 
     let poly = roi.poly();
     let n = poly.as_ref().map_or(0, |p| p.len());
-    let as_shape = n > 65535 && matches!(roi, Roi::Polygon { .. } | Roi::Freehand { .. } | Roi::Traced { .. });
+    let as_shape = n > 65535
+        && matches!(
+            roi,
+            Roi::Polygon { .. } | Roi::Freehand { .. } | Roi::Traced { .. }
+        );
     if let (Roi::Composite { .. }, _) | (_, true) = (roi, as_shape) {
         // RoiEncoder.saveShapeRoi
         let path = match roi {
@@ -986,7 +995,10 @@ pub fn encode(entry: &RoiEntry) -> Result<Vec<u8>, Error> {
     if props.spline_fit
         && matches!(
             roi,
-            Roi::Polygon { .. } | Roi::Freehand { .. } | Roi::Polyline { .. } | Roi::Freeline { .. }
+            Roi::Polygon { .. }
+                | Roi::Freehand { .. }
+                | Roi::Polyline { .. }
+                | Roi::Freeline { .. }
         )
     {
         options |= SPLINE_FIT;
