@@ -67,7 +67,11 @@ where
             let bottom = (y0 + rows).saturating_add(halo).min(height);
             let strip = Strip {
                 rows: &src[top * width..bottom * width],
-                frame: Frame::new(width, bottom - top, Rect::new(rect.x, y0 - top, rect.w, rows)),
+                frame: Frame::new(
+                    width,
+                    bottom - top,
+                    Rect::new(rect.x, y0 - top, rect.w, rows),
+                ),
                 first_row: top,
             };
             let filtered = filter(strip)?;

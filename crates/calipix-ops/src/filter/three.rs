@@ -6,7 +6,7 @@
 //! named are those of `ByteProcessor`, `ShortProcessor`, `FloatProcessor`
 //! and `ColorProcessor`.
 
-use calipix_core::{Buffer, Error, Pixel, Rect, RealPixel, Result};
+use calipix_core::{Buffer, Error, Pixel, RealPixel, Rect, Result};
 
 use super::tile::{Strip, default_strip_rows, filter_strips};
 use super::{Frame, complex_error, to_f32};
@@ -170,11 +170,7 @@ fn apply(plane: &Buffer, frame: Frame, op: Op) -> Result<Buffer> {
 
 /// Replaces each sample of `frame.rect` by `f` of its 3 x 3 neighbourhood,
 /// given row by row. Neighbours outside the plane are the nearest sample.
-fn map3x3<T: Pixel>(
-    src: &[T],
-    frame: Frame,
-    f: impl Fn([T; 9]) -> T + Sync,
-) -> Result<Vec<T>> {
+fn map3x3<T: Pixel>(src: &[T], frame: Frame, f: impl Fn([T; 9]) -> T + Sync) -> Result<Vec<T>> {
     let rows = default_strip_rows(1, frame.rect.h);
     filter_strips(src, frame, 1, rows, |strip: Strip<'_, T>| {
         let Frame {
@@ -325,7 +321,10 @@ mod tests {
         // Find Edges saturates.
         let step = Buffer::from_vec(vec![0u8, 255, 255, 0, 255, 255, 0, 255, 255]);
         let out = find_edges(&step, Frame::whole(3, 3)).unwrap();
-        assert_eq!(out.as_slice::<u8>().unwrap(), &[255, 255, 0, 255, 255, 0, 255, 255, 0]);
+        assert_eq!(
+            out.as_slice::<u8>().unwrap(),
+            &[255, 255, 0, 255, 255, 0, 255, 255, 0]
+        );
     }
 
     #[test]
@@ -333,7 +332,10 @@ mod tests {
         let plane = Buffer::from_vec(vec![0u8, 0, 0, 0, 0, 5, 1, 0, 0, 0, 0, 0]);
         let out = sharpen(&plane, Frame::whole(4, 3), true).unwrap();
         // (60 - 1) / 4 = 14 where the grey rule gives (59 + 2) / 4 = 15.
-        assert_eq!(out.as_slice::<u8>().unwrap(), &[0, 0, 0, 0, 0, 14, 1, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            out.as_slice::<u8>().unwrap(),
+            &[0, 0, 0, 0, 0, 14, 1, 0, 0, 0, 0, 0]
+        );
         let grey = sharpen(&plane, Frame::whole(4, 3), false).unwrap();
         assert_eq!(grey.as_slice::<u8>().unwrap()[5], 15);
         // Two samples wide: nothing is off the border.
@@ -348,14 +350,23 @@ mod tests {
         assert_eq!(smooth(&plane, frame).unwrap(), plane);
         assert_eq!(sharpen(&plane, frame, false).unwrap(), plane);
         let low = Buffer::from_vec(vec![i64::MIN; 9]);
-        assert_eq!(smooth(&low, frame).unwrap().as_slice::<i64>().unwrap()[4], i64::MIN);
-        assert_eq!(find_edges(&low, frame).unwrap().as_slice::<i64>().unwrap()[4], 0);
+        assert_eq!(
+            smooth(&low, frame).unwrap().as_slice::<i64>().unwrap()[4],
+            i64::MIN
+        );
+        assert_eq!(
+            find_edges(&low, frame).unwrap().as_slice::<i64>().unwrap()[4],
+            0
+        );
     }
 
     #[test]
     fn directions_parse() {
         assert_eq!("north".parse::<Direction>().unwrap(), Direction::North);
-        assert_eq!(" SouthWest ".parse::<Direction>().unwrap(), Direction::Southwest);
+        assert_eq!(
+            " SouthWest ".parse::<Direction>().unwrap(),
+            Direction::Southwest
+        );
         assert!("up".parse::<Direction>().is_err());
     }
 }

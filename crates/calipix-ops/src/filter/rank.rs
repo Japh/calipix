@@ -135,7 +135,10 @@ pub fn rank_filter(plane: &Buffer, frame: Frame, radius: f64, rank: Rank) -> Res
         Rank::Variance => (Pass::Variance, 1.0),
         Rank::Median => (Pass::Median, 1.0),
     };
-    real_plane!(plane, "filter", |s| single(s, frame, &kernel, pass, sign, 0.0).map(wrap))
+    real_plane!(plane, "filter", |s| single(
+        s, frame, &kernel, pass, sign, 0.0
+    )
+    .map(wrap))
 }
 
 /// Process > Noise > Despeckle: a median filter of radius 1.
@@ -193,7 +196,15 @@ pub fn remove_nans(plane: &Buffer, frame: Frame, radius: f64) -> Result<Buffer> 
             plane.dtype()
         )));
     }
-    real_plane!(plane, "filter", |s| single(s, frame, &kernel, Pass::RemoveNan, 1.0, 0.0).map(wrap))
+    real_plane!(plane, "filter", |s| single(
+        s,
+        frame,
+        &kernel,
+        Pass::RemoveNan,
+        1.0,
+        0.0
+    )
+    .map(wrap))
 }
 
 /// Process > Filters > Top Hat (`RankFilters.TOP_HAT`): subtracts from
@@ -250,7 +261,14 @@ pub fn top_hat(
             Ok(opened.into_iter().map(from_f32).collect())
         })
     }
-    real_plane!(plane, "filter", |s| run(s, frame, &kernel, sign, !dont_subtract).map(wrap))
+    real_plane!(plane, "filter", |s| run(
+        s,
+        frame,
+        &kernel,
+        sign,
+        !dont_subtract
+    )
+    .map(wrap))
 }
 
 /// A filter that is one pass over the kernel.
@@ -355,7 +373,9 @@ fn padded<T: RealPixel>(rows: &[T], frame: Frame, kernel: &Kernel) -> (Vec<f32>,
     let pad_left = (-x_min).max(0) as usize;
     let pad_right = cache_width - pad_left - (inside_to - inside_from);
     for cy in 0..cache_height {
-        let y = (r.y + cy).saturating_sub(kernel.half_height).min(frame.height - 1);
+        let y = (r.y + cy)
+            .saturating_sub(kernel.half_height)
+            .min(frame.height - 1);
         let row = &rows[y * frame.width..(y + 1) * frame.width];
         let first = to_f32(row[inside_from]);
         let last = to_f32(row[inside_to - 1]);
@@ -721,7 +741,10 @@ mod tests {
         let mean = rank_filter(&plane, frame, 1.0, Rank::Mean).unwrap();
         assert_eq!(mean.as_slice::<u8>().unwrap(), &[10; 9]);
         let max = rank_filter(&plane, frame, 0.5, Rank::Maximum).unwrap();
-        assert_eq!(max.as_slice::<u8>().unwrap(), &[0, 90, 0, 90, 90, 90, 0, 90, 0]);
+        assert_eq!(
+            max.as_slice::<u8>().unwrap(),
+            &[0, 90, 0, 90, 90, 90, 0, 90, 0]
+        );
         let median = despeckle(&plane, frame).unwrap();
         assert_eq!(median.as_slice::<u8>().unwrap(), &[0; 9]);
         let outliers = remove_outliers(&plane, frame, 1.0, 50.0, Outliers::Bright, false).unwrap();

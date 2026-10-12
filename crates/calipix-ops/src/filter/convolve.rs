@@ -121,7 +121,8 @@ pub fn convolve(plane: &Buffer, frame: Frame, kernel: &Kernel, normalize: bool) 
             Ok(convolve_strip(strip, kernel, scale))
         })
     }
-    real_plane!(plane, "convolve", |s| run(s, frame, kernel, scale).map(wrap))
+    real_plane!(plane, "convolve", |s| run(s, frame, kernel, scale)
+        .map(wrap))
 }
 
 fn convolve_strip<T: RealPixel>(strip: Strip<'_, T>, kernel: &Kernel, scale: f64) -> Vec<T> {
@@ -196,7 +197,12 @@ mod tests {
     fn identity_and_shift() {
         let plane = Buffer::from_vec(vec![1u8, 2, 3, 4, 5, 6]);
         let frame = Frame::whole(3, 2);
-        let same = convolve(&plane, frame, &Kernel::parse("0 0 0 0 1 0 0 0 0").unwrap(), true);
+        let same = convolve(
+            &plane,
+            frame,
+            &Kernel::parse("0 0 0 0 1 0 0 0 0").unwrap(),
+            true,
+        );
         assert_eq!(same.unwrap(), plane);
         // The coefficient left of centre takes each sample's left
         // neighbour; the first column repeats itself.

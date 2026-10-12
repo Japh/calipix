@@ -32,12 +32,13 @@ mod tile;
 pub use convolve::{Kernel, convolve};
 pub use gaussian::{gaussian_accuracy, gaussian_blur, gaussian_kernel, unsharp_mask};
 pub use rank::{
-    Outliers, Rank, despeckle, kernel_line_radii, rank_filter, remove_nans, remove_outliers, top_hat,
+    Outliers, Rank, despeckle, kernel_line_radii, rank_filter, remove_nans, remove_outliers,
+    top_hat,
 };
 pub use three::{Direction, find_edges, shadows, sharpen, smooth};
 pub use tile::{Strip, default_strip_rows, filter_strips};
 
-use calipix_core::{Buffer, DType, Error, Rect, RealPixel, Result};
+use calipix_core::{Buffer, DType, Error, RealPixel, Rect, Result};
 
 /// The size of a plane and the rectangle of it to filter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

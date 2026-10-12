@@ -1,0 +1,193 @@
+filt_8.raw	1	base	-	-
+filt_8.raw	2	Gaussian Blur...	sigma=1	-
+filt_8.raw	3	Gaussian Blur...	sigma=0.5	-
+filt_8.raw	4	Gaussian Blur...	sigma=10	-
+filt_8.raw	5	Gaussian Blur...	sigma=2	6 5 20 14
+filt_8.raw	6	Gaussian Blur...	sigma=12	6 5 20 14
+filt_8.raw	7	Mean...	radius=2	-
+filt_8.raw	8	Mean...	radius=0.5	-
+filt_8.raw	9	Mean...	radius=3	6 5 20 14
+filt_8.raw	10	Median...	radius=2	-
+filt_8.raw	11	Median...	radius=4	-
+filt_8.raw	12	Median...	radius=2	6 5 20 14
+filt_8.raw	13	Minimum...	radius=1	-
+filt_8.raw	14	Maximum...	radius=1.5	-
+filt_8.raw	15	Maximum...	radius=3	-
+filt_8.raw	16	Variance...	radius=1	-
+filt_8.raw	17	Despeckle	slice	-
+filt_8.raw	18	Remove Outliers...	radius=2 threshold=50 which=Bright	-
+filt_8.raw	19	Remove Outliers...	radius=1 threshold=20 which=Dark	-
+filt_8.raw	20	Top Hat...	radius=3	-
+filt_8.raw	21	Top Hat...	radius=3 light	-
+filt_8.raw	22	Top Hat...	radius=2 don't	-
+filt_8.raw	23	Top Hat...	radius=3	6 5 20 14
+filt_8.raw	24	Convolve...	text1=[-1 -1 -1 -1 -1|-1 -1 -1 -1 -1|-1 -1 24 -1 -1|-1 -1 -1 -1 -1|-1 -1 -1 -1 -1|] normalize	-
+filt_8.raw	25	Convolve...	text1=[1 2 1|2 4 2|1 2 1|] normalize	-
+filt_8.raw	26	Convolve...	text1=[0 -1 0|-1 5 -1|0 -1 0|]	-
+filt_8.raw	27	Convolve...	text1=[1 2 3 2 1|] normalize	-
+filt_8.raw	28	Convolve...	text1=[1 1 1 1 1 1 1 1 1] normalize	-
+filt_8.raw	29	Convolve...	text1=[1 2 1|2 4 2|1 2 1|] normalize	6 5 20 14
+filt_8.raw	30	Unsharp Mask...	radius=1 mask=0.60	-
+filt_8.raw	31	Unsharp Mask...	radius=3 mask=0.30	-
+filt_8.raw	32	Unsharp Mask...	radius=10 mask=0.50	-
+filt_8.raw	33	Smooth	slice	-
+filt_8.raw	34	Sharpen	slice	-
+filt_8.raw	35	Find Edges	slice	-
+filt_8.raw	36	Smooth	slice	6 5 20 14
+filt_8.raw	37	North	slice	-
+filt_8.raw	38	Southeast	slice	-
+filt_8.raw	39	South	slice	-
+filt_8.raw	40	Southwest	slice	-
+filt_8.raw	41	West	slice	-
+filt_8.raw	42	Northwest	slice	-
+filt_16.raw	1	base	-	-
+filt_16.raw	2	Gaussian Blur...	sigma=1	-
+filt_16.raw	3	Gaussian Blur...	sigma=3.7	-
+filt_16.raw	4	Gaussian Blur...	sigma=10	-
+filt_16.raw	5	Gaussian Blur...	sigma=21	-
+filt_16.raw	6	Gaussian Blur...	sigma=2	6 5 20 14
+filt_16.raw	7	Gaussian Blur...	sigma=2	1 2 3 24
+filt_16.raw	8	Mean...	radius=2	-
+filt_16.raw	9	Mean...	radius=5	-
+filt_16.raw	10	Mean...	radius=3	6 5 20 14
+filt_16.raw	11	Median...	radius=2	-
+filt_16.raw	12	Median...	radius=1	-
+filt_16.raw	13	Minimum...	radius=1	-
+filt_16.raw	14	Minimum...	radius=3	-
+filt_16.raw	15	Minimum...	radius=2	5 0 12 30
+filt_16.raw	16	Maximum...	radius=1.5	-
+filt_16.raw	17	Variance...	radius=1	-
+filt_16.raw	18	Variance...	radius=2	-
+filt_16.raw	19	Despeckle	slice	-
+filt_16.raw	20	Remove Outliers...	radius=1 threshold=200 which=Bright	-
+filt_16.raw	21	Remove Outliers...	radius=2 threshold=300 which=Dark	6 5 20 14
+filt_16.raw	22	Top Hat...	radius=3	-
+filt_16.raw	23	Top Hat...	radius=3 light	-
+filt_16.raw	24	Top Hat...	radius=2 don't	-
+filt_16.raw	25	Top Hat...	radius=3	6 5 20 14
+filt_16.raw	26	Convolve...	text1=[-1 -1 -1 -1 -1|-1 -1 -1 -1 -1|-1 -1 24 -1 -1|-1 -1 -1 -1 -1|-1 -1 -1 -1 -1|] normalize	-
+filt_16.raw	27	Convolve...	text1=[1 2 1|2 4 2|1 2 1|] normalize	-
+filt_16.raw	28	Convolve...	text1=[0 -1 0|-1 5 -1|0 -1 0|]	-
+filt_16.raw	29	Convolve...	text1=[1 2 1|2 4 2|1 2 1|]	-
+filt_16.raw	30	Convolve...	text1=[1|2|3|4|3|2|1|] normalize	-
+filt_16.raw	31	Convolve...	text1=[1 0 -1 2 0|0 1 0.5 3 1|2 0 0 1 0|] normalize	-
+filt_16.raw	32	Unsharp Mask...	radius=1 mask=0.60	-
+filt_16.raw	33	Unsharp Mask...	radius=3 mask=0.30	-
+filt_16.raw	34	Unsharp Mask...	radius=2 mask=0.60	6 5 20 14
+filt_16.raw	35	Smooth	slice	-
+filt_16.raw	36	Sharpen	slice	-
+filt_16.raw	37	Find Edges	slice	-
+filt_16.raw	38	Sharpen	slice	6 5 20 14
+filt_16.raw	39	North	slice	-
+filt_16.raw	40	Southeast	slice	-
+filt_16.raw	41	Northeast	slice	-
+filt_16.raw	42	East	slice	-
+filt_32.raw	1	base	-	-
+filt_32.raw	2	Gaussian Blur...	sigma=1	-
+filt_32.raw	3	Gaussian Blur...	sigma=0.5	-
+filt_32.raw	4	Gaussian Blur...	sigma=10	-
+filt_32.raw	5	Gaussian Blur...	sigma=21	-
+filt_32.raw	6	Gaussian Blur...	sigma=1000	-
+filt_32.raw	7	Gaussian Blur...	sigma=2	6 5 20 14
+filt_32.raw	8	Gaussian Blur...	sigma=12	6 5 20 14
+filt_32.raw	9	Mean...	radius=2	-
+filt_32.raw	10	Mean...	radius=0.5	-
+filt_32.raw	11	Mean...	radius=3	6 5 20 14
+filt_32.raw	12	Median...	radius=2	-
+filt_32.raw	13	Median...	radius=1	-
+filt_32.raw	14	Median...	radius=2	6 5 20 14
+filt_32.raw	15	Minimum...	radius=1	-
+filt_32.raw	16	Minimum...	radius=3	-
+filt_32.raw	17	Maximum...	radius=1.5	-
+filt_32.raw	18	Variance...	radius=1	-
+filt_32.raw	19	Variance...	radius=2	-
+filt_32.raw	20	Variance...	radius=2	6 5 20 14
+filt_32.raw	21	Despeckle	slice	-
+filt_32.raw	22	Remove Outliers...	radius=2 threshold=2 which=Bright	-
+filt_32.raw	23	Remove Outliers...	radius=1 threshold=1.5 which=Dark	-
+filt_32.raw	24	Top Hat...	radius=3	-
+filt_32.raw	25	Top Hat...	radius=3 light	-
+filt_32.raw	26	Top Hat...	radius=2 light don't	-
+filt_32.raw	27	Top Hat...	radius=2 light	0 0 40 12
+filt_32.raw	28	Convolve...	text1=[-1 -1 -1 -1 -1|-1 -1 -1 -1 -1|-1 -1 24 -1 -1|-1 -1 -1 -1 -1|-1 -1 -1 -1 -1|] normalize	-
+filt_32.raw	29	Convolve...	text1=[1 2 1|2 4 2|1 2 1|] normalize	-
+filt_32.raw	30	Convolve...	text1=[0 -1 0|-1 5 -1|0 -1 0|]	-
+filt_32.raw	31	Convolve...	text1=[1 2 3 2 1|] normalize	-
+filt_32.raw	32	Convolve...	text1=[1|2|3|4|3|2|1|] normalize	-
+filt_32.raw	33	Convolve...	text1=[1 2 1|2 4 2|1 2 1|] normalize	6 5 20 14
+filt_32.raw	34	Unsharp Mask...	radius=1 mask=0.60	-
+filt_32.raw	35	Unsharp Mask...	radius=3 mask=0.30	-
+filt_32.raw	36	Unsharp Mask...	radius=10 mask=0.50	-
+filt_32.raw	37	Smooth	slice	-
+filt_32.raw	38	Sharpen	slice	-
+filt_32.raw	39	Find Edges	slice	-
+filt_32.raw	40	Find Edges	slice	0 4 40 12
+filt_32.raw	41	North	slice	-
+filt_32.raw	42	Southeast	slice	-
+filt_rgb.raw	1	base	-	-
+filt_rgb.raw	2	Gaussian Blur...	sigma=1	-
+filt_rgb.raw	3	Gaussian Blur...	sigma=3.7	-
+filt_rgb.raw	4	Gaussian Blur...	sigma=10	-
+filt_rgb.raw	5	Gaussian Blur...	sigma=2	6 5 20 14
+filt_rgb.raw	6	Mean...	radius=2	-
+filt_rgb.raw	7	Mean...	radius=5	-
+filt_rgb.raw	8	Mean...	radius=3	6 5 20 14
+filt_rgb.raw	9	Median...	radius=2	-
+filt_rgb.raw	10	Median...	radius=4	-
+filt_rgb.raw	11	Minimum...	radius=1	-
+filt_rgb.raw	12	Maximum...	radius=1.5	-
+filt_rgb.raw	13	Maximum...	radius=3	-
+filt_rgb.raw	14	Variance...	radius=1	-
+filt_rgb.raw	15	Despeckle	slice	-
+filt_rgb.raw	16	Remove Outliers...	radius=2 threshold=50 which=Bright	-
+filt_rgb.raw	17	Top Hat...	radius=3	-
+filt_rgb.raw	18	Top Hat...	radius=3 light	-
+filt_rgb.raw	19	Convolve...	text1=[-1 -1 -1 -1 -1|-1 -1 -1 -1 -1|-1 -1 24 -1 -1|-1 -1 -1 -1 -1|-1 -1 -1 -1 -1|] normalize	-
+filt_rgb.raw	20	Convolve...	text1=[1 2 1|2 4 2|1 2 1|] normalize	-
+filt_rgb.raw	21	Unsharp Mask...	radius=1 mask=0.60	-
+filt_rgb.raw	22	Unsharp Mask...	radius=3 mask=0.30	-
+filt_rgb.raw	23	Unsharp Mask...	radius=2 mask=0.60	6 5 20 14
+filt_rgb.raw	24	Smooth	slice	-
+filt_rgb.raw	25	Sharpen	slice	-
+filt_rgb.raw	26	Find Edges	slice	-
+filt_rgb.raw	27	Smooth	slice	6 5 20 14
+filt_rgb.raw	28	Sharpen	slice	6 5 20 14
+filt_rgb.raw	29	Sharpen	slice	0 0 14 30
+filt_rgb.raw	30	Find Edges	slice	0 4 40 12
+filt_rgb.raw	31	North	slice	-
+filt_rgb.raw	32	Southeast	slice	-
+filt_rgb.raw	33	Northeast	slice	-
+filt_rgb.raw	34	East	slice	-
+filt_rgb.raw	35	West	slice	6 5 20 14
+filt_nan.raw	1	base	-	-
+filt_nan.raw	2	Gaussian Blur...	sigma=1	-
+filt_nan.raw	3	Mean...	radius=2	-
+filt_nan.raw	4	Median...	radius=2	-
+filt_nan.raw	5	Minimum...	radius=1	-
+filt_nan.raw	6	Maximum...	radius=1	-
+filt_nan.raw	7	Variance...	radius=1	-
+filt_nan.raw	8	Remove Outliers...	radius=2 threshold=1 which=Bright	-
+filt_nan.raw	9	Remove NaNs...	radius=2	-
+filt_nan.raw	10	Remove NaNs...	radius=0.5	-
+filt_nan.raw	11	Remove NaNs...	radius=1	6 5 20 14
+filt_nan.raw	12	Top Hat...	radius=2	-
+filt_nan.raw	13	Convolve...	text1=[1 2 1|2 4 2|1 2 1|] normalize	-
+filt_nan.raw	14	Smooth	slice	-
+filt_nan.raw	15	Sharpen	slice	-
+filt_nan.raw	16	Find Edges	slice	-
+filt_struct.raw	1	base	-	-
+filt_struct.raw	2	Gaussian Blur...	sigma=1	-
+filt_struct.raw	3	Median...	radius=4	-
+filt_struct.raw	4	Minimum...	radius=3	-
+filt_struct.raw	5	Despeckle	slice	-
+filt_struct.raw	6	Remove Outliers...	radius=2 threshold=50 which=Bright	-
+filt_struct.raw	7	Remove Outliers...	radius=1 threshold=20 which=Dark	-
+filt_struct.raw	8	Top Hat...	radius=3	-
+filt_struct.raw	9	Convolve...	text1=[1 2 1|2 4 2|1 2 1|] normalize	-
+filt_struct.raw	10	Unsharp Mask...	radius=3 mask=0.30	-
+filt_struct.raw	11	Smooth	slice	-
+filt_struct.raw	12	Sharpen	slice	-
+filt_struct.raw	13	Find Edges	slice	-
+filt_8cal.raw	1	base	-	-
+filt_8cal.raw	2	Gaussian Blur...	sigma=1 scaled	-
+filt_8cal.raw	3	Gaussian Blur...	sigma=1	-

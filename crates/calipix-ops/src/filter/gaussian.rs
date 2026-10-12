@@ -80,7 +80,8 @@ pub fn unsharp_mask(plane: &Buffer, frame: Frame, sigma: f64, weight: f64) -> Re
             }
         })
     }
-    real_plane!(plane, "sharpen", |s| sharpen(s, frame, sigma, weight).map(wrap))
+    real_plane!(plane, "sharpen", |s| sharpen(s, frame, sigma, weight)
+        .map(wrap))
 }
 
 fn check_sigma(sigma: f64) -> Result<()> {
@@ -185,8 +186,7 @@ impl Plan {
             kernel,
             new_length,
             unscaled0: read_from as isize - ((UPSCALE_K_RADIUS + 1) * reduce_by) as isize,
-            scaling: downscale
-                .then(|| (downscale_kernel(reduce_by), upscale_kernel(reduce_by))),
+            scaling: downscale.then(|| (downscale_kernel(reduce_by), upscale_kernel(reduce_by))),
         }
     }
 
@@ -214,7 +214,13 @@ impl Plan {
             Some((down, up)) => {
                 scratch.small.resize(self.new_length, 0.0);
                 scratch.blurred.resize(self.new_length, 0.0);
-                downscale_line(line, &mut scratch.small, down, self.reduce_by, self.unscaled0);
+                downscale_line(
+                    line,
+                    &mut scratch.small,
+                    down,
+                    self.reduce_by,
+                    self.unscaled0,
+                );
                 let n = self.new_length;
                 convolve_line(
                     &scratch.small,
@@ -532,7 +538,8 @@ mod tests {
     fn kernel_sums_to_one_and_running_sums_reach_zero() {
         for (sigma, accuracy) in [(0.5, 0.002), (2.0, 0.002), (2.0, 0.0002), (7.9, 0.01)] {
             let [kernel, running] = gaussian_kernel(sigma, accuracy, 1000);
-            let sum: f64 = kernel[0] as f64 + 2.0 * kernel[1..].iter().map(|&k| k as f64).sum::<f64>();
+            let sum: f64 =
+                kernel[0] as f64 + 2.0 * kernel[1..].iter().map(|&k| k as f64).sum::<f64>();
             assert!((sum - 1.0).abs() < 1e-6, "sigma {sigma}: {sum}");
             assert!(running.last().unwrap().abs() < 1e-6);
             assert!(kernel.windows(2).all(|w| w[0] >= w[1]));
