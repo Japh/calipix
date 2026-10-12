@@ -115,10 +115,6 @@ fn tool_input(
         } else if over && !down {
             state.pointer_hovered(id, p);
         }
-        if state.gesture_active() {
-            // The rubber band follows the pointer.
-            ui.ctx().request_repaint();
-        }
         if (over || *pressing) && !space && !panning {
             let aim = state.aim(id, &p);
             let boxed = state.canvas_view(id).selection.is_some_and(|roi| {
