@@ -49,7 +49,7 @@ struct OneParams {
     #[param(label = "Image")]
     input: DatasetId,
     /// The region's number in the list, counted from 1.
-    #[param(label = "Region", min = 1, no_persist)]
+    #[param(label = "Region", default = 1, min = 1, no_persist)]
     region: i64,
 }
 
@@ -59,7 +59,7 @@ struct RenameParams {
     #[param(label = "Image")]
     input: DatasetId,
     /// The region's number in the list, counted from 1.
-    #[param(label = "Region", min = 1, no_persist)]
+    #[param(label = "Region", default = 1, min = 1, no_persist)]
     region: i64,
     /// The new name. An empty name removes it, and the region is listed
     /// by its number again.

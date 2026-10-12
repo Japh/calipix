@@ -1470,7 +1470,9 @@ impl AppState {
                 let default = spec
                     .and_then(|s| s.param(name))
                     .and_then(|p| p.default.as_ref());
-                if default == Some(value) {
+                // Which region a step acted on is always told, though the
+                // first is what its dialog starts at.
+                if default == Some(value) && name != "region" {
                     return None;
                 }
                 Some(match value {
