@@ -722,3 +722,23 @@ pub fn without_labels(table: &Table) -> Table {
     }
     out
 }
+
+/// Removes the rows [`summarize`] added, as ImageJ does before adding
+/// another measurement (`Analyzer.clearSummary`). Returns whether there
+/// were any.
+pub fn clear_summary(table: &mut Table) -> bool {
+    if !is_summarized(table) {
+        return false;
+    }
+    let headings: Vec<String> = table.column_names().map(str::to_string).collect();
+    let mut kept = Table::new();
+    for row in 0..table.len() - SUMMARY_LABELS.len() {
+        kept.push_row(
+            headings
+                .iter()
+                .map(|h| (h.as_str(), table.get(row, h).clone())),
+        );
+    }
+    *table = kept;
+    true
+}

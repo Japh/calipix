@@ -5,9 +5,10 @@ use calipix_core::{Buffer, Error, RealPixel, Rect, Result, dispatch_real};
 
 use super::Samples;
 
-/// `ImageProcessor.getPixelValue` for every sample of a plane, as `f64`.
+/// The value of every sample of a plane as `f64`
+/// (`ImageProcessor.getPixelValue`).
 /// RGB pixels give ImageJ's unrounded grey value in single precision.
-pub(super) fn pixel_values(samples: Samples<'_>) -> Result<Vec<f64>> {
+pub fn sample_values(samples: Samples<'_>) -> Result<Vec<f64>> {
     fn values<T: RealPixel>(s: &[T]) -> Vec<f64> {
         s.iter().map(|v| v.to_f64()).collect()
     }
@@ -72,7 +73,7 @@ fn average_profile(
     rect: Rect,
     rows: bool,
 ) -> Result<Vec<f64>> {
-    let values = pixel_values(samples)?;
+    let values = sample_values(samples)?;
     check(&values, width, height)?;
     if !rect.fits(width, height) {
         return Err(Error::OutOfBounds(format!(
@@ -123,7 +124,7 @@ pub fn line_profile(
     (x2, y2): (f64, f64),
     interpolate: bool,
 ) -> Result<Vec<f64>> {
-    let values = pixel_values(samples)?;
+    let values = sample_values(samples)?;
     check(&values, width, height)?;
     let (dx, dy) = (x2 - x1, y2 - y1);
     let n = (dx * dx + dy * dy).sqrt().round() as usize;
