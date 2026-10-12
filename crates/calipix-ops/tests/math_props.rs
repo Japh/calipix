@@ -92,7 +92,13 @@ proptest! {
 #[test]
 fn eight_bit_rules() {
     let all = Buffer::from_vec((0..=255u8).collect::<Vec<_>>());
-    let out = |op| apply(&all, op, None).unwrap().as_slice::<u8>().unwrap().to_vec();
+    let out = |op| {
+        apply(&all, op, None)
+            .unwrap()
+            .as_slice::<u8>()
+            .unwrap()
+            .to_vec()
+    };
     // Constants are truncated, products rounded.
     assert_eq!(out(MathOp::Add(2.7))[..3], [2, 3, 4]);
     assert_eq!(out(MathOp::Add(-2.7))[..4], [0, 0, 0, 1]);
@@ -104,9 +110,22 @@ fn eight_bit_rules() {
     // Log and Exp map 0..=255 onto itself and truncate.
     assert_eq!(out(MathOp::Log)[..3], [0, 0, 31]);
     assert_eq!(out(MathOp::Log)[100], 211);
-    assert_eq!((out(MathOp::Exp)[0], out(MathOp::Exp)[100], out(MathOp::Exp)[200]), (1, 8, 77));
-    assert_eq!((out(MathOp::Square)[15], out(MathOp::Square)[16]), (225, 255));
-    assert_eq!((out(MathOp::SquareRoot)[15], out(MathOp::SquareRoot)[16]), (3, 4));
+    assert_eq!(
+        (
+            out(MathOp::Exp)[0],
+            out(MathOp::Exp)[100],
+            out(MathOp::Exp)[200]
+        ),
+        (1, 8, 77)
+    );
+    assert_eq!(
+        (out(MathOp::Square)[15], out(MathOp::Square)[16]),
+        (225, 255)
+    );
+    assert_eq!(
+        (out(MathOp::SquareRoot)[15], out(MathOp::SquareRoot)[16]),
+        (3, 4)
+    );
     assert_eq!(out(MathOp::And(0b1111_0000))[0x3c], 0x30);
     assert_eq!(out(MathOp::Or(0b0101))[0x30], 0x35);
     assert_eq!(out(MathOp::Xor(0xff))[1], 254);
@@ -120,10 +139,22 @@ fn eight_bit_rules() {
 fn integer_types_imagej_lacks_follow_the_sixteen_bit_rules() {
     // Signed: results stop at the type's limits, and Abs works.
     let signed = Buffer::from_vec(vec![i16::MIN, -100, 0, 100, i16::MAX]);
-    let out = |op| apply(&signed, op, None).unwrap().as_slice::<i16>().unwrap().to_vec();
+    let out = |op| {
+        apply(&signed, op, None)
+            .unwrap()
+            .as_slice::<i16>()
+            .unwrap()
+            .to_vec()
+    };
     assert_eq!(out(MathOp::Add(200.0)), [-32568, 100, 200, 300, i16::MAX]);
-    assert_eq!(out(MathOp::Subtract(200.0)), [i16::MIN, -300, -200, -100, 32567]);
-    assert_eq!(out(MathOp::Multiply(-2.0)), [i16::MAX, 200, 0, -200, i16::MIN]);
+    assert_eq!(
+        out(MathOp::Subtract(200.0)),
+        [i16::MIN, -300, -200, -100, 32567]
+    );
+    assert_eq!(
+        out(MathOp::Multiply(-2.0)),
+        [i16::MAX, 200, 0, -200, i16::MIN]
+    );
     assert_eq!(out(MathOp::Abs), [i16::MAX, 100, 0, 100, i16::MAX]);
     assert_eq!(out(MathOp::Min(-50.5)), [-50, -50, 0, 100, i16::MAX]);
     assert_eq!(out(MathOp::Max(50.5)), [i16::MIN, -100, 0, 50, 50]);
@@ -133,8 +164,17 @@ fn integer_types_imagej_lacks_follow_the_sixteen_bit_rules() {
 
     // 32 and 64-bit integers are not squeezed through Java's 32-bit int.
     let wide = Buffer::from_vec(vec![0u32, 3_000_000_000, u32::MAX]);
-    let out = |op| apply(&wide, op, None).unwrap().as_slice::<u32>().unwrap().to_vec();
-    assert_eq!(out(MathOp::Add(1e9)), [1_000_000_000, 4_000_000_000, u32::MAX]);
+    let out = |op| {
+        apply(&wide, op, None)
+            .unwrap()
+            .as_slice::<u32>()
+            .unwrap()
+            .to_vec()
+    };
+    assert_eq!(
+        out(MathOp::Add(1e9)),
+        [1_000_000_000, 4_000_000_000, u32::MAX]
+    );
     assert_eq!(out(MathOp::Subtract(4e9)), [0, 0, 294_967_295]);
     assert_eq!(out(MathOp::Set(3.5e9)), [3_500_000_000; 3]);
     let huge = Buffer::from_vec(vec![i64::MIN, -1, i64::MAX]);
@@ -174,7 +214,10 @@ fn float_rules_hold_in_both_precisions() {
         MathOp::Abs,
         MathOp::Reciprocal,
         MathOp::And(0xf0),
-        MathOp::NanBackground { lower: 0.0, upper: 1.0 },
+        MathOp::NanBackground {
+            lower: 0.0,
+            upper: 1.0,
+        },
     ] {
         let a = apply(&single, op, None).unwrap();
         let b = apply(&double, op, None).unwrap();
@@ -186,7 +229,13 @@ fn float_rules_hold_in_both_precisions() {
             );
         }
     }
-    let out = |op| apply(&single, op, None).unwrap().as_slice::<f32>().unwrap().to_vec();
+    let out = |op| {
+        apply(&single, op, None)
+            .unwrap()
+            .as_slice::<f32>()
+            .unwrap()
+            .to_vec()
+    };
     // Dividing by zero: infinities, and NaN for zero.
     let divided = out(MathOp::Divide(0.0));
     assert_eq!((divided[0], divided[3]), (f32::NEG_INFINITY, f32::INFINITY));
@@ -201,7 +250,10 @@ fn float_rules_hold_in_both_precisions() {
     assert!(out(MathOp::Log)[0].is_nan());
     assert_eq!(out(MathOp::Log)[1], f32::NEG_INFINITY);
     // NaN is not background: comparisons with it are false.
-    let kept = out(MathOp::NanBackground { lower: 0.0, upper: 1.0 });
+    let kept = out(MathOp::NanBackground {
+        lower: 0.0,
+        upper: 1.0,
+    });
     assert!(kept[0].is_nan() && kept[3].is_nan() && kept[4].is_nan());
     assert_eq!(kept[1..3], [0.0, 0.25]);
     // Min and Max leave NaN alone.
@@ -215,20 +267,40 @@ fn what_cannot_be_done_is_refused() {
     assert!(calculate(&complex, &complex, CalcOp::Add, 0.0).is_err());
     for dtype in [DType::U8, DType::I8, DType::U16, DType::I32, DType::U64] {
         let plane = Buffer::zeros(dtype, 3);
-        for op in [MathOp::Reciprocal, MathOp::NanBackground { lower: 0.0, upper: 1.0 }] {
+        for op in [
+            MathOp::Reciprocal,
+            MathOp::NanBackground {
+                lower: 0.0,
+                upper: 1.0,
+            },
+        ] {
             let error = apply(&plane, op, None).unwrap_err().to_string();
             assert!(error.contains("needs a float image"), "{dtype}: {error}");
         }
     }
-    assert!(apply(&Buffer::zeros(DType::F64, 0), MathOp::Log, None).unwrap().is_empty());
-    assert!(apply(&Buffer::zeros(DType::U16, 0), MathOp::Gamma(0.5), None).unwrap().is_empty());
+    assert!(
+        apply(&Buffer::zeros(DType::F64, 0), MathOp::Log, None)
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        apply(&Buffer::zeros(DType::U16, 0), MathOp::Gamma(0.5), None)
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
 fn float_calculator_rules() {
     let d = Buffer::from_vec(vec![6.0f64, -6.0, 0.0, f64::NAN, 2.5]);
     let s = Buffer::from_vec(vec![3.0f64, 0.0, 0.0, 1.0, f64::NAN]);
-    let run = |op, dbz| calculate(&d, &s, op, dbz).unwrap().as_slice::<f64>().unwrap().to_vec();
+    let run = |op, dbz| {
+        calculate(&d, &s, op, dbz)
+            .unwrap()
+            .as_slice::<f64>()
+            .unwrap()
+            .to_vec()
+    };
     let ieee = run(CalcOp::Divide, f64::INFINITY);
     assert_eq!((ieee[0], ieee[1]), (2.0, f64::NEG_INFINITY));
     assert!(ieee[2].is_nan());

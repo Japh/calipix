@@ -21,8 +21,7 @@ pub fn base(name: &str) -> Image {
 /// The rows of a CSV fixture after the header, split at commas.
 pub fn csv(name: &str) -> Vec<Vec<String>> {
     let path = fixture(name);
-    let text =
-        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     text.lines()
         .skip(1)
         .filter(|line| !line.is_empty())
@@ -108,9 +107,7 @@ pub fn raw_planes(name: &str, kind: Raw, width: usize, height: usize) -> Vec<Vec
                     .collect::<Vec<_>>(),
             )],
             Raw::Rgb => (0..3)
-                .map(|c| {
-                    Buffer::from_vec(plane.chunks(3).map(|b| b[c]).collect::<Vec<u8>>())
-                })
+                .map(|c| Buffer::from_vec(plane.chunks(3).map(|b| b[c]).collect::<Vec<u8>>()))
                 .collect(),
         })
         .collect()
@@ -231,7 +228,7 @@ pub fn report(operation: &str, difference: Difference) {
 pub fn generated(name: &str) -> Vec<Buffer> {
     let (w, h) = if name == "small8" { (20, 10) } else { (32, 24) };
     let xy = || (0..h).flat_map(move |y| (0..w).map(move |x| (x, y)));
-    let holes = |x: usize, y: usize| x % 5 == 0 && y % 3 == 0;
+    let holes = |x: usize, y: usize| x.is_multiple_of(5) && y.is_multiple_of(3);
     match name {
         "b8" => vec![Buffer::from_vec(
             xy().map(|(x, y)| {
@@ -269,7 +266,7 @@ pub fn generated(name: &str) -> Vec<Buffer> {
             .map(|c| {
                 Buffer::from_vec(
                     xy().map(|(x, y)| {
-                        if x % 6 == 0 && y % 4 == 0 {
+                        if x.is_multiple_of(6) && y.is_multiple_of(4) {
                             0
                         } else {
                             [(x * 9) & 255, (y * 11) & 255, (x * y) & 255][c] as u8

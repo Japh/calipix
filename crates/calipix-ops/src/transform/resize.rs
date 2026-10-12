@@ -190,8 +190,7 @@ fn resize_linearly<T: Sample>(
             let x1 = (java::int(position).max(0) as usize).min(n1 - 1);
             let x2 = (x1 + 1).min(n1 - 1);
             let fraction = position - x1 as f64;
-            let value =
-                ((1.0 - fraction) * data1[x1] as f64 + fraction * data1[x2] as f64) as f32;
+            let value = ((1.0 - fraction) * data1[x1] as f64 + fraction * data1[x2] as f64) as f32;
             // convertToByte(false) and convertToShort(false) for integers.
             T::from_f32(value)
         })
@@ -417,12 +416,7 @@ fn scale_samples<T: Sample>(
         let ymax = (ymin + java::int(r.h as f64 * y_scale) as i64 - 1).min(height as i64 - 1);
         (xmin, xmax, ymin, ymax)
     } else {
-        (
-            roi_x,
-            roi_x + r.w as i64 - 1,
-            roi_y,
-            roi_y + r.h as i64 - 1,
-        )
+        (roi_x, roi_x + r.w as i64 - 1, roi_y, roi_y + r.h as i64 - 1)
     };
     let check_coordinates = x_scale < 1.0 || y_scale < 1.0;
     let (xlimit, xlimit2) = (width as f64 - 1.0, width as f64 - 1.001);
@@ -445,8 +439,7 @@ fn scale_samples<T: Sample>(
             let xsi = java::int(xs) as i64;
             let value = if interpolation == Interpolation::Bicubic {
                 T::from_interpolated(grid.bicubic(xs, ys, 0.0))
-            } else if check_coordinates && (xsi < xmin || xsi > xmax || ysi < ymin || ysi > ymax)
-            {
+            } else if check_coordinates && (xsi < xmin || xsi > xmax || ysi < ymin || ysi > ymax) {
                 fill
             } else if interpolation == Interpolation::Bilinear {
                 if xs < 0.0 {

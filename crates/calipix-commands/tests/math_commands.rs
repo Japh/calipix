@@ -73,12 +73,24 @@ fn rgb() -> Image {
 }
 
 fn values(session: &Session, id: DatasetId, plane: usize) -> Vec<f64> {
-    let buffer = session.workspace.image(id).unwrap().read_plane(plane).unwrap();
-    (0..buffer.len()).map(|i| buffer.get_f64(i).unwrap()).collect()
+    let buffer = session
+        .workspace
+        .image(id)
+        .unwrap()
+        .read_plane(plane)
+        .unwrap();
+    (0..buffer.len())
+        .map(|i| buffer.get_f64(i).unwrap())
+        .collect()
 }
 
 fn typed<T: RealPixel>(session: &Session, id: DatasetId, plane: usize) -> Vec<T> {
-    let buffer = session.workspace.image(id).unwrap().read_plane(plane).unwrap();
+    let buffer = session
+        .workspace
+        .image(id)
+        .unwrap()
+        .read_plane(plane)
+        .unwrap();
     buffer.as_slice::<T>().unwrap().to_vec()
 }
 
@@ -106,8 +118,14 @@ fn every_command_runs_with_its_defaults_on_every_pixel_type() {
             match exec.run(&mut session, command, &extra(command)) {
                 Err(error) => {
                     assert!(float_only && !is_float, "{what}: {error}");
-                    assert!(error.to_string().contains("needs a float image"), "{what}: {error}");
-                    assert!(session.workspace.image(id).unwrap().ptr_eq(original), "{what}");
+                    assert!(
+                        error.to_string().contains("needs a float image"),
+                        "{what}: {error}"
+                    );
+                    assert!(
+                        session.workspace.image(id).unwrap().ptr_eq(original),
+                        "{what}"
+                    );
                     continue;
                 }
                 Ok(_) => assert!(!float_only || is_float, "{what} should be refused"),
@@ -119,10 +137,19 @@ fn every_command_runs_with_its_defaults_on_every_pixel_type() {
             // Only the plane on view was touched; RGB channels go together.
             if kind != "rgb" {
                 let untouched = changed.read_plane(1).unwrap();
-                assert!(untouched.shares_storage(&original.read_plane(1).unwrap()), "{what}");
+                assert!(
+                    untouched.shares_storage(&original.read_plane(1).unwrap()),
+                    "{what}"
+                );
             }
-            assert_eq!(exec.undo(&mut session).unwrap(), exec.registry().get(command).unwrap().spec().title);
-            assert!(session.workspace.image(id).unwrap().ptr_eq(original), "{what}: undo");
+            assert_eq!(
+                exec.undo(&mut session).unwrap(),
+                exec.registry().get(command).unwrap().spec().title
+            );
+            assert!(
+                session.workspace.image(id).unwrap().ptr_eq(original),
+                "{what}: undo"
+            );
         }
         session.workspace.remove(id).unwrap();
     }
@@ -148,8 +175,14 @@ fn defaults_are_imagejs() {
     let registry = standard_registry();
     for command in ["math.and", "math.or", "math.xor"] {
         let spec = registry.get(command).unwrap().spec().clone();
-        assert_eq!(spec.param("value").unwrap().default, Some(Value::from("11110000")));
-        assert_eq!(spec.param("value").unwrap().ijm_key.as_deref(), Some("value"));
+        assert_eq!(
+            spec.param("value").unwrap().default,
+            Some(Value::from("11110000"))
+        );
+        assert_eq!(
+            spec.param("value").unwrap().ijm_key.as_deref(),
+            Some("value")
+        );
     }
     let names: Vec<_> = MATH
         .iter()
@@ -158,9 +191,24 @@ fn defaults_are_imagejs() {
     assert_eq!(
         names,
         [
-            "Add...", "Subtract...", "Multiply...", "Divide...", "AND...", "OR...", "XOR...",
-            "Min...", "Max...", "Gamma...", "Set...", "Log", "Exp", "Square", "Square Root",
-            "Reciprocal", "NaN Background", "Abs"
+            "Add...",
+            "Subtract...",
+            "Multiply...",
+            "Divide...",
+            "AND...",
+            "OR...",
+            "XOR...",
+            "Min...",
+            "Max...",
+            "Gamma...",
+            "Set...",
+            "Log",
+            "Exp",
+            "Square",
+            "Square Root",
+            "Reciprocal",
+            "NaN Background",
+            "Abs"
         ]
     );
 }
@@ -169,29 +217,43 @@ fn defaults_are_imagejs() {
 fn the_plane_scope_chooses_planes_and_channels() {
     let (exec, mut session) = setup();
     let id = session.workspace.insert(image(DType::U16, 2, 3), None);
-    let firsts = |session: &Session| -> Vec<f64> {
-        (0..6).map(|p| values(session, id, p)[0]).collect()
-    };
+    let firsts =
+        |session: &Session| -> Vec<f64> { (0..6).map(|p| values(session, id, p)[0]).collect() };
     assert_eq!(firsts(&session), [1.0, 11.0, 21.0, 31.0, 41.0, 51.0]);
 
     // Channel 2 of slice 2 is plane 3.
-    let one = Args::new().with("value", 100.0).with("channel", 2).with("slice", 2);
+    let one = Args::new()
+        .with("value", 100.0)
+        .with("channel", 2)
+        .with("slice", 2);
     exec.run(&mut session, "math.add", &one).unwrap();
     assert_eq!(firsts(&session), [1.0, 11.0, 21.0, 131.0, 41.0, 51.0]);
     exec.undo(&mut session).unwrap();
     // Channel 0: both channels of the slice on view.
-    exec.run(&mut session, "math.add", &Args::new().with("value", 100.0).with("slice", 3))
-        .unwrap();
+    exec.run(
+        &mut session,
+        "math.add",
+        &Args::new().with("value", 100.0).with("slice", 3),
+    )
+    .unwrap();
     assert_eq!(firsts(&session), [1.0, 11.0, 21.0, 31.0, 141.0, 151.0]);
     exec.undo(&mut session).unwrap();
-    exec.run(&mut session, "math.add", &Args::new().with("value", 100.0).with("stack", true))
-        .unwrap();
+    exec.run(
+        &mut session,
+        "math.add",
+        &Args::new().with("value", 100.0).with("stack", true),
+    )
+    .unwrap();
     assert_eq!(firsts(&session), [101.0, 111.0, 121.0, 131.0, 141.0, 151.0]);
 
     // RGB: Set takes a packed colour, on all three channels at once.
     let rgb_id = session.workspace.insert(rgb(), None);
-    exec.run(&mut session, "math.set", &Args::new().with("value", 0x0a_14_1e as f64))
-        .unwrap();
+    exec.run(
+        &mut session,
+        "math.set",
+        &Args::new().with("value", 0x0a_14_1e as f64),
+    )
+    .unwrap();
     for (plane, expected) in [10.0, 20.0, 30.0].into_iter().enumerate() {
         assert_eq!(values(&session, rgb_id, plane), [expected; 12]);
     }
@@ -256,7 +318,11 @@ fn the_display_range_is_reset_where_the_extremes_move() {
         let expected = kept.then_some((2.0, 9.0));
         assert_eq!(range(&session, id), expected, "{command} on {dtype}");
         exec.undo(&mut session).unwrap();
-        assert_eq!(range(&session, id), Some((2.0, 9.0)), "{command} on {dtype}: undo");
+        assert_eq!(
+            range(&session, id),
+            Some((2.0, 9.0)),
+            "{command} on {dtype}: undo"
+        );
     }
 
     // Integer Gamma, Log and Exp work over the display range.
@@ -279,20 +345,32 @@ fn bad_values_are_refused_with_a_reason() {
         ("math.add", Args::new().with("value", f64::NAN)),
     ] {
         let error = exec.run(&mut session, command, &args).unwrap_err();
-        assert!(matches!(error, Error::InvalidArg { .. }), "{command}: {error}");
+        assert!(
+            matches!(error, Error::InvalidArg { .. }),
+            "{command}: {error}"
+        );
         assert!(session.workspace.image(id).unwrap().ptr_eq(&before));
     }
     exec.run(&mut session, "math.and", &Args::new().with("value", "110"))
         .unwrap();
-    assert_eq!(values(&session, id, 0)[..7], [0.0, 2.0, 2.0, 4.0, 4.0, 6.0, 6.0]);
+    assert_eq!(
+        values(&session, id, 0)[..7],
+        [0.0, 2.0, 2.0, 4.0, 4.0, 6.0, 6.0]
+    );
 
     let complex = Image::from_vec(1, 1, vec![Complex32::new(1.0, 2.0)]).unwrap();
     session.workspace.insert(complex, None);
-    let error = exec.run(&mut session, "math.add", &Args::new()).unwrap_err();
+    let error = exec
+        .run(&mut session, "math.add", &Args::new())
+        .unwrap_err();
     assert!(error.to_string().contains("complex"), "{error}");
 }
 
-fn calculate(exec: &Executor, session: &mut Session, args: Args) -> Result<Option<DatasetId>, Error> {
+fn calculate(
+    exec: &Executor,
+    session: &mut Session,
+    args: Args,
+) -> Result<Option<DatasetId>, Error> {
     let outputs = exec.run(session, "math.image_calculator", &args)?;
     Ok(match outputs.get("image") {
         Some(&Value::Image(id)) => Some(id),
@@ -313,7 +391,9 @@ fn the_calculator_makes_a_new_image_unless_told_otherwise() {
 
     // Defaults: Add, into a new image, of the plane on view only.
     let args = || Args::new().with("input", a).with("image2", b);
-    let result = calculate(&exec, &mut session, args()).unwrap().expect("a new image");
+    let result = calculate(&exec, &mut session, args())
+        .unwrap()
+        .expect("a new image");
     let meta = session.workspace.image(result).unwrap().meta().clone();
     assert_eq!(meta.name, "Result of a.tif");
     assert_eq!((meta.plane_count(), meta.dtype()), (1, DType::U8));
@@ -326,7 +406,11 @@ fn the_calculator_makes_a_new_image_unless_told_otherwise() {
 
     // In place: image 1 changes, everywhere (the selection is ignored), on
     // the plane on view; the other plane is not even copied.
-    let none = calculate(&exec, &mut session, args().with("create", false).with("slice", 2));
+    let none = calculate(
+        &exec,
+        &mut session,
+        args().with("create", false).with("slice", 2),
+    );
     assert_eq!(none.unwrap(), None);
     assert_eq!(values(&session, a, 1)[..3], [22.0, 24.0, 26.0]);
     assert_eq!(values(&session, a, 0)[..3], [1.0, 2.0, 3.0]);
@@ -337,7 +421,10 @@ fn the_calculator_makes_a_new_image_unless_told_otherwise() {
     assert!(session.workspace.image(a).unwrap().ptr_eq(&before));
 
     // Whole stack, as float: a new float stack, nothing clipped.
-    let args = args().with("stack", true).with("float_result", true).with("create", false);
+    let args = args()
+        .with("stack", true)
+        .with("float_result", true)
+        .with("create", false);
     let result = calculate(&exec, &mut session, args.with("operation", "Subtract"))
         .unwrap()
         .expect("float results need a new image");
@@ -352,14 +439,32 @@ fn calculator_rules_for_mismatched_images() {
     let stack3 = session.workspace.insert(image(DType::U8, 1, 3), None);
     let stack2 = session.workspace.insert(image(DType::U8, 1, 2), None);
     let single = session.workspace.insert(image(DType::U8, 1, 1), None);
-    let args = |a, b| Args::new().with("input", a).with("image2", b).with("stack", true);
+    let args = |a, b| {
+        Args::new()
+            .with("input", a)
+            .with("image2", b)
+            .with("stack", true)
+    };
 
     let error = calculate(&exec, &mut session, args(stack3, stack2)).unwrap_err();
-    assert!(error.to_string().contains("3 planes and image 2 has 2"), "{error}");
+    assert!(
+        error.to_string().contains("3 planes and image 2 has 2"),
+        "{error}"
+    );
     // A single image 2 is used for every plane.
-    let result = calculate(&exec, &mut session, args(stack3, single)).unwrap().unwrap();
+    let result = calculate(&exec, &mut session, args(stack3, single))
+        .unwrap()
+        .unwrap();
     assert_eq!(values(&session, result, 2)[0], 22.0);
-    assert_eq!(session.workspace.image(result).unwrap().meta().plane_count(), 3);
+    assert_eq!(
+        session
+            .workspace
+            .image(result)
+            .unwrap()
+            .meta()
+            .plane_count(),
+        3
+    );
 
     // Types ImageJ lacks: image 2 is limited to image 1's type, and the
     // arithmetic saturates.
@@ -367,15 +472,23 @@ fn calculator_rules_for_mismatched_images() {
     let wide = Image::from_vec(4, 3, vec![1000i32, -1000, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
     let wide = session.workspace.insert(wide, None);
     let pair = |a, b| Args::new().with("input", a).with("image2", b);
-    let result = calculate(&exec, &mut session, pair(signed, wide)).unwrap().unwrap();
+    let result = calculate(&exec, &mut session, pair(signed, wide))
+        .unwrap()
+        .unwrap();
     assert_eq!(typed::<i8>(&session, result, 0)[..4], [127, -126, 3, 9]);
-    let result = calculate(&exec, &mut session, pair(wide, signed).with("operation", "Multiply"));
+    let result = calculate(
+        &exec,
+        &mut session,
+        pair(wide, signed).with("operation", "Multiply"),
+    );
     let result = result.unwrap().unwrap();
     assert_eq!(typed::<i32>(&session, result, 0)[..4], [1000, -2000, 0, 20]);
 
     // RGB with RGB stays RGB; complex is refused.
     let colour = session.workspace.insert(rgb(), None);
-    let result = calculate(&exec, &mut session, pair(colour, colour)).unwrap().unwrap();
+    let result = calculate(&exec, &mut session, pair(colour, colour))
+        .unwrap()
+        .unwrap();
     let meta = session.workspace.image(result).unwrap().meta().clone();
     assert_eq!((meta.color, meta.plane_count()), (ColorModel::Rgb, 3));
     assert_eq!(values(&session, result, 2)[0], 42.0);
@@ -385,18 +498,28 @@ fn calculator_rules_for_mismatched_images() {
     assert!(error.to_string().contains("complex"), "{error}");
 
     // The divide-by-zero value.
-    let zero = session.workspace.insert(Image::from_vec(4, 3, vec![0f32; 12]).unwrap(), None);
+    let zero = session
+        .workspace
+        .insert(Image::from_vec(4, 3, vec![0f32; 12]).unwrap(), None);
     let float = session.workspace.insert(image(DType::F32, 1, 1), None);
     let divide = |value: &str| {
         pair(float, zero)
             .with("operation", "Divide")
             .with("divide_by_zero", value)
     };
-    for (text, expected) in [("infinity", f64::INFINITY), ("max", f32::MAX as f64), ("-2.5", -2.5)] {
-        let result = calculate(&exec, &mut session, divide(text)).unwrap().unwrap();
+    for (text, expected) in [
+        ("infinity", f64::INFINITY),
+        ("max", f32::MAX as f64),
+        ("-2.5", -2.5),
+    ] {
+        let result = calculate(&exec, &mut session, divide(text))
+            .unwrap()
+            .unwrap();
         assert_eq!(values(&session, result, 0)[0], expected, "{text}");
     }
-    let result = calculate(&exec, &mut session, divide("NaN")).unwrap().unwrap();
+    let result = calculate(&exec, &mut session, divide("NaN"))
+        .unwrap()
+        .unwrap();
     assert!(values(&session, result, 0)[0].is_nan());
     let error = calculate(&exec, &mut session, divide("lots")).unwrap_err();
     assert!(matches!(error, Error::InvalidArg { .. }), "{error}");

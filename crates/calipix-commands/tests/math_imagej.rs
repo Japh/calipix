@@ -70,7 +70,9 @@ fn math_command(command: &str, options: &str, range: &str) -> (&'static str, Arg
             let limits: Vec<f64> = range.split(' ').skip(1).map(ij_number).collect();
             (
                 "math.nan_background",
-                Args::new().with("lower", limits[0]).with("upper", limits[1]),
+                Args::new()
+                    .with("lower", limits[0])
+                    .with("upper", limits[1]),
             )
         }
         other => panic!("unknown command {other}"),
@@ -85,8 +87,13 @@ fn process_math_commands_match_imagej() {
     let mut cases = 0;
     let mut expected: BTreeMap<String, Vec<Vec<Buffer>>> = BTreeMap::new();
     for row in csv("math.csv") {
-        let (name, slice, command, options, range_before) =
-            (&row[0], row[1].parse::<usize>().unwrap(), &row[2], &row[3], &row[4]);
+        let (name, slice, command, options, range_before) = (
+            &row[0],
+            row[1].parse::<usize>().unwrap(),
+            &row[2],
+            &row[3],
+            &row[4],
+        );
         let what = format!("{name} {command} {options} [{range_before}]");
         let image = cropped_base(name, CROP, |plane| with_math_specials(name, plane));
         let original = image.clone();
@@ -136,7 +143,11 @@ fn process_math_commands_match_imagej() {
 
         // Undo restores the very image that was there, display range
         // included.
-        while session.workspace.image(id).is_ok_and(|i| !i.ptr_eq(&original)) {
+        while session
+            .workspace
+            .image(id)
+            .is_ok_and(|i| !i.ptr_eq(&original))
+        {
             exec.undo(&mut session).unwrap();
         }
         session.workspace.remove(id).unwrap();
@@ -159,8 +170,7 @@ fn operand(exec: &Executor, session: &mut Session, name: &str) -> DatasetId {
         _ => {
             let planes = generated(name);
             let (w, h) = if name == "small8" { (20, 10) } else { (32, 24) };
-            let mut meta =
-                ImageMeta::xyczt(planes[0].dtype(), w, h, planes.len(), 1, 1).unwrap();
+            let mut meta = ImageMeta::xyczt(planes[0].dtype(), w, h, planes.len(), 1, 1).unwrap();
             if planes.len() == 3 {
                 meta.color = ColorModel::Rgb;
             }
@@ -266,9 +276,9 @@ fn image_calculator_matches_imagej() {
             assert_eq!(image.read_plane(0).unwrap(), sum.unwrap(), "{what}");
         } else {
             for k in 0..count {
-                for c in 0..step {
+                for (c, theirs) in theirs[first - 1 + k].iter().enumerate() {
                     let ours = image.read_plane(k * step + c).unwrap();
-                    let difference = assert_matches(&ours, &theirs[first - 1 + k][c], &what);
+                    let difference = assert_matches(&ours, theirs, &what);
                     by_group
                         .entry(format!("{group} {}", words[0]))
                         .or_default()
@@ -294,7 +304,10 @@ fn image_calculator_matches_imagej() {
 
         // Undo removes a created image and restores a changed one.
         exec.undo(&mut session).unwrap();
-        assert!(session.workspace.image(id1).unwrap().ptr_eq(&before), "{what}");
+        assert!(
+            session.workspace.image(id1).unwrap().ptr_eq(&before),
+            "{what}"
+        );
         assert_eq!(session.workspace.image(result).is_ok(), !created, "{what}");
         let ids: Vec<DatasetId> = session.workspace.datasets().map(|d| d.id).collect();
         for id in ids {

@@ -570,7 +570,15 @@ fn on_canvas(
     let meta = image.meta();
     let width = meta.width();
     let planes = each_plane(ctx, image, "Resizing canvas", |plane, samples| {
-        transform::canvas(samples, width, size.0, size.1, offset.0, offset.1, fill[plane])
+        transform::canvas(
+            samples,
+            width,
+            size.0,
+            size.1,
+            offset.0,
+            offset.1,
+            fill[plane],
+        )
     })?;
     let moved = has_origin(meta);
     let out = resized_meta(meta, size.0, size.1, |x, y| {
@@ -1047,9 +1055,7 @@ fn scale(ctx: &mut CommandCtx<'_>, p: ScaleParams) -> Result<Outputs> {
     }
     let mut named = result.meta().clone();
     named.name = name;
-    let id = ctx
-        .workspace_mut()
-        .insert(result.with_meta(named)?, None);
+    let id = ctx.workspace_mut().insert(result.with_meta(named)?, None);
     Ok(Outputs::new().with("image", id))
 }
 

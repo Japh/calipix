@@ -14,8 +14,8 @@ use calipix_commands::standard_registry;
 use calipix_core::{AxisKind, Buffer, ColorModel, DType, Image, Rect};
 use calipix_roi::Roi;
 use support::{
-    Difference, Raw, assert_matches, base, close, cropped_base, csv, ij_number, raw_planes,
-    report, with_samples,
+    Difference, Raw, assert_matches, base, close, cropped_base, csv, ij_number, raw_planes, report,
+    with_samples,
 };
 
 fn setup() -> (Executor, Session) {
@@ -173,7 +173,7 @@ fn check(table: &str, expected_cases: usize) {
         let (command_id, mut args) = translate(command, &opts);
         // The plane on view, for the commands that ask which it is.
         let spec = exec.registry().get(command_id).unwrap().spec().clone();
-        let mut on_view = |args: &mut Args, name: &str, value: i64| {
+        let on_view = |args: &mut Args, name: &str, value: i64| {
             if spec.param(name).is_some() {
                 args.insert(name, value);
             }
@@ -256,7 +256,11 @@ fn check(table: &str, expected_cases: usize) {
         assert_eq!((meta.width(), meta.height()), (width, height), "{what}");
         assert_eq!(meta.dtype(), original.meta().dtype(), "{what}");
         assert_eq!(meta.color == ColorModel::Rgb, rgb, "{what}");
-        let channels = if rgb { 1 } else { meta.size(&AxisKind::Channel) };
+        let channels = if rgb {
+            1
+        } else {
+            meta.size(&AxisKind::Channel)
+        };
         assert_eq!(
             [
                 channels,
@@ -275,9 +279,9 @@ fn check(table: &str, expected_cases: usize) {
             .or_insert_with(|| raw_planes(&format!("{group}.raw"), kind, width, height));
         let method = opts.get("interpolation").map_or("None", String::as_str);
         for k in 0..count {
-            for c in 0..step {
+            for (c, theirs) in theirs[first - 1 + k].iter().enumerate() {
                 let ours = result.read_plane(k * step + c).unwrap();
-                let difference = assert_matches(&ours, &theirs[first - 1 + k][c], &what);
+                let difference = assert_matches(&ours, theirs, &what);
                 by_op
                     .entry(format!(
                         "{} {} ({method})",
@@ -290,7 +294,13 @@ fn check(table: &str, expected_cases: usize) {
         }
 
         // Display range of the plane ImageJ leaves current.
-        if meta.dtype() != DType::U8 || original.meta().channels.iter().any(|c| c.display_range.is_some()) {
+        if meta.dtype() != DType::U8
+            || original
+                .meta()
+                .channels
+                .iter()
+                .any(|c| c.display_range.is_some())
+        {
             let mut position = vec![0; meta.ndim() - 2];
             for (index, axis) in meta.axes().iter().enumerate().skip(2) {
                 let size = meta.shape()[index];
@@ -308,7 +318,11 @@ fn check(table: &str, expected_cases: usize) {
             // A new or resized 16-bit or float image without a display
             // range is shown over its own data range by both programs, but
             // ImageJ's is that of the slice it had on view.
-            let auto = original.meta().channels.iter().all(|c| c.display_range.is_none());
+            let auto = original
+                .meta()
+                .channels
+                .iter()
+                .all(|c| c.display_range.is_none());
             if !auto {
                 assert!(
                     close(min, their_min) && close(max, their_max),
@@ -320,13 +334,28 @@ fn check(table: &str, expected_cases: usize) {
         // Calibration.
         let x = &meta.axes()[0];
         let y = &meta.axes()[1];
-        assert!(close(x.scale, ij_number(&row[15])), "{what}: pixel width {}", x.scale);
-        assert!(close(y.scale, ij_number(&row[16])), "{what}: pixel height {}", y.scale);
+        assert!(
+            close(x.scale, ij_number(&row[15])),
+            "{what}: pixel width {}",
+            x.scale
+        );
+        assert!(
+            close(y.scale, ij_number(&row[16])),
+            "{what}: pixel height {}",
+            y.scale
+        );
         if let Some(z) = meta.axis_index(&AxisKind::Z) {
             let depth = meta.axes()[z].scale;
-            assert!(close(depth, ij_number(&row[17])), "{what}: pixel depth {depth}");
+            assert!(
+                close(depth, ij_number(&row[17])),
+                "{what}: pixel depth {depth}"
+            );
         }
-        assert_eq!(x.unit.clone().unwrap_or("pixels".to_string()), row[18], "{what}");
+        assert_eq!(
+            x.unit.clone().unwrap_or("pixels".to_string()),
+            row[18],
+            "{what}"
+        );
         let (mut their_x, mut their_y) = (ij_number(&row[19]), ij_number(&row[20]));
         if calibrated {
             // Where ImageJ leaves the origin behind, Calipix moves it with
@@ -359,9 +388,16 @@ fn check(table: &str, expected_cases: usize) {
 
         // Undo restores the image and its selection, or removes the copy.
         exec.undo(&mut session).unwrap();
-        assert!(session.workspace.image(id).unwrap().ptr_eq(&original), "{what}");
+        assert!(
+            session.workspace.image(id).unwrap().ptr_eq(&original),
+            "{what}"
+        );
         assert_eq!(session.workspace.get(id).unwrap().roi, selection, "{what}");
-        assert_eq!(session.workspace.image(result_id).is_ok(), !created, "{what}");
+        assert_eq!(
+            session.workspace.image(result_id).is_ok(),
+            !created,
+            "{what}"
+        );
         let ids: Vec<DatasetId> = session.workspace.datasets().map(|d| d.id).collect();
         for id in ids {
             session.workspace.remove(id).unwrap();

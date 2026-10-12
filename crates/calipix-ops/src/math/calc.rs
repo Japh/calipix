@@ -108,7 +108,10 @@ pub fn calculate(dst: &Buffer, src: &Buffer, op: CalcOp, divide_by_zero: f64) ->
     fn zip<T: Pixel>(dst: &[T], src: &Buffer, f: impl Fn(T, T) -> T) -> Result<Buffer> {
         let src = src.try_slice::<T>()?;
         Ok(Buffer::from_vec(
-            dst.iter().zip(src).map(|(&d, &s)| f(d, s)).collect::<Vec<_>>(),
+            dst.iter()
+                .zip(src)
+                .map(|(&d, &s)| f(d, s))
+                .collect::<Vec<_>>(),
         ))
     }
     match dst {

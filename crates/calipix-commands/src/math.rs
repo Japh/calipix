@@ -5,8 +5,7 @@ use calipix_command::{
     Registry, Result, typed,
 };
 use calipix_core::{
-    Axis, AxisKind, Buffer, ColorModel, DType, Image, ImageMeta, Pixel, Rect,
-    crop_buffer, dispatch,
+    Axis, AxisKind, Buffer, ColorModel, DType, Image, ImageMeta, Pixel, Rect, crop_buffer, dispatch,
 };
 use calipix_ops::convert::{self, UNWEIGHTED};
 use calipix_ops::math::{self, CalcOp, MathOp};
@@ -34,11 +33,7 @@ value_params!(
     25.0,
     "Number to subtract from every sample."
 );
-value_params!(
-    MultiplyParams,
-    1.25,
-    "Number to multiply every sample by."
-);
+value_params!(MultiplyParams, 1.25, "Number to multiply every sample by.");
 value_params!(
     DivideParams,
     1.25,
@@ -267,9 +262,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
             "Integer images take the whole part of the number and stop at the limits of \
              their pixel type.",
         ),
-        |ctx, p: SubtractParams| {
-            run_math(ctx, &p.scope, "Subtracting", MathOp::Subtract(p.value))
-        },
+        |ctx, p: SubtractParams| run_math(ctx, &p.scope, "Subtracting", MathOp::Subtract(p.value)),
     ))?;
     registry.register(typed(
         math_spec(
@@ -280,9 +273,7 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
             "Multiplies every sample by a number.",
         )
         .doc("Integer results are rounded and stop at the limits of the pixel type."),
-        |ctx, p: MultiplyParams| {
-            run_math(ctx, &p.scope, "Multiplying", MathOp::Multiply(p.value))
-        },
+        |ctx, p: MultiplyParams| run_math(ctx, &p.scope, "Multiplying", MathOp::Multiply(p.value)),
     ))?;
     registry.register(typed(
         math_spec(
@@ -470,7 +461,9 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
 
     registry.register(typed(
         CommandSpec::new("math.image_calculator", "Image Calculator")
-            .summary("Combines two images sample by sample, for example adding or subtracting them.")
+            .summary(
+                "Combines two images sample by sample, for example adding or subtracting them.",
+            )
             .doc(
                 "The images are aligned at their top-left corners and only where they \
                  overlap is anything calculated. Without Whole stack, the plane on view of \
@@ -673,12 +666,7 @@ struct Sizes {
 impl Sizes {
     /// Where the two images, aligned at their top-left corners, overlap.
     fn overlap(&self) -> Rect {
-        Rect::new(
-            0,
-            0,
-            self.dst.0.min(self.src.0),
-            self.dst.1.min(self.src.1),
-        )
+        Rect::new(0, 0, self.dst.0.min(self.src.0), self.dst.1.min(self.src.1))
     }
 }
 
@@ -690,7 +678,12 @@ fn blit(dst: &Buffer, src: &Buffer, sizes: Sizes, op: CalcOp, dbz: f64) -> Resul
     }
     let d = crop_buffer(dst, sizes.dst.0, overlap)?;
     let s = crop_buffer(src, sizes.src.0, overlap)?;
-    paste(dst, sizes.dst.0, &math::calculate(&d, &s, op, dbz)?, overlap)
+    paste(
+        dst,
+        sizes.dst.0,
+        &math::calculate(&d, &s, op, dbz)?,
+        overlap,
+    )
 }
 
 /// `ByteProcessor.setPixels(int, FloatProcessor)` and its 16-bit twin: back
@@ -870,7 +863,10 @@ fn calculator(ctx: &mut CommandCtx<'_>, p: CalculatorParams) -> Result<Outputs> 
         }
         // duplicateStack turns an RGB stack into grey float before the
         // calculation; a single RGB picture stays RGB during it.
-        if float && whole_stack && let Picture::Rgb([r, g, b]) = &dst {
+        if float
+            && whole_stack
+            && let Picture::Rgb([r, g, b]) = &dst
+        {
             dst = Picture::Gray(convert::rgb_to_gray_f32([r, g, b], UNWEIGHTED)?);
         }
         results.push(combine(dst, &second, j, blit_sizes, op, float, dbz)?);

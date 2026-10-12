@@ -51,7 +51,12 @@ fn rgb() -> Image {
 }
 
 fn typed<T: RealPixel>(session: &Session, id: DatasetId, plane: usize) -> Vec<T> {
-    let buffer = session.workspace.image(id).unwrap().read_plane(plane).unwrap();
+    let buffer = session
+        .workspace
+        .image(id)
+        .unwrap()
+        .read_plane(plane)
+        .unwrap();
     buffer.as_slice::<T>().unwrap().to_vec()
 }
 
@@ -86,7 +91,10 @@ fn every_conversion_runs_with_its_defaults_on_every_pixel_type() {
             if kind == "rgb" && *command == "image.convert_type" {
                 if *target == DType::U8 {
                     result.unwrap();
-                    assert!(session.workspace.image(id).unwrap().ptr_eq(original), "{what}");
+                    assert!(
+                        session.workspace.image(id).unwrap().ptr_eq(original),
+                        "{what}"
+                    );
                 } else {
                     let error = result.unwrap_err().to_string();
                     assert!(error.contains("RGB Stack"), "{what}: {error}");
@@ -108,7 +116,10 @@ fn every_conversion_runs_with_its_defaults_on_every_pixel_type() {
             if !converted.ptr_eq(original) {
                 exec.undo(&mut session).unwrap();
             }
-            assert!(session.workspace.image(id).unwrap().ptr_eq(original), "{what}: undo");
+            assert!(
+                session.workspace.image(id).unwrap().ptr_eq(original),
+                "{what}: undo"
+            );
         }
         session.workspace.remove(id).unwrap();
     }
@@ -122,19 +133,26 @@ fn pixel_types_imagej_lacks_convert_by_documented_rules() {
 
     // To 8-bit with scaling: through the display range, here the data
     // range, by ImageJ's 16-bit formula.
-    exec.run(&mut session, "image.to_8bit", &Args::new()).unwrap();
+    exec.run(&mut session, "image.to_8bit", &Args::new())
+        .unwrap();
     assert_eq!(typed::<u8>(&session, id, 0), [0, 127, 170, 255]);
     exec.undo(&mut session).unwrap();
     // Without scaling: limited to 0..=255.
-    exec.run(&mut session, "image.to_8bit", &Args::new().with("scale", false))
-        .unwrap();
+    exec.run(
+        &mut session,
+        "image.to_8bit",
+        &Args::new().with("scale", false),
+    )
+    .unwrap();
     assert_eq!(typed::<u8>(&session, id, 0), [0, 0, 100, 255]);
     exec.undo(&mut session).unwrap();
     // To 16-bit: integers are never scaled, only limited.
-    exec.run(&mut session, "image.to_16bit", &Args::new()).unwrap();
+    exec.run(&mut session, "image.to_16bit", &Args::new())
+        .unwrap();
     assert_eq!(typed::<u16>(&session, id, 0), [0, 0, 100, 300]);
     exec.undo(&mut session).unwrap();
-    exec.run(&mut session, "image.to_32bit", &Args::new()).unwrap();
+    exec.run(&mut session, "image.to_32bit", &Args::new())
+        .unwrap();
     assert_eq!(typed::<f32>(&session, id, 0), [-300.0, -1.0, 100.0, 300.0]);
     exec.undo(&mut session).unwrap();
 
@@ -145,22 +163,36 @@ fn pixel_types_imagej_lacks_convert_by_documented_rules() {
         assert_eq!(dtype_of(&session, id), dtype);
         let back = Args::new().with("pixel_type", "i16");
         exec.run(&mut session, "image.convert_type", &back).unwrap();
-        assert_eq!(typed::<i16>(&session, id, 0), [-300, -1, 100, 300], "{dtype}");
+        assert_eq!(
+            typed::<i16>(&session, id, 0),
+            [-300, -1, 100, 300],
+            "{dtype}"
+        );
     }
 
     // 64-bit float to 16-bit scales through its display range like 32-bit.
     let double = Image::from_vec(3, 1, vec![-1.0f64, 0.0, 1.0]).unwrap();
     let id = session.workspace.insert(double, None);
-    exec.run(&mut session, "image.to_16bit", &Args::new()).unwrap();
+    exec.run(&mut session, "image.to_16bit", &Args::new())
+        .unwrap();
     assert_eq!(typed::<u16>(&session, id, 0), [0, 32768, 65535]);
     exec.undo(&mut session).unwrap();
-    exec.run(&mut session, "image.to_16bit", &Args::new().with("scale", false))
-        .unwrap();
+    exec.run(
+        &mut session,
+        "image.to_16bit",
+        &Args::new().with("scale", false),
+    )
+    .unwrap();
     assert_eq!(typed::<u16>(&session, id, 0), [0, 0, 1]);
 
     let complex = Image::from_vec(1, 1, vec![Complex32::new(1.0, 2.0)]).unwrap();
     session.workspace.insert(complex, None);
-    for command in ["image.to_8bit", "image.to_16bit", "image.to_32bit", "image.to_rgb"] {
+    for command in [
+        "image.to_8bit",
+        "image.to_16bit",
+        "image.to_32bit",
+        "image.to_rgb",
+    ] {
         let error = exec.run(&mut session, command, &Args::new()).unwrap_err();
         assert!(error.to_string().contains("complex"), "{command}: {error}");
     }
@@ -186,8 +218,12 @@ fn a_stack_without_a_display_range_uses_that_of_the_plane_on_view() {
         display_range: Some((0.0, 255.0)),
         ..ChannelMeta::default()
     }];
-    session.workspace.set_image(id, image.with_meta(meta).unwrap()).unwrap();
-    exec.run(&mut session, "image.to_8bit", &Args::new()).unwrap();
+    session
+        .workspace
+        .set_image(id, image.with_meta(meta).unwrap())
+        .unwrap();
+    exec.run(&mut session, "image.to_8bit", &Args::new())
+        .unwrap();
     assert_eq!(typed::<u8>(&session, id, 1)[..3], [11, 12, 13]);
     let range = session.workspace.image(id).unwrap().meta().channels[0].display_range;
     assert_eq!(range, None, "8-bit results are shown over 0 to 255");
@@ -198,12 +234,19 @@ fn rgb_stack_and_back_share_the_samples() {
     let (exec, mut session) = setup();
     let original = rgb();
     let id = session.workspace.insert(original.clone(), None);
-    exec.run(&mut session, "image.to_rgb_stack", &Args::new()).unwrap();
+    exec.run(&mut session, "image.to_rgb_stack", &Args::new())
+        .unwrap();
     let stack = session.workspace.image(id).unwrap().clone();
     assert_eq!(stack.meta().color, ColorModel::Grayscale);
-    let names: Vec<_> = stack.meta().channels.iter().map(|c| c.name.clone().unwrap()).collect();
+    let names: Vec<_> = stack
+        .meta()
+        .channels
+        .iter()
+        .map(|c| c.name.clone().unwrap())
+        .collect();
     assert_eq!(names, ["Red", "Green", "Blue"]);
-    exec.run(&mut session, "image.to_rgb", &Args::new()).unwrap();
+    exec.run(&mut session, "image.to_rgb", &Args::new())
+        .unwrap();
     let back = session.workspace.image(id).unwrap().clone();
     assert_eq!(back.meta().color, ColorModel::Rgb);
     for plane in 0..6 {
@@ -213,21 +256,34 @@ fn rgb_stack_and_back_share_the_samples() {
 
     // Only an RGB image can become an RGB stack.
     let grey = session.workspace.insert(image(DType::U8, 1, 1), None);
-    let error = exec.run(&mut session, "image.to_rgb_stack", &Args::new()).unwrap_err();
+    let error = exec
+        .run(&mut session, "image.to_rgb_stack", &Args::new())
+        .unwrap_err();
     assert!(error.to_string().contains("only an RGB image"), "{error}");
     // Grey to RGB: three equal channels.
-    exec.run(&mut session, "image.to_rgb", &Args::new()).unwrap();
+    exec.run(&mut session, "image.to_rgb", &Args::new())
+        .unwrap();
     for plane in 0..3 {
         assert_eq!(typed::<u8>(&session, grey, plane)[..3], [1, 2, 3]);
     }
 
     // Channels shown one at a time are not one colour picture.
     let channels = session.workspace.insert(image(DType::U16, 2, 1), None);
-    let error = exec.run(&mut session, "image.to_rgb", &Args::new()).unwrap_err();
+    let error = exec
+        .run(&mut session, "image.to_rgb", &Args::new())
+        .unwrap_err();
     assert!(error.to_string().contains("composite"), "{error}");
-    exec.run(&mut session, "view.set_channel_mode", &Args::new().with("mode", "composite"))
+    exec.run(
+        &mut session,
+        "view.set_channel_mode",
+        &Args::new().with("mode", "composite"),
+    )
+    .unwrap();
+    exec.run(&mut session, "image.to_rgb", &Args::new())
         .unwrap();
-    exec.run(&mut session, "image.to_rgb", &Args::new()).unwrap();
     let meta = session.workspace.image(channels).unwrap().meta().clone();
-    assert_eq!((meta.color, meta.dtype(), meta.plane_count()), (ColorModel::Rgb, DType::U8, 3));
+    assert_eq!(
+        (meta.color, meta.dtype(), meta.plane_count()),
+        (ColorModel::Rgb, DType::U8, 3)
+    );
 }

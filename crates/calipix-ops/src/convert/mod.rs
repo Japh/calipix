@@ -97,29 +97,12 @@ pub fn convert(buf: &Buffer, target: DType) -> Result<Buffer> {
 
     match (buf, target) {
         (Buffer::C32(_) | Buffer::C64(_), _) => Err(complex_error()),
-        (Buffer::F32(s), DType::U8) => Ok(each(s, |v| {
-            let mut value = v + 0.5f32;
-            if value < 0.0 {
-                value = 0.0;
-            }
-            if value > 255.0 {
-                value = 255.0;
-            }
-            // (byte)value: NaN becomes 0.
-            value as u8
-        })),
-        (Buffer::F64(s), DType::U8) => Ok(each(s, |v| {
-            let mut value = v + 0.5;
-            if value < 0.0 {
-                value = 0.0;
-            }
-            if value > 255.0 {
-                value = 255.0;
-            }
-            value as u8
-        })),
+        // The half is added in the sample's own precision. NaN stays NaN
+        // through the limiting and becomes 0 in the cast, as (byte)NaN.
+        (Buffer::F32(s), DType::U8) => Ok(each(s, |v| (v + 0.5f32).clamp(0.0, 255.0) as u8)),
+        (Buffer::F64(s), DType::U8) => Ok(each(s, |v| (v + 0.5).clamp(0.0, 255.0) as u8)),
         (Buffer::F32(s), DType::U16) => Ok(each(s, |v| float_to_short(v as f64))),
-        (Buffer::F64(s), DType::U16) => Ok(each(s, |v| float_to_short(v))),
+        (Buffer::F64(s), DType::U16) => Ok(each(s, float_to_short)),
         (_, DType::U8) => int_target!(u8),
         (_, DType::I8) => int_target!(i8),
         (_, DType::U16) => int_target!(u16),
@@ -136,14 +119,8 @@ pub fn convert(buf: &Buffer, target: DType) -> Result<Buffer> {
 
 /// The tail of `TypeConverter.convertFloatToShort`: clamp, add a half and
 /// truncate. NaN, which fails both comparisons, becomes 0.
-fn float_to_short(mut value: f64) -> u16 {
-    if value < 0.0 {
-        value = 0.0;
-    }
-    if value > 65535.0 {
-        value = 65535.0;
-    }
-    java::int(value + 0.5) as u16
+fn float_to_short(value: f64) -> u16 {
+    java::int(value.clamp(0.0, 65535.0) + 0.5) as u16
 }
 
 /// Converts a float plane to 16-bit, stretching the display range
@@ -184,7 +161,7 @@ pub fn float_to_u16_scaled(buf: &Buffer, (min, max): (f64, f64)) -> Result<Buffe
     }
 }
 
-fn rgb_slices<'a>(rgb: [&'a Buffer; 3]) -> Result<[&'a [u8]; 3]> {
+fn rgb_slices(rgb: [&Buffer; 3]) -> Result<[&[u8]; 3]> {
     let [r, g, b] = [
         rgb[0].try_slice::<u8>()?,
         rgb[1].try_slice::<u8>()?,

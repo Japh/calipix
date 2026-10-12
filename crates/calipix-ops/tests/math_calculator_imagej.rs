@@ -54,8 +54,8 @@ fn same_type_arithmetic_matches_imagej() {
             .find_map(|o| o.strip_prefix("divide="))
             .map_or(f64::INFINITY, |v| v.parse().unwrap());
         let (a, b) = (first(name1), generated(name2));
-        let expected = &raw_planes(&format!("calc_{group}.raw"), Raw::for_base(group), W, H)
-            [slice - 1];
+        let expected =
+            &raw_planes(&format!("calc_{group}.raw"), Raw::for_base(group), W, H)[slice - 1];
         let ours: Vec<Buffer> = if a.len() == 3 {
             calculate_rgb([&a[0], &a[1], &a[2]], [&b[0], &b[1], &b[2]], op)
                 .unwrap()

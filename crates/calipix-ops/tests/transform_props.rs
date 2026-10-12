@@ -204,18 +204,49 @@ proptest! {
 fn transforms_refuse_complex_planes_and_bad_shapes() {
     let complex = Buffer::zeros(DType::C32, 4);
     let whole = Rect::new(0, 0, 2, 2);
-    assert!(rotate_right(&complex, 2).is_ok(), "moving samples needs no arithmetic");
+    assert!(
+        rotate_right(&complex, 2).is_ok(),
+        "moving samples needs no arithmetic"
+    );
     assert!(flip_horizontal(&complex, 2, whole).is_ok());
     assert!(rotate(&complex, 2, whole, 10.0, Interpolation::None, 0.0).is_err());
     assert!(resize(&complex, 2, whole, 4, 4, Interpolation::None, false).is_err());
     assert!(canvas(&complex, 2, 4, 4, 0, 0, 0.0).is_err());
 
     let plane = Buffer::from_vec(vec![1u8, 2, 3, 4, 5, 6]);
-    assert!(flip_horizontal(&plane, 4, whole).is_err(), "width does not divide the plane");
-    assert!(flip_vertical(&plane, 3, Rect::new(2, 0, 2, 2)).is_err(), "rectangle outside");
-    assert!(resize(&plane, 3, Rect::new(0, 0, 3, 2), 0, 2, Interpolation::None, false).is_err());
+    assert!(
+        flip_horizontal(&plane, 4, whole).is_err(),
+        "width does not divide the plane"
+    );
+    assert!(
+        flip_vertical(&plane, 3, Rect::new(2, 0, 2, 2)).is_err(),
+        "rectangle outside"
+    );
+    assert!(
+        resize(
+            &plane,
+            3,
+            Rect::new(0, 0, 3, 2),
+            0,
+            2,
+            Interpolation::None,
+            false
+        )
+        .is_err()
+    );
     assert!(canvas(&plane, 3, 0, 2, 0, 0, 0.0).is_err());
-    assert!(scale_in_place(&plane, 3, Rect::new(0, 0, 3, 2), 0.0, 1.0, Interpolation::None, 0.0).is_err());
+    assert!(
+        scale_in_place(
+            &plane,
+            3,
+            Rect::new(0, 0, 3, 2),
+            0.0,
+            1.0,
+            Interpolation::None,
+            0.0
+        )
+        .is_err()
+    );
     assert!(resize_z(&[], 3, 2, Interpolation::None, false).is_err());
 }
 

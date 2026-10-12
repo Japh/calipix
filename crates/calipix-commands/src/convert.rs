@@ -100,7 +100,11 @@ fn no_complex(meta: &ImageMeta) -> Result<()> {
 
 /// Metadata like `meta` for another pixel type and other axes. The colour
 /// model and channel descriptions are reset; the caller sets them.
-pub(crate) fn rebuilt(meta: &ImageMeta, dtype: DType, axes: Vec<(Axis, usize)>) -> Result<ImageMeta> {
+pub(crate) fn rebuilt(
+    meta: &ImageMeta,
+    dtype: DType,
+    axes: Vec<(Axis, usize)>,
+) -> Result<ImageMeta> {
     let mut out = ImageMeta::new(dtype, axes)?.with_name(meta.name.clone());
     out.properties = meta.properties.clone();
     Ok(out)
@@ -202,11 +206,7 @@ fn rgb_to_gray(
 
 /// `image` with other planes of another pixel type under the same axes,
 /// and `edit` applied to each channel's description.
-fn retyped(
-    image: &Image,
-    planes: Vec<Buffer>,
-    edit: impl Fn(&mut ChannelMeta),
-) -> Result<Image> {
+fn retyped(image: &Image, planes: Vec<Buffer>, edit: impl Fn(&mut ChannelMeta)) -> Result<Image> {
     let mut meta = image.meta().with_dtype(planes[0].dtype());
     if meta.channels.is_empty() {
         meta.channels = vec![ChannelMeta::default(); meta.size(&AxisKind::Channel)];
@@ -410,7 +410,9 @@ fn to_rgb(ctx: &mut CommandCtx<'_>, p: RgbParams) -> Result<Outputs> {
                 planes.push(Buffer::from_vec(
                     picture
                         .data
-                        .chunks_exact(4)
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
                         .map(|rgba| rgba[c])
                         .collect::<Vec<u8>>(),
                 ));

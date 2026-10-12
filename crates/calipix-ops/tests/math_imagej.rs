@@ -41,9 +41,8 @@ fn op(command: &str, options: &str, range: &str) -> MathOp {
             .parse()
             .unwrap()
     };
-    let bits = || {
-        i32::from_str_radix(options.strip_prefix("value=").unwrap(), 2).expect("binary number")
-    };
+    let bits =
+        || i32::from_str_radix(options.strip_prefix("value=").unwrap(), 2).expect("binary number");
     match command {
         "Add..." => MathOp::Add(value()),
         "Subtract..." => MathOp::Subtract(value()),

@@ -27,7 +27,10 @@ pub enum MathOp {
     Reciprocal,
     Abs,
     /// Float samples only: samples outside `lower..=upper` become NaN.
-    NanBackground { lower: f64, upper: f64 },
+    NanBackground {
+        lower: f64,
+        upper: f64,
+    },
 }
 
 /// Applies `op` to every sample of a plane, as `ImageMath.run` does through

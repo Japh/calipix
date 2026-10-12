@@ -14,8 +14,8 @@ use calipix_commands::view::channel_mode;
 use calipix_core::{AxisKind, Buffer, ColorModel, DType, Image, Rect};
 use calipix_roi::Roi;
 use support::{
-    Difference, Raw, assert_matches, base, close, cropped_base, csv, ij_number, raw_planes,
-    report, with_convert_specials,
+    Difference, Raw, assert_matches, base, close, cropped_base, csv, ij_number, raw_planes, report,
+    with_convert_specials,
 };
 
 const CROP: Rect = Rect {
@@ -132,7 +132,11 @@ fn conversions_match_imagej() {
         };
         assert_eq!(meta.dtype(), dtype, "{what}");
         assert_eq!(meta.color == ColorModel::Rgb, rgb, "{what}");
-        let channels = if rgb { 1 } else { meta.size(&AxisKind::Channel) };
+        let channels = if rgb {
+            1
+        } else {
+            meta.size(&AxisKind::Channel)
+        };
         assert_eq!(
             [
                 channels,
@@ -151,9 +155,9 @@ fn conversions_match_imagej() {
             .entry(group.clone())
             .or_insert_with(|| raw_planes(&format!("conv_{group}.raw"), kind, CROP.w, CROP.h));
         for k in 0..count {
-            for c in 0..step {
+            for (c, theirs) in theirs[first - 1 + k].iter().enumerate() {
                 let ours = image.read_plane(k * step + c).unwrap();
-                let difference = assert_matches(&ours, &theirs[first - 1 + k][c], &what);
+                let difference = assert_matches(&ours, theirs, &what);
                 by_kind
                     .entry(format!("{name} to {conversion}"))
                     .or_default()
@@ -207,7 +211,10 @@ fn conversions_match_imagej() {
             }
             exec.undo(&mut session).unwrap();
         }
-        assert!(session.workspace.image(id).unwrap().ptr_eq(&original), "{what}");
+        assert!(
+            session.workspace.image(id).unwrap().ptr_eq(&original),
+            "{what}"
+        );
         session.workspace.remove(id).unwrap();
         cases += 1;
     }
