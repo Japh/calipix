@@ -212,6 +212,90 @@ bytes = 129946
 macro = "gen/31_display.ijm"
 
 [[file]]
+path = "filt_16.raw"
+sha256 = "18499f5de9e204a4f194f234531b9d591975f9b9e1104f04aec5fd19ee298225"
+bytes = 100800
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_32.raw"
+sha256 = "72214fdb2dd41d3afef06d7744c2333200b533f12d83cd44befad0e698c18799"
+bytes = 201600
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_8.raw"
+sha256 = "3c309dee5d3f30d0f8ecdfa44cec88dfafedd58e1d9e0d17492c1e70298d5ef6"
+bytes = 50400
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_8cal.raw"
+sha256 = "a1afc96751565b736384a5e7aabfc9b7092783db23c923fc35ce41fda59924ba"
+bytes = 3600
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_big16_unsharp9.raw"
+sha256 = "006a70442623ec8163b96e863bee0202d712fb64f482a76bb5166405f6b3ba49"
+bytes = 6144
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_big32_gauss9.raw"
+sha256 = "ff6652d837ea5c5a15a9042c9078a53cd9bf69f05b5396198b258b0bf2ffb768"
+bytes = 12288
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_big8_gauss9.raw"
+sha256 = "e44e33671c643b0f648dd29988aa356c6f05e82d6c5ffc2ba7c7591473fcded9"
+bytes = 3072
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_index.txt"
+sha256 = "11b882bdea105d4545de8bc947068a01ab75c49fc9ec12a6e135f21728bf2a5e"
+bytes = 8604
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_nan.raw"
+sha256 = "6123c44cb2cecae906a6b581d727a698bc613f6b53b67d5a8c11ba65c9cf40d2"
+bytes = 76800
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_rgb.raw"
+sha256 = "69a115684ae886d76944c5cc3bd9dda1e461a75e72f4cb8ed27ab7577d8405a2"
+bytes = 126000
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_stack16_base.raw"
+sha256 = "cc6399599ee25ec107316253dcc7fd1b31bb7779a5da3d293def41e0ff33b9c9"
+bytes = 7200
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_stack16_gauss.raw"
+sha256 = "b86d3b5deda42101c72eb9d4cd025caee9d7f752cf0b2667631459008a430f6e"
+bytes = 7200
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_stack16_median.raw"
+sha256 = "b9ea590bce452d77d9ea4e3783f735782557c17b34a665c4080b8f1f120e3d9b"
+bytes = 7200
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_struct.raw"
+sha256 = "b920bb1f234b00c3cacd0a161d2217db6186ee1b7006fc5a7d996ef925da4079"
+bytes = 15600
+macro = "gen/50_filters.ijm"
+
+[[file]]
 path = "fmt_anim.gif"
 sha256 = "490343ab0207b143ff66ec0a4e8e48f0ec1510109f9fe399773b24269bd83e2c"
 bytes = 7028
