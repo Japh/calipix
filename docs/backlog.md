@@ -4,6 +4,10 @@ Things deliberately left out of the milestone in which they came up.
 
 ## Command system
 
+- Several ImageJ names for one command with fixed arguments, so that
+  "North" finds Shadows with that direction.
+- Case-insensitive choice values for macros (`which=Bright`).
+
 - More than one shortcut per command (Ctrl+Shift+P for the palette is
   special-cased in the application).
 - A verb for the dialog's accept button ("Blur" rather than "OK").
@@ -21,6 +25,19 @@ Things deliberately left out of the milestone in which they came up.
 - NRRD: bzip2 encoding, multi-file data; test against files from other
   software.
 - Raw import with user-supplied dimensions.
+
+## Processing
+
+- Process > Math > Macro (needs the macro interpreter).
+- 8-bit Color, HSB and Lab conversions; Bin; "fill with background" in
+  Rotate and Scale; transforming overlays with the image.
+- "Limit to threshold" and "Redirect to" for measurements; value (density)
+  calibration.
+- Flip Z and quarter turns read every plane into memory; they need
+  plane-reordering and flipping views to work on larger-than-memory images.
+- Arithmetic and geometry are not yet parallel.
+- Voxel depth and frame interval cannot be stored on an image without a Z
+  or time axis.
 
 ## Viewer
 

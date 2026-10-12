@@ -28,8 +28,9 @@ everything. Extend them deliberately and additively.
 Results must match ImageJ 1.x: exactly for integer results, thresholds and
 counts; within 1e-5 relative error for floating point.
 
-- Port behaviour from the ImageJ 1.x source (public domain), not from
-  memory. Name the ImageJ class and method in the doc comment of the
+- Port behaviour from the source of ImageJ **1.54p** (public domain), the
+  version that generates the reference files, not from memory and not from
+  a newer checkout: later versions behave differently in places. Name the ImageJ class and method in the doc comment of the
   function that reproduces it.
 - Prove it with a test against a file in `fixtures/imagej/out`. Those files
   are written by real ImageJ from the macros in `fixtures/imagej/gen`;

@@ -21,6 +21,16 @@ Run 2026-10-10 and 11 on Windows 10, Java 21 (Temurin), rustc 1.99, ImageJ
   - Text output uses the platform line ending, so `-Dline.separator` is set.
   - `run("Measure")` never accumulates rows without a Results window, so
     fixtures use one CSV per measurement.
+- Macro errors do not always announce themselves. These abort silently and
+  then hang until the timeout: a comparison such as `i==0`, or an
+  expression such as `arr[i]+"x"`, passed directly as a function argument
+  (assign it to a variable first); a number followed by `+ userFunction()`;
+  `setResult` on a row beyond the counter. Globals used inside functions
+  need `var`.
+- Full-precision references: `List.setMeasurements` with `List.getList`, or
+  `getValue(heading)` printed with `String.format("%.17g", v)`, avoid the
+  three-decimal rounding of the Results table. `saveAs("Raw Data")` keeps
+  float images exact and stays out of the TIFF corpus.
 - Avoid `Analyze Particles... summarize` (shows a real window), `Open
   Samples` (network) and unseeded noise.
 - 43 of 44 files are byte-identical across runs on this machine. Only
