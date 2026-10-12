@@ -514,8 +514,11 @@ fn commands_on_regions_need_regions() {
     let (exec, mut session, _) = setup();
     for (id, args) in [
         ("regions.delete", Args::new().with("regions", "1")),
-        ("regions.select", Args::new()),
-        ("regions.rename", Args::new().with("name", "x")),
+        ("regions.select", Args::new().with("region", 1)),
+        (
+            "regions.rename",
+            Args::new().with("region", 1).with("name", "x"),
+        ),
         ("regions.measure", Args::new()),
         ("regions.save", Args::new().with("path", temp("none.zip"))),
         ("regions.set_color", Args::new()),

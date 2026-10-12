@@ -680,10 +680,9 @@ impl Interaction {
         };
         let on_first = !line && points.first().is_some_and(near);
         let on_last = points.last().is_some_and(near);
-        if on_first || on_last {
-            if points.len() < least {
-                return Step::Continue;
-            }
+        // Before there are enough vertices to finish, a click near one
+        // is simply the next vertex.
+        if (on_first || on_last) && points.len() >= least {
             return Step::Done(self.finish_path());
         }
         let mut at = if line {
