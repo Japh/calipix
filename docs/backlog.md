@@ -57,8 +57,11 @@ Things deliberately left out of the milestone in which they came up.
 
 ## Application
 
-- Display labels for choice parameters, so generated dialogs show
-  "3-3-2 RGB" rather than `rgb332`.
+- Groups within a dialog (Set Measurements lists quantities and options
+  without a visual break).
+- Progress and cancellation within a plane: a filter on one very large
+  plane shows no progress and stops only when the plane is done.
+- Plots: zoom and pan, more than one series, units for histogram axes.
 - The Display panel needs scrolling for three or more channels at the
   default window size.
 - The native file dialog has not been observed on screen in testing, nor

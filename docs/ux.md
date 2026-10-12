@@ -36,7 +36,7 @@ contribute to it. Change this document first, then the code.
 |                                            |                 |
 |  C 1 2 3  Z ----o--------  T --o---------- +-----------------+
 +--------------------------------------------+  Histogram      |
-|  History | Results | Log                   |                 |
+|  History | Results | Plot | Log            |                 |
 +--------------------------------------------+-----------------+
 | status message                    x, y, value   zoom   image |
 +--------------------------------------------------------------+
@@ -49,10 +49,37 @@ contribute to it. Change this document first, then the code.
   range, lookup table, channels) and *Histogram* for the active image. The
   column runs the full height of the window so that all three fit.
 - **Bottom:** *History* (every command run, with undo position), *Results*
-  (measurement tables) and *Log*.
+  (measurement tables), *Plot* (profiles and histograms) and *Log*.
 - Every panel can be moved, hidden and shown again from the *Window* menu,
   and returns to where it was. *Window > Reset Layout* restores the default.
 - The layout is remembered between sessions.
+
+## Selections and regions
+
+- An image has one **selection**: the part of it that commands act within
+  or measure. It is drawn on the image as a thin outline with handles.
+- An image also has a list of saved **regions**, each with a name and
+  colour. They are drawn over the image, listed in the Regions panel, and
+  saved with the image. This one list replaces ImageJ's separate Overlay
+  and ROI Manager.
+- Selection tools sit in a tool strip. Drawing or editing a shape is one
+  step in History, like any command; a cancelled gesture leaves no trace.
+- Every shape can also be given exactly, as text, with *Edit > Selection >
+  Specify Selection*: `rectangle 10 20 30 40`, `oval 10 20 30 40`,
+  `polygon 5,5 40,8 22,30`, `line 0 0 50 50`.
+
+## Results and plots
+
+- Measurements go to the *Results* table and bring its panel forward
+  without taking the keyboard from the image.
+- Tables show exactly the text that *Save Results* writes.
+- While a table has been clicked in, Delete removes the selected rows,
+  Ctrl+A selects all rows and Ctrl+C copies them; a click elsewhere hands
+  those keys back to the image.
+- A command that produces a profile or a histogram shows it in the *Plot*
+  panel; its numbers are an ordinary table (*List* shows them).
+- Measurement settings belong to the session and appear in History. They
+  are not a hidden global preference.
 
 ## Menus
 
@@ -122,6 +149,12 @@ parameters:
 - Invalid values are marked on the field with the reason; OK is disabled
   until they are fixed.
 - Values are remembered per command for the next use.
+- A command's only image is the active one and is not asked for. With two
+  image parameters, both are asked for, defaulting to the active image and
+  then the other one.
+- A command whose only unanswered parameters are advanced options with
+  defaults runs at once.
+- Choices are shown by name ("3-3-2 RGB"), never as internal identifiers.
 - If the only thing to ask for is a file path (the active image aside), the
   native file dialog opens directly instead. The window stays responsive
   while it is open.
@@ -168,12 +201,17 @@ parameters:
 | Action | Shortcut |
 |---|---|
 | Open, Save, Save As, Close | Ctrl+O, Ctrl+S, Ctrl+Shift+S, Ctrl+W |
+| Select All, Select None | Ctrl+A, Ctrl+Shift+A |
+| Measure | Ctrl+M |
+| Crop, Duplicate | Ctrl+Shift+X, Ctrl+Shift+D |
+| Previous, next plane | Left, Right |
 | Undo, Redo | Ctrl+Z, Ctrl+Shift+Z |
 | Command palette | Ctrl+K |
 | Zoom in, out, fit, 100% | `+`, `-`, `0`, `1` |
 
 Ctrl is Cmd on macOS. Shortcuts are declared on commands, shown in menus
-and the palette, and never hard-coded in interface code.
+and the palette, and never hard-coded in interface code. No two commands
+share a shortcut; a test enforces it.
 
 ## Appearance
 
