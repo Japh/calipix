@@ -628,8 +628,17 @@ fn no_two_commands_share_a_shortcut() {
             "Ctrl+Shift+Z edit.redo",
             "Ctrl+W file.close",
             "Ctrl+Z edit.undo",
+            "F tool.freehand",
+            "G tool.polygon",
+            "L tool.line",
             "Left view.previous_plane",
+            "O tool.oval",
+            "P tool.point",
+            "R tool.rectangle",
             "Right view.next_plane",
+            "S tool.segmented_line",
+            "T regions.add",
+            "V tool.pointer",
         ]
     );
 }

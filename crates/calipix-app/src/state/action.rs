@@ -10,6 +10,7 @@ use calipix_command::{Args, Command, CommandCtx, CommandSpec, Flags, Outputs, Re
 use serde::{Deserialize, Serialize};
 
 use super::Panel;
+use super::tools::{RegionLabels, Tool};
 
 /// Which colours the interface uses.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +54,11 @@ pub enum UiAction {
     OpenPalette,
     About,
     ClearRecent,
+    /// Make this the tool the pointer uses on images.
+    SetTool(Tool),
+    /// Draw the regions of images on them, or stop drawing them.
+    ToggleRegions,
+    SetRegionLabels(RegionLabels),
 }
 
 /// Actions waiting to be applied, shared between the registered commands
@@ -210,6 +216,37 @@ fn definitions() -> Vec<(CommandSpec, UiAction)> {
             UiAction::About,
         ),
     ];
+    for (index, tool) in Tool::ALL.into_iter().enumerate() {
+        all.push((
+            CommandSpec::new(tool.command_id(), format!("{} Tool", tool.title()))
+                .summary(format!(
+                    "Makes the pointer the {} tool. {}.",
+                    tool.title().to_lowercase(),
+                    tool.hint()
+                ))
+                .menu("Edit > Tool", 910.0 + 10.0 * index as f64)
+                .shortcut(tool.shortcut()),
+            UiAction::SetTool(tool),
+        ));
+    }
+    all.push((
+        spec("view.toggle_regions", "Show Regions")
+            .summary("Draws the regions of images on them, or hides them.")
+            .menu("View", 610.0)
+            .ijm_name("Toggle Overlay"),
+        UiAction::ToggleRegions,
+    ));
+    for (index, labels) in RegionLabels::ALL.into_iter().enumerate() {
+        all.push((
+            CommandSpec::new(
+                format!("view.region_labels_{}", labels.key()),
+                labels.title(),
+            )
+            .summary(labels.summary())
+            .menu("View > Region Labels", 620.0 + 10.0 * index as f64),
+            UiAction::SetRegionLabels(labels),
+        ));
+    }
     for (index, panel) in Panel::ALL.into_iter().enumerate() {
         let mut spec = CommandSpec::new(panel.command_id(), format!("{} Panel", panel.title()))
             .summary(format!("Shows or hides the {} panel.", panel.title()))

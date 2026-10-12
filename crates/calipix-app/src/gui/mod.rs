@@ -3,9 +3,10 @@
 //!
 //! - [`layout`]: the dockable workspace (the only user of the docking crate)
 //! - [`viewer`]: what an image tab shows (the only user of `calipix-view`)
-//! - [`panels`], [`display`], [`histogram`], [`results`], [`plot`]: the panels
-//!   around the images
-//! - [`overlay`]: what is drawn over an image, such as its selection
+//! - [`panels`], [`display`], [`histogram`], [`results`], [`plot`],
+//!   [`regions`]: the panels around the images
+//! - [`tools`]: the tool strip, and the keys that act on a selection
+//! - [`overlay`]: what is drawn over an image: its selection and regions
 //! - [`menu`], [`palette`], [`shortcuts`]: the three ways to choose a command
 //! - [`dialog`]: parameter dialogs generated from command specs
 //! - [`status`]: the status bar
@@ -21,9 +22,11 @@ pub mod overlay;
 pub mod palette;
 pub mod panels;
 pub mod plot;
+pub mod regions;
 pub mod results;
 pub mod shortcuts;
 pub mod status;
+pub mod tools;
 pub mod ui;
 pub mod viewer;
 
@@ -141,6 +144,8 @@ pub struct Shell {
     layout_changed: bool,
     /// Errors the GPU reported since the last frame.
     gpu_errors: Arc<Mutex<Vec<String>>>,
+    /// Processor time the last frame took, as the window reports it.
+    frame_seconds: Option<f32>,
 }
 
 impl Shell {
@@ -175,6 +180,7 @@ impl Shell {
             prepared: false,
             layout_changed: false,
             gpu_errors: Arc::default(),
+            frame_seconds: None,
         }
     }
 
@@ -259,6 +265,12 @@ impl Shell {
             if self.state.table_was_drawn() {
                 results::keys(&ctx, &mut self.state);
             }
+            if self.state.regions_were_drawn() {
+                regions::keys(&ctx, &mut self.state);
+            }
+            // Then the keys that act on the selection, where there is
+            // one for them to act on.
+            tools::keys(&ctx, &mut self.state);
             for id in shortcuts::pressed(&ctx, &self.state) {
                 self.invoke(&id, &Args::new());
             }
@@ -281,6 +293,11 @@ impl Shell {
         if status.fit {
             self.invoke("view.zoom_fit", &Args::new());
         }
+
+        egui::Panel::left("tools")
+            .exact_size(tools::WIDTH)
+            .resizable(false)
+            .show(ui, |ui| tools::strip(ui, &mut self.state));
 
         self.apply_ui_actions();
         self.workspace(ui);
@@ -333,8 +350,13 @@ impl Shell {
                 UiAction::OpenPalette => self.palette.open(),
                 UiAction::About => self.about_open = true,
                 // Entirely the state's business.
-                UiAction::Undo | UiAction::Redo | UiAction::SetTheme(_) | UiAction::ClearRecent => {
-                }
+                UiAction::Undo
+                | UiAction::Redo
+                | UiAction::SetTheme(_)
+                | UiAction::ClearRecent
+                | UiAction::SetTool(_)
+                | UiAction::ToggleRegions
+                | UiAction::SetRegionLabels(_) => {}
             }
             self.layout_changed = true;
         }
@@ -594,7 +616,8 @@ struct Window {
 }
 
 impl eframe::App for Window {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        self.shell.frame_seconds = frame.info().cpu_usage;
         self.shell.ui(ui);
         if let Some(capture) = &mut self.capture
             && capture.drive(ui.ctx(), &mut self.shell)

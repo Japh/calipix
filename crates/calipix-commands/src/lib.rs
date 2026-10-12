@@ -8,6 +8,7 @@ mod image;
 mod math;
 pub mod measure;
 pub mod process;
+mod regions;
 mod select;
 mod transform;
 pub mod view;
@@ -27,6 +28,7 @@ pub fn register(registry: &mut Registry) -> Result<()> {
     file::register(registry)?;
     image::register(registry)?;
     select::register(registry)?;
+    regions::register(registry)?;
     convert::register(registry)?;
     filter::register(registry)?;
     math::register(registry)?;

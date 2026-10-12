@@ -29,6 +29,29 @@ Edit >
     -
     Open Selection…
     Save Selection…
+  -
+  Regions >
+    Add to Regions
+    Update Region…
+    Select Region…
+    Rename Region…
+    Set Region Color…
+    -
+    Delete Regions…
+    Clear Regions
+    -
+    Open Regions…
+    Save Regions…
+  -
+  Tool >
+    Pointer Tool
+    Rectangle Tool
+    Oval Tool
+    Polygon Tool
+    Freehand Tool
+    Line Tool
+    Segmented Line Tool
+    Point Tool
 View >
   Zoom In
   Zoom Out
@@ -47,6 +70,12 @@ View >
   Invert Lookup Table
   -
   Set Channel Mode…
+  -
+  Show Regions
+  Region Labels >
+    No Region Labels
+    Region Numbers
+    Region Names
   -
   Theme >
     System Theme
@@ -128,6 +157,7 @@ Process >
   Image Calculator…
 Analyze >
   Measure
+  Measure Regions
   Summarize
   Distribution…
   -
@@ -143,6 +173,7 @@ Window >
   Info Panel
   Display Panel
   Histogram Panel
+  Regions Panel
   History Panel
   Results Panel
   Plot Panel

@@ -7,15 +7,16 @@ use calipix_core::{AxisKind, ColorModel, DType, ImageMeta};
 use calipix_render::ChannelMode;
 use eframe::egui::{self, RichText};
 
-use super::{display, histogram, plot, results, ui};
+use super::{display, histogram, plot, regions, results, ui};
 use crate::state::{AppState, LogLevel, Panel};
 
 /// Draws a panel's contents.
 pub fn show(ui: &mut egui::Ui, panel: Panel, state: &mut AppState) {
-    // These two fill their tab and scroll within it in their own way.
+    // These fill their tab and scroll within it in their own way.
     match panel {
         Panel::Results => return results::show(ui, state),
         Panel::Plot => return plot::show(ui, state),
+        Panel::Regions => return regions::show(ui, state),
         _ => {}
     }
     ui::panel_frame().show(ui, |ui| {
@@ -29,7 +30,7 @@ pub fn show(ui: &mut egui::Ui, panel: Panel, state: &mut AppState) {
                 Panel::Histogram => histogram::show(ui, state),
                 Panel::History => history(ui, state),
                 Panel::Log => log(ui, state),
-                Panel::Results | Panel::Plot => {}
+                Panel::Results | Panel::Plot | Panel::Regions => {}
             });
     });
 }
@@ -135,6 +136,23 @@ fn info(ui: &mut egui::Ui, state: &AppState) {
             },
         );
     });
+
+    // The selection, as it stands or as a tool is making it, and how many
+    // regions are kept with the image.
+    let selection = state.canvas_view(dataset.id).selection;
+    if selection.is_some() || !dataset.overlay.is_empty() {
+        ui.add_space(ui::GAP);
+        ui::properties(ui, "info_selection", |ui| {
+            if let Some(roi) = &selection {
+                for (name, value) in crate::state::canvas::describe(roi, meta).rows {
+                    ui::property(ui, name, value);
+                }
+            }
+            if !dataset.overlay.is_empty() {
+                ui::property(ui, "Regions", dataset.overlay.len().to_string());
+            }
+        });
+    }
 
     // What the file says about itself: ImageJ's Info text, then whatever
     // other properties it carried.

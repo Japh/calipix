@@ -212,3 +212,37 @@ pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(slow())?;
     registry.register(test_stack())
 }
+
+/// `count` regions of mixed shapes laid out in a grid over an image of
+/// this size, for trying the interface with many of them.
+pub fn regions(count: usize, width: usize, height: usize) -> Vec<calipix_roi::RoiEntry> {
+    use calipix_roi::{Roi, RoiEntry};
+    let columns = (count as f64).sqrt().ceil().max(1.0);
+    let rows = (count as f64 / columns).ceil().max(1.0);
+    let (cell_w, cell_h) = (width as f64 / columns, height as f64 / rows);
+    (0..count)
+        .map(|index| {
+            let (column, row) = (index % columns as usize, index / columns as usize);
+            let (x, y) = (column as f64 * cell_w, row as f64 * cell_h);
+            // Whole pixels, a little inside the cell.
+            let (x0, y0) = ((x + cell_w * 0.15).round(), (y + cell_h * 0.15).round());
+            let (w, h) = (
+                (cell_w * 0.7).round().max(1.0),
+                (cell_h * 0.7).round().max(1.0),
+            );
+            let roi = match index % 5 {
+                0 => Roi::rectangle(x0, y0, w, h),
+                1 => Roi::oval(x0, y0, w, h),
+                2 => Roi::polygon(vec![
+                    (x0, y0 + h),
+                    (x0 + w / 2.0, y0),
+                    (x0 + w, y0 + h / 2.0),
+                    (x0 + w * 0.75, y0 + h),
+                ]),
+                3 => Roi::line(x0, y0, x0 + w, y0 + h),
+                _ => Roi::point(x0 + w / 2.0, y0 + h / 2.0),
+            };
+            RoiEntry::new(roi)
+        })
+        .collect()
+}

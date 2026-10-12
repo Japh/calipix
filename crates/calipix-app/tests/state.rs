@@ -103,7 +103,16 @@ fn menus_follow_the_prescribed_order_and_grouping() {
     );
     assert_eq!(
         labels(submenu(state.menu(), "Edit")),
-        ["Undo", "Redo", "-", "Selection >"]
+        [
+            "Undo",
+            "Redo",
+            "-",
+            "Selection >",
+            "-",
+            "Regions >",
+            "-",
+            "Tool >"
+        ]
     );
     // A separator wherever the weight crosses into another hundred.
     assert_eq!(
@@ -127,6 +136,9 @@ fn menus_follow_the_prescribed_order_and_grouping() {
             "-",
             "Set Channel Mode…",
             "-",
+            "Show Regions",
+            "Region Labels >",
+            "-",
             "Theme >"
         ]
     );
@@ -140,6 +152,7 @@ fn menus_follow_the_prescribed_order_and_grouping() {
             "Info Panel",
             "Display Panel",
             "Histogram Panel",
+            "Regions Panel",
             "History Panel",
             "Results Panel",
             "Plot Panel",
