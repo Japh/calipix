@@ -606,17 +606,19 @@ impl Capture {
                 }
                 let regions = view.regions;
                 eprintln!(
-                    "capture: tool {}, selection {:?}; regions {}, {} outlined, {} as dots and {}                      labels in {} µs; the last frame took {:.1} ms of processor time",
+                    "capture: tool {}, selection {:?}",
                     state.tool().title(),
                     state
                         .active()
                         .and_then(|d| d.roi.as_ref())
                         .map(|r| r.to_string()),
-                    regions.regions,
-                    regions.outlined,
-                    regions.dots,
-                    regions.labels,
-                    regions.micros,
+                );
+                eprintln!(
+                    "capture: regions {}, {} outlined, {} as dots, {} labels, laid out in {} µs",
+                    regions.regions, regions.outlined, regions.dots, regions.labels, regions.micros,
+                );
+                eprintln!(
+                    "capture: the last frame took {:.1} ms of processor time",
                     shell.frame_seconds.unwrap_or(0.0) * 1000.0,
                 );
                 if let Some(place) = view.place {
