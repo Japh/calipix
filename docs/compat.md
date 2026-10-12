@@ -107,6 +107,7 @@ are byte-identical to ImageJ's.
 | RGB GIF with more than 256 colours | Quantised | Refused | Lossy step left explicit |
 | Truncated GIF | Opens partly black | Error | No silent data loss |
 | JPEG chroma | Subsampled below quality 90 | Never subsampled | Encoder limitation; files are larger and closer to the source |
+| Processing a composite image | Acts on the current channel | Acts on every channel shown together | The viewer has no "current channel" in composite mode; name a channel to restrict it |
 | Opening zoom | 100%, in a window sized to the image | Largest standard zoom step at which the image fits the tab | One window; small images should not be specks |
 | Mouse wheel | Scrolls through a stack | Zooms about the cursor; Shift+wheel steps through the stack | Matches other image viewers; see `docs/ux.md` |
 | Undo | One step, some commands only | Every command, unlimited steps; saving is not undone | Images are immutable snapshots that share unchanged planes. |

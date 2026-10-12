@@ -49,6 +49,32 @@ with `CommandSpec` and a `#[derive(Params)]` struct. The conformance test in
 usable from every frontend. Titles, summaries, ids and menu placement follow
 `docs/ux.md`.
 
+## Commands that change samples
+
+A command that changes samples embeds `PlaneScope`
+(`crates/calipix-commands/src/process.rs`) in its parameters with
+`#[param(flatten)]` and calls `scope.apply(ctx, "Blurring", |plane, info| ...)`
+with a function that processes one plane. The scope then applies the rules
+every such command shares:
+
+- Only the plane on view is processed unless the whole stack is asked for.
+  Interfaces fill the plane from the view and ask "Whole stack?" only when
+  the image has more than one plane.
+- The three channels of an RGB image are always processed together.
+- With an area selection, samples outside it are left unchanged. The
+  function sees the whole plane and is told the selection's bounding
+  rectangle, so filters can read neighbours outside the selection.
+
+Algorithms live in `calipix-ops` and work on plain buffers; they know
+nothing of selections, scopes or commands. A command that changes the pixel
+type or the shape of an image replaces the whole image instead of using
+`apply`.
+
+The selection is part of the image's state (`Dataset::roi`), not a
+parameter: commands read it from the workspace. Results go to tables in the
+workspace (`Workspace::table`, default name `Workspace::RESULTS`). Both are
+restored by undo.
+
 ## Tests
 
 - Unit tests next to the code; integration tests in each crate's `tests/`.

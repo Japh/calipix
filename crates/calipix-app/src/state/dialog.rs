@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use calipix_command::{
-    Args, CommandSpec, DatasetId, Error, ParamSpec, ParamType, PathMode, Value, Workspace,
+    Args, CommandSpec, DatasetId, Error, ParamSpec, ParamType, PathMode, PositionAxis, Value,
+    Workspace,
 };
 use serde_json::Value as Json;
 
@@ -233,10 +234,20 @@ impl Dialog {
 
     /// Restores the command's defaults, forgetting remembered values.
     pub fn reset(&mut self, workspace: &Workspace) {
+        // A plane the view has already chosen is not something to ask
+        // about; its value travels in the preset.
+        let preset = self.preset.clone();
+        let chosen_by_view = |param: &ParamSpec| {
+            matches!(
+                param.position,
+                Some(PositionAxis::Channel | PositionAxis::Slice | PositionAxis::Frame)
+            ) && preset.get(&param.name).is_some()
+        };
         self.fields = self
             .spec
             .inputs
             .iter()
+            .filter(|param| !chosen_by_view(param))
             .map(|param| {
                 let draft = match (&param.ty, &param.default) {
                     (ParamType::Image, _) => Draft::Image(workspace.active()),
@@ -268,7 +279,14 @@ impl Dialog {
     /// The arguments to run the command with, or `None` while any field is
     /// invalid.
     pub fn args(&self, workspace: &Workspace) -> Option<Args> {
+        // Start from what was decided before the dialog opened; fields
+        // overwrite it.
         let mut args = Args::new();
+        for (name, value) in self.preset.iter() {
+            if self.spec.param(name).is_some() {
+                args.insert(name, value.clone());
+            }
+        }
         for field in &self.fields {
             if let Some(value) = field.value(workspace).ok()? {
                 args.insert(field.param.name.clone(), value);

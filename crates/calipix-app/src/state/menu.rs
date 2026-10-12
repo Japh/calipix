@@ -43,25 +43,44 @@ pub struct MenuCommand {
     pub hint: Option<String>,
 }
 
-/// Parameters of display commands that say which plane is meant. The
-/// view answers them: the plane on screen is the one meant.
-pub const VIEW_PARAMS: [&str; 4] = ["channel", "slice", "frame", "press"];
+/// True for a parameter the view answers, so that nobody is asked for it:
+/// one that names a plane (the plane on screen is the one meant), and how
+/// often Auto Contrast has been pressed.
+pub fn answered_by_view(spec: &CommandSpec, param: &ParamSpec) -> bool {
+    param.position.is_some()
+        || (param.name == "press"
+            && calipix_commands::view::DISPLAY_COMMANDS.contains(&spec.id.as_str()))
+}
 
 /// The parameters a person has to see to run `spec`: all of them, except
 /// that a command's only image parameter is filled with the active image
-/// without asking, and a display command is pointed at the plane on
-/// screen.
+/// without asking, and parameters that name a plane are pointed at the one
+/// on screen.
 pub fn dialog_params(spec: &CommandSpec) -> Vec<&ParamSpec> {
     let images = spec
         .inputs
         .iter()
         .filter(|p| p.ty == ParamType::Image)
         .count();
-    let display = calipix_commands::view::DISPLAY_COMMANDS.contains(&spec.id.as_str());
     spec.inputs
         .iter()
         .filter(|p| !(p.ty == ParamType::Image && images == 1))
-        .filter(|p| !(display && VIEW_PARAMS.contains(&p.name.as_str())))
+        .filter(|p| !answered_by_view(spec, p))
+        .collect()
+}
+
+/// The parameters that are asked for unless already decided: all of them
+/// except a command's only image parameter. Unlike [`dialog_params`] this
+/// keeps the ones the view usually answers, for the cases where it cannot.
+pub fn asked_params(spec: &CommandSpec) -> Vec<&ParamSpec> {
+    let images = spec
+        .inputs
+        .iter()
+        .filter(|p| p.ty == ParamType::Image)
+        .count();
+    spec.inputs
+        .iter()
+        .filter(|p| !(p.ty == ParamType::Image && images == 1))
         .collect()
 }
 

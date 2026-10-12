@@ -10,6 +10,7 @@ rust-version.workspace = true
 [dependencies]
 calipix-command-derive.workspace = true
 calipix-core.workspace = true
+calipix-roi.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 

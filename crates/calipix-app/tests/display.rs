@@ -233,7 +233,10 @@ fn dialogs_of_display_commands_ask_only_what_the_view_cannot_answer() {
     };
     assert_eq!(field(&dialog, "min"), &Draft::Float(shown.0));
     assert_eq!(field(&dialog, "max"), &Draft::Float(shown.1));
-    assert_eq!(field(&dialog, "channel"), &Draft::Int(1));
+    // The channel on view is not asked about, but it is what will be used.
+    assert!(dialog.fields.iter().all(|f| f.param.name != "channel"));
+    let args = dialog.args(&state.session().workspace).unwrap();
+    assert_eq!(args.get("channel"), Some(&calipix_command::Value::Int(0)));
 
     // Set Lookup Table asks which; nothing else needs asking.
     assert!(matches!(
@@ -676,7 +679,7 @@ fn history_names_images_as_they_were_and_can_be_returned_to() {
     );
     // The image is closed, and still called by its name.
     assert_eq!(rows[1].detail, "gray8.tif");
-    assert_eq!(rows[2].detail, "gray8.tif, lut fire, channel 1");
+    assert_eq!(rows[2].detail, "gray8.tif, lut fire");
     assert_eq!(rows[3].detail, "gray8.tif");
     assert_eq!(rows[4].detail, "gray8.tif");
     assert!(rows[4].current && rows.iter().all(|row| !row.undone));

@@ -68,6 +68,13 @@ pub fn shown_together(meta: &ImageMeta) -> bool {
         || calipix_commands::view::channel_mode(meta) == ChannelMode::Composite
 }
 
+/// True if the image is one picture: a single plane, or the three channels
+/// of an RGB image.
+pub fn is_single_plane(meta: &ImageMeta) -> bool {
+    let planes = if meta.color == ColorModel::Rgb { 3 } else { 1 };
+    meta.plane_count() == planes
+}
+
 /// The channel a position selects, if the image has channels.
 pub fn channel_at(meta: &ImageMeta, position: &[usize]) -> usize {
     meta.axis_index(&AxisKind::Channel)

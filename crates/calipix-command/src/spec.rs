@@ -2,6 +2,21 @@ use serde_json::{Map, Value as Json, json};
 
 use crate::{Error, ParamType, PathMode, Result, Value};
 
+/// Which coordinate of the plane on view a parameter stands for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PositionAxis {
+    /// Channel counted from 1; 0 means every channel.
+    Channel,
+    /// Z slice counted from 1.
+    Slice,
+    /// Time frame counted from 1.
+    Frame,
+    /// A yes-or-no parameter: act on every plane rather than only the one
+    /// on view. The question is meaningless for an image with one plane,
+    /// so a frontend answers "no" there without asking.
+    Stack,
+}
+
 /// Description of one command input.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParamSpec {
@@ -27,6 +42,10 @@ pub struct ParamSpec {
     /// Keyword for this parameter in ImageJ macro option strings, if it
     /// differs from `name`.
     pub ijm_key: Option<String>,
+    /// Set for a parameter that says which plane of the image to act on.
+    /// An interactive frontend fills it from the plane on view instead of
+    /// asking; elsewhere its default applies.
+    pub position: Option<PositionAxis>,
 }
 
 impl ParamSpec {
@@ -46,6 +65,7 @@ impl ParamSpec {
             advanced: false,
             persist: true,
             ijm_key: None,
+            position: None,
         }
     }
 
@@ -106,6 +126,11 @@ impl ParamSpec {
 
     pub fn persist(mut self, persist: bool) -> ParamSpec {
         self.persist = persist;
+        self
+    }
+
+    pub fn position(mut self, axis: PositionAxis) -> ParamSpec {
+        self.position = Some(axis);
         self
     }
 
@@ -184,6 +209,12 @@ impl ParamSpec {
             "step": self.step,
             "unit": self.unit,
             "advanced": self.advanced,
+            "position": self.position.map(|axis| match axis {
+                PositionAxis::Channel => "channel",
+                PositionAxis::Slice => "slice",
+                PositionAxis::Frame => "frame",
+                PositionAxis::Stack => "stack",
+            }),
         })
     }
 }

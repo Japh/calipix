@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use calipix_core::Image;
+use calipix_roi::Roi;
 use serde_json::{Map, Value as Json};
 
 use crate::exec::{CancelToken, Progress};
@@ -218,6 +219,19 @@ impl ParamField for DatasetId {
     fn from_value(value: &Value) -> Option<DatasetId> {
         match value {
             Value::Image(id) => Some(*id),
+            _ => None,
+        }
+    }
+}
+
+impl ParamField for Roi {
+    fn param_type() -> ParamType {
+        ParamType::Roi
+    }
+
+    fn from_value(value: &Value) -> Option<Roi> {
+        match value {
+            Value::Roi(roi) => Some(roi.clone()),
             _ => None,
         }
     }

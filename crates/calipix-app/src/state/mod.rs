@@ -18,10 +18,10 @@ use std::sync::Arc;
 
 use calipix_command::{
     Args, CommandSpec, Dataset, DatasetId, EffectsPolicy, Error, Executor, HistoryEntry, Outputs,
-    ParamType, PathMode, Registry, Session, Value, Workspace,
+    ParamType, PathMode, PositionAxis, Registry, Session, Value, Workspace,
 };
 use calipix_commands::view::DISPLAY_COMMANDS;
-use calipix_core::{ColorModel, Image};
+use calipix_core::{AxisKind, ColorModel, Image};
 
 pub use action::{ActionQueue, Theme, UiAction, Zoom};
 pub use dialog::{Dialog, Draft, Field};
@@ -394,7 +394,9 @@ impl AppState {
         }
         let spec = self.spec(id).expect("availability was checked").clone();
         let preset = &self.with_view_args(&spec, preset);
-        let asked: Vec<_> = menu::dialog_params(&spec)
+        // What the view answered is in `preset` by now; whatever is left,
+        // apart from a lone image parameter, has to be asked for.
+        let asked: Vec<_> = menu::asked_params(&spec)
             .into_iter()
             .filter(|p| preset.get(&p.name).is_none())
             .collect();
@@ -733,15 +735,29 @@ impl AppState {
         let position = self.position(input);
         let (slice, frame) = view::slice_and_frame(meta, &position);
         for param in &spec.inputs {
-            let value = match param.name.as_str() {
-                "slice" => slice,
-                "frame" => frame,
-                "channel" if view::shown_together(meta) => 0,
-                "channel" => view::channel_at(meta, &position) as i64 + 1,
-                "press" => match self.views.get(&input).and_then(|v| v.auto.as_ref()) {
-                    Some((last, press)) if last.ptr_eq(image) => i64::from(*press) + 1,
-                    _ => 1,
-                },
+            let value: Value = match (param.position, param.name.as_str()) {
+                (Some(PositionAxis::Slice), _) => slice.into(),
+                (Some(PositionAxis::Frame), _) => frame.into(),
+                // Zero means every channel, which is also the plainest way
+                // to name the only channel of an image that has just one.
+                (Some(PositionAxis::Channel), _)
+                    if view::shown_together(meta) || meta.size(&AxisKind::Channel) == 1 =>
+                {
+                    0.into()
+                }
+                (Some(PositionAxis::Channel), _) => {
+                    (view::channel_at(meta, &position) as i64 + 1).into()
+                }
+                // "Whole stack?" has only one answer for a single plane
+                // (or the three channels of one RGB picture).
+                (Some(PositionAxis::Stack), _) if view::is_single_plane(meta) => false.into(),
+                (Some(PositionAxis::Stack), _) => continue,
+                (None, "press") if DISPLAY_COMMANDS.contains(&command) => {
+                    match self.views.get(&input).and_then(|v| v.auto.as_ref()) {
+                        Some((last, press)) if last.ptr_eq(image) => (i64::from(*press) + 1).into(),
+                        _ => 1.into(),
+                    }
+                }
                 _ => continue,
             };
             args.insert(param.name.clone(), value);
@@ -752,7 +768,7 @@ impl AppState {
     /// `preset` with what [`display_args`](Self::display_args) knows
     /// filled in, for a display command chosen from a menu.
     fn with_view_args(&self, spec: &CommandSpec, preset: &Args) -> Args {
-        if !DISPLAY_COMMANDS.contains(&spec.id.as_str()) {
+        if !spec.inputs.iter().any(|p| menu::answered_by_view(spec, p)) {
             return preset.clone();
         }
         let input = match preset.get("input") {

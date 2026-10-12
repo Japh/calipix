@@ -1,6 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
+use calipix_roi::Roi;
 use serde_json::{Value as Json, json};
 
 /// Identifies an open image within a [`Workspace`](crate::Workspace).
@@ -35,6 +36,8 @@ pub enum ParamType {
     Path(PathMode),
     /// An open image, referred to by its [`DatasetId`].
     Image,
+    /// A selection, written as text such as `rectangle 10 20 30 40`.
+    Roi,
     List(Box<ParamType>),
 }
 
@@ -48,6 +51,7 @@ pub enum Value {
     Str(String),
     Path(PathBuf),
     Image(DatasetId),
+    Roi(Roi),
     List(Vec<Value>),
 }
 
@@ -62,6 +66,7 @@ impl ParamType {
             ParamType::Choice(_) => "choice".to_string(),
             ParamType::Path(_) => "path".to_string(),
             ParamType::Image => "image".to_string(),
+            ParamType::Roi => "selection".to_string(),
             ParamType::List(inner) => format!("list<{}>", inner.name()),
         }
     }
@@ -77,6 +82,11 @@ impl ParamType {
             ParamType::Choice(choices) => json!({ "type": "string", "enum": choices }),
             ParamType::Path(_) => json!({ "type": "string", "format": "path" }),
             ParamType::Image => json!({ "type": "integer", "format": "image-id", "minimum": 0 }),
+            ParamType::Roi => json!({
+                "type": "string",
+                "format": "selection",
+                "description": "A selection such as `rectangle 10 20 30 40` (x, y, width, height).",
+            }),
             ParamType::List(inner) => json!({ "type": "array", "items": inner.json_schema() }),
         }
     }
@@ -93,7 +103,12 @@ impl Value {
             | (v @ Value::Float(_), ParamType::Float)
             | (v @ Value::Str(_), ParamType::Str)
             | (v @ Value::Path(_), ParamType::Path(_))
-            | (v @ Value::Image(_), ParamType::Image) => Ok(v),
+            | (v @ Value::Image(_), ParamType::Image)
+            | (v @ Value::Roi(_), ParamType::Roi) => Ok(v),
+            (Value::Str(s), ParamType::Roi) => s
+                .parse()
+                .map(Value::Roi)
+                .map_err(|e: calipix_roi::Error| e.to_string()),
             (Value::Int(i), ParamType::Float) => Ok(Value::Float(i as f64)),
             (Value::Str(s), ParamType::Path(_)) => Ok(Value::Path(PathBuf::from(s))),
             (Value::Str(s), ParamType::Choice(choices)) => {
@@ -120,6 +135,7 @@ impl Value {
             Value::Str(_) => "string",
             Value::Path(_) => "path",
             Value::Image(_) => "image",
+            Value::Roi(_) => "selection",
             Value::List(_) => "list",
         }
     }
@@ -132,6 +148,7 @@ impl Value {
             Value::Str(s) => json!(s),
             Value::Path(p) => json!(p.to_string_lossy()),
             Value::Image(id) => json!(id.0),
+            Value::Roi(roi) => json!(roi.to_string()),
             Value::List(items) => Json::Array(items.iter().map(Value::to_json).collect()),
         }
     }
@@ -155,6 +172,10 @@ impl Value {
                 .as_u64()
                 .map(|id| Value::Image(DatasetId(id)))
                 .ok_or_else(mismatch),
+            ParamType::Roi => json
+                .as_str()
+                .ok_or_else(mismatch)
+                .and_then(|s| Value::Str(s.to_string()).coerce(ty)),
             ParamType::List(inner) => json
                 .as_array()
                 .ok_or_else(mismatch)?
@@ -183,6 +204,7 @@ impl Value {
                 .parse()
                 .map(|id| Value::Image(DatasetId(id)))
                 .map_err(|_| mismatch()),
+            ParamType::Roi => Value::Str(text.to_string()).coerce(ty),
             ParamType::List(inner) => {
                 if text.is_empty() {
                     return Ok(Value::List(Vec::new()));
@@ -206,6 +228,7 @@ impl Value {
             Value::Str(s) => s.clone(),
             Value::Path(p) => p.to_string_lossy().into_owned(),
             Value::Image(id) => id.to_string(),
+            Value::Roi(roi) => roi.to_string(),
             Value::List(items) => items
                 .iter()
                 .map(Value::to_text)
@@ -263,6 +286,12 @@ impl From<PathBuf> for Value {
     }
 }
 
+impl From<Roi> for Value {
+    fn from(v: Roi) -> Value {
+        Value::Roi(v)
+    }
+}
+
 impl From<DatasetId> for Value {
     fn from(v: DatasetId) -> Value {
         Value::Image(v)
@@ -303,6 +332,10 @@ mod tests {
                 Value::Path("out/a.tif".into()),
             ),
             (ParamType::Image, Value::Image(DatasetId(3))),
+            (
+                ParamType::Roi,
+                Value::Roi(Roi::rectangle(1.0, 2.5, 30.0, 40.0)),
+            ),
             (
                 ParamType::List(Box::new(ParamType::Int)),
                 Value::List(vec![Value::Int(1), Value::Int(2)]),

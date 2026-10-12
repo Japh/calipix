@@ -9,6 +9,12 @@ rust-version.workspace = true
 
 [dependencies]
 calipix-core.workspace = true
+calipix-roi.workspace = true
+rayon.workspace = true
+
+[dev-dependencies]
+calipix-io.workspace = true
+proptest.workspace = true
 
 [lints]
 workspace = true

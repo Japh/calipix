@@ -1,8 +1,15 @@
 //! The standard command library: everything the application can do,
 //! defined once as commands.
 
+mod convert;
 mod file;
+mod filter;
 mod image;
+mod math;
+mod measure;
+pub mod process;
+mod select;
+mod transform;
 pub mod view;
 
 use calipix_command::{DatasetId, Params, Registry, Result};
@@ -19,6 +26,12 @@ pub(crate) struct InputOnly {
 pub fn register(registry: &mut Registry) -> Result<()> {
     file::register(registry)?;
     image::register(registry)?;
+    select::register(registry)?;
+    convert::register(registry)?;
+    filter::register(registry)?;
+    math::register(registry)?;
+    measure::register(registry)?;
+    transform::register(registry)?;
     view::register(registry)?;
     Ok(())
 }

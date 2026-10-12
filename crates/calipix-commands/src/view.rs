@@ -191,7 +191,7 @@ struct SetRangeParams {
     #[param(label = "Maximum", no_persist)]
     max: f64,
     /// Channel to change, counted from 1; 0 changes every channel.
-    #[param(default = 0, min = 0)]
+    #[param(default = 0, min = 0, position = "channel")]
     channel: i64,
 }
 
@@ -201,13 +201,13 @@ struct PlaneParams {
     #[param(label = "Image")]
     input: DatasetId,
     /// Channel to change, counted from 1; 0 changes every channel.
-    #[param(default = 0, min = 0)]
+    #[param(default = 0, min = 0, position = "channel")]
     channel: i64,
     /// Slice whose samples decide the range, counted from 1.
-    #[param(default = 1, min = 1, advanced, no_persist)]
+    #[param(default = 1, min = 1, advanced, no_persist, position = "slice")]
     slice: i64,
     /// Frame whose samples decide the range, counted from 1.
-    #[param(default = 1, min = 1, advanced, no_persist)]
+    #[param(default = 1, min = 1, advanced, no_persist, position = "frame")]
     frame: i64,
 }
 
@@ -217,13 +217,13 @@ struct AutoParams {
     #[param(label = "Image")]
     input: DatasetId,
     /// Channel to change, counted from 1; 0 changes every channel.
-    #[param(default = 0, min = 0)]
+    #[param(default = 0, min = 0, position = "channel")]
     channel: i64,
     /// Slice whose samples decide the range, counted from 1.
-    #[param(default = 1, min = 1, advanced, no_persist)]
+    #[param(default = 1, min = 1, advanced, no_persist, position = "slice")]
     slice: i64,
     /// Frame whose samples decide the range, counted from 1.
-    #[param(default = 1, min = 1, advanced, no_persist)]
+    #[param(default = 1, min = 1, advanced, no_persist, position = "frame")]
     frame: i64,
     /// How hard to stretch: 1 is the first press of ImageJ's Auto button,
     /// and each further press narrows the range, up to 10.
@@ -251,13 +251,13 @@ struct EnhanceParams {
     #[param(default = false, ijm = "use")]
     use_stack_histogram: bool,
     /// Channel to change, counted from 1; 0 changes every channel.
-    #[param(default = 0, min = 0)]
+    #[param(default = 0, min = 0, position = "channel")]
     channel: i64,
     /// Slice whose samples decide the range, counted from 1.
-    #[param(default = 1, min = 1, advanced, no_persist)]
+    #[param(default = 1, min = 1, advanced, no_persist, position = "slice")]
     slice: i64,
     /// Frame whose samples decide the range, counted from 1.
-    #[param(default = 1, min = 1, advanced, no_persist)]
+    #[param(default = 1, min = 1, advanced, no_persist, position = "frame")]
     frame: i64,
 }
 
@@ -276,7 +276,7 @@ struct SetLutParams {
     )]
     lut: String,
     /// Channel to change, counted from 1; 0 changes every channel.
-    #[param(default = 0, min = 0)]
+    #[param(default = 0, min = 0, position = "channel")]
     channel: i64,
 }
 
@@ -286,7 +286,7 @@ struct ChannelParams {
     #[param(label = "Image")]
     input: DatasetId,
     /// Channel to change, counted from 1; 0 changes every channel.
-    #[param(default = 0, min = 0)]
+    #[param(default = 0, min = 0, position = "channel")]
     channel: i64,
 }
 

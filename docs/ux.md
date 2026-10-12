@@ -127,6 +127,10 @@ parameters:
   while it is open.
 - Dialogs ask only for what the interface cannot already answer: commands
   that act on a plane or channel take them from the view.
+- A command that changes samples acts on the plane on view. For an image
+  with several planes its dialog has a "Whole stack" checkbox; for a single
+  plane the question is not asked, and a command with nothing else to ask
+  runs at once.
 
 ## Viewer
 

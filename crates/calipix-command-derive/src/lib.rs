@@ -14,7 +14,9 @@
 //! | `choices("a", "b")` | Restrict a `String` to these values |
 //! | `path = "open" \| "save" \| "dir"` | What a `PathBuf` is used for |
 //! | `ijm = "..."` | Keyword in ImageJ macro option strings |
+//! | `position = "channel" \| "slice" \| "frame" \| "stack"` | The parameter names a plane (or asks for all of them); frontends fill it from the view |
 //! | `advanced` | Show only in the expanded dialog |
+//! | `flatten` | The field is itself a `Params` struct; its parameters are included here |
 //! | `no_persist` | Do not remember the last used value |
 
 use proc_macro::TokenStream;
@@ -56,6 +58,21 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let name = name.strip_prefix("r#").unwrap_or(&name).to_string();
         let ty = &field.ty;
 
+        let flatten = field
+            .attrs
+            .iter()
+            .filter(|a| a.path().is_ident("param"))
+            .any(|a| matches!(&a.meta, Meta::List(list) if list.tokens.to_string().trim() == "flatten"));
+        if flatten {
+            specs.push(quote! {
+                specs.extend(<#ty as ::calipix_command::Params>::specs());
+            });
+            extractions.push(quote! {
+                #ident: <#ty as ::calipix_command::Params>::from_args(args)?
+            });
+            continue;
+        }
+
         let mut modifiers = Vec::new();
         let doc = doc_comment(&field.attrs);
         if !doc.is_empty() {
@@ -89,6 +106,24 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                     "ijm" => {
                         let v: LitStr = meta.value()?.parse()?;
                         modifiers.push(quote! { .ijm_key(#v) });
+                    }
+                    "position" => {
+                        let v: LitStr = meta.value()?.parse()?;
+                        let axis = match v.value().as_str() {
+                            "channel" => quote! { Channel },
+                            "slice" => quote! { Slice },
+                            "frame" => quote! { Frame },
+                            "stack" => quote! { Stack },
+                            _ => {
+                                return Err(syn::Error::new_spanned(
+                                    &v,
+                                    "expected \"channel\", \"slice\", \"frame\" or \"stack\"",
+                                ));
+                            }
+                        };
+                        modifiers.push(quote! {
+                            .position(::calipix_command::PositionAxis::#axis)
+                        });
                     }
                     "advanced" => modifiers.push(quote! { .advanced(true) }),
                     "no_persist" => modifiers.push(quote! { .persist(false) }),
@@ -134,7 +169,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                     _ => {
                         return Err(meta.error(
                             "unknown key; expected one of: label, default, min, max, step, \
-                             unit, choices, path, ijm, advanced, no_persist",
+                             unit, choices, path, ijm, position, advanced, no_persist, flatten",
                         ));
                     }
                 }
@@ -143,12 +178,14 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         }
 
         specs.push(quote! {
-            ::calipix_command::ParamSpec::new(
-                #name,
-                <#ty as ::calipix_command::ParamField>::param_type(),
-            )
-            .required(<#ty as ::calipix_command::ParamField>::REQUIRED)
-            #(#modifiers)*
+            specs.push(
+                ::calipix_command::ParamSpec::new(
+                    #name,
+                    <#ty as ::calipix_command::ParamField>::param_type(),
+                )
+                .required(<#ty as ::calipix_command::ParamField>::REQUIRED)
+                #(#modifiers)*
+            );
         });
         extractions.push(quote! {
             #ident: <#ty as ::calipix_command::ParamField>::from_arg(args.get(#name), #name)?
@@ -160,7 +197,10 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     Ok(quote! {
         impl #impl_generics ::calipix_command::Params for #ident #ty_generics #where_clause {
             fn specs() -> ::std::vec::Vec<::calipix_command::ParamSpec> {
-                ::std::vec![#(#specs),*]
+                #[allow(unused_mut)]
+                let mut specs = ::std::vec::Vec::new();
+                #(#specs)*
+                specs
             }
 
             fn from_args(args: &::calipix_command::Args) -> ::calipix_command::Result<Self> {

@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use calipix_core::Table;
+
 use crate::{Args, Dataset, DatasetId, Error, Outputs, Result, Workspace};
 
 /// How one dataset differed across a command run. `None` means the dataset
@@ -9,6 +11,14 @@ pub struct Change {
     pub id: DatasetId,
     pub before: Option<Dataset>,
     pub after: Option<Dataset>,
+}
+
+/// How one results table differed across a command run.
+#[derive(Clone, Debug)]
+pub struct TableChange {
+    pub name: String,
+    pub before: Option<Table>,
+    pub after: Option<Table>,
 }
 
 /// Record of one command run: enough to undo it, redo it, and reproduce it.
@@ -21,6 +31,7 @@ pub struct HistoryEntry {
     pub args: Args,
     pub outputs: Outputs,
     pub changes: Vec<Change>,
+    pub table_changes: Vec<TableChange>,
     pub active_before: Option<DatasetId>,
     pub active_after: Option<DatasetId>,
     pub duration: Duration,
@@ -42,16 +53,39 @@ impl HistoryEntry {
             args,
             outputs,
             changes: diff(before, after),
+            table_changes: diff_tables(before, after),
             active_before: before.active(),
             active_after: after.active(),
             duration,
         }
     }
 
-    /// True if the run changed any open image.
+    /// True if the run changed any open image, selection or table.
     pub fn changed_workspace(&self) -> bool {
-        !self.changes.is_empty()
+        !self.changes.is_empty() || !self.table_changes.is_empty()
     }
+}
+
+fn diff_tables(before: &Workspace, after: &Workspace) -> Vec<TableChange> {
+    let mut names: Vec<&str> = before.table_names().chain(after.table_names()).collect();
+    names.sort_unstable();
+    names.dedup();
+    names
+        .into_iter()
+        .filter_map(|name| {
+            let (b, a) = (before.table(name), after.table(name));
+            let unchanged = match (b, a) {
+                (Some(b), Some(a)) => b.ptr_eq(a) || b == a,
+                (None, None) => true,
+                _ => false,
+            };
+            (!unchanged).then(|| TableChange {
+                name: name.to_string(),
+                before: b.cloned(),
+                after: a.cloned(),
+            })
+        })
+        .collect()
 }
 
 fn diff(before: &Workspace, after: &Workspace) -> Vec<Change> {
@@ -131,6 +165,9 @@ impl History {
         for change in &entry.changes {
             workspace.restore(change.id, change.before.clone());
         }
+        for change in &entry.table_changes {
+            workspace.restore_table(&change.name, change.before.clone());
+        }
         workspace.restore_active(entry.active_before);
         self.cursor = index;
         Ok(entry)
@@ -146,6 +183,9 @@ impl History {
         let entry = &self.entries[index];
         for change in &entry.changes {
             workspace.restore(change.id, change.after.clone());
+        }
+        for change in &entry.table_changes {
+            workspace.restore_table(&change.name, change.after.clone());
         }
         workspace.restore_active(entry.active_after);
         self.cursor = index + 1;

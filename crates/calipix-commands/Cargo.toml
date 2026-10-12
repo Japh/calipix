@@ -13,6 +13,10 @@ calipix-core.workspace = true
 calipix-io.workspace = true
 calipix-ops.workspace = true
 calipix-render.workspace = true
+calipix-roi.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
 
 [lints]
 workspace = true

@@ -17,6 +17,7 @@ mod error;
 mod mem;
 mod meta;
 mod source;
+mod table;
 mod view;
 
 pub use buffer::{Buffer, crop_buffer};
@@ -27,3 +28,4 @@ pub use mem::MemImage;
 pub use meta::{Axis, AxisKind, ChannelMeta, ColorModel, ImageMeta, Lut};
 pub use num_complex::{Complex32, Complex64};
 pub use source::{Image, PixelSource, Rect};
+pub use table::{Cell, Table};

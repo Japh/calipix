@@ -92,7 +92,10 @@ fn menus_follow_the_prescribed_order_and_grouping() {
         labels(submenu(state.menu(), "File")),
         ["Open…", "Open Recent >", "Save", "Save As…", "Close"]
     );
-    assert_eq!(labels(submenu(state.menu(), "Edit")), ["Undo", "Redo"]);
+    assert_eq!(
+        labels(submenu(state.menu(), "Edit")),
+        ["Undo", "Redo", "-", "Selection >"]
+    );
     // A separator wherever the weight crosses into another hundred.
     assert_eq!(
         labels(submenu(state.menu(), "View")),

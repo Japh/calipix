@@ -1,9 +1,16 @@
 use calipix_command::{
-    CommandSpec, Effects, ImageEffect, Outputs, ParamType, Registry, Result, typed,
+    CommandSpec, Effects, ImageEffect, Outputs, ParamType, Params, Registry, Result, typed,
 };
-use calipix_core::{AxisKind, Image};
+use calipix_core::AxisKind;
 
 use crate::InputOnly;
+use crate::process::PlaneScope;
+
+#[derive(Params)]
+struct InvertParams {
+    #[param(flatten)]
+    scope: PlaneScope,
+}
 
 pub(crate) fn register(registry: &mut Registry) -> Result<()> {
     registry.register(typed(
@@ -49,23 +56,15 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
                 image: ImageEffect::Modifies,
                 ..Effects::default()
             }),
-        |ctx, p: InputOnly| {
-            let image = ctx.image(p.input)?.clone();
-            let meta = image.meta().clone();
-            let count = meta.plane_count();
-            let mut planes = Vec::with_capacity(count);
-            for plane in 0..count {
-                ctx.check_cancelled()?;
-                ctx.progress(plane as f64 / count as f64, "Inverting");
+        |ctx, p: InvertParams| {
+            let meta = ctx.image(p.scope.input)?.meta().clone();
+            p.scope.apply(ctx, "Inverting", |plane, info| {
                 let range = meta
                     .channels
-                    .get(meta.plane_channel(plane)?)
+                    .get(info.channel)
                     .and_then(|c| c.display_range);
-                planes.push(calipix_ops::invert_plane(&image.read_plane(plane)?, range)?);
-            }
-            ctx.workspace_mut()
-                .set_image(p.input, Image::from_planes(meta, planes)?)?;
-            Ok(Outputs::new())
+                calipix_ops::invert_plane(plane, range)
+            })
         },
     ))?;
 
