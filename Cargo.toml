@@ -6,7 +6,7 @@ members = ["crates/*", "xtask"]
 version = "0.1.0"
 edition = "2024"
 license = "BSD-2-Clause"
-repository = "https://github.com/Japh/imager2"
+repository = "https://github.com/Japh/calipix"
 rust-version = "1.99"
 
 [workspace.dependencies]
