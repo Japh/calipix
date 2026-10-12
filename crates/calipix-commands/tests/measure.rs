@@ -838,24 +838,19 @@ fn column(session: &Session, table: &str, name: &str) -> Vec<f64> {
         .collect()
 }
 
-/// Selects the rectangle of a case, if it has one; false for shapes the
-/// commands cannot be given yet.
-fn select(exec: &Executor, session: &mut Session, case: &Case) -> bool {
+/// Makes the selection of a case, as the macro made it.
+fn select(exec: &Executor, session: &mut Session, case: &Case) {
     let words: Vec<&str> = case.about["roi"].split(' ').collect();
-    match words[0] {
-        "none" => true,
-        "rect" => {
-            let n: Vec<f64> = words[1..].iter().map(|w| w.parse().unwrap()).collect();
-            exec.run(
-                session,
-                "select.set",
-                &Args::new().with("selection", Roi::rectangle(n[0], n[1], n[2], n[3])),
-            )
-            .unwrap();
-            true
-        }
-        _ => false,
-    }
+    let n: Vec<f64> = words[1..].iter().map(|w| w.parse().unwrap()).collect();
+    let roi = match words[0] {
+        "none" => return,
+        "rect" => Roi::rectangle(n[0], n[1], n[2], n[3]),
+        "oval" => Roi::oval(n[0], n[1], n[2], n[3]),
+        "line" => Roi::line(n[0], n[1], n[2], n[3]),
+        other => panic!("{}: unknown selection {other}", case.name),
+    };
+    exec.run(session, "select.set", &Args::new().with("selection", roi))
+        .unwrap();
 }
 
 #[test]
@@ -864,9 +859,7 @@ fn histogram_tables_match_imagej() {
     for case in cases().iter().filter(|c| c.name.starts_with("hist_")) {
         let (exec, mut session) = setup();
         open(&exec, &mut session, &case.about["image"]);
-        if !select(&exec, &mut session, case) {
-            continue;
-        }
+        select(&exec, &mut session, case);
         let mut args = Args::new().with("bins", case.about["bins"].parse::<i64>().unwrap());
         if let Some(range) = case.about.get("range") {
             let r = list(range);
@@ -920,7 +913,8 @@ fn histogram_tables_match_imagej() {
         assert!(session.workspace.table(table).is_none());
         checked += 1;
     }
-    assert!(checked >= 10, "only {checked} histograms");
+    // Rectangles, ovals and no selection on each of the four images.
+    assert!(checked >= 16, "only {checked} histograms");
 }
 
 #[test]
@@ -995,14 +989,12 @@ fn histogram_of_a_stack_and_of_other_bins() {
 }
 
 #[test]
-fn profiles_of_rectangles_match_imagej() {
+fn profiles_of_rectangles_and_lines_match_imagej() {
     let mut checked = 0;
     for case in cases().iter().filter(|c| c.name.starts_with("profile_")) {
         let (exec, mut session) = setup();
         open(&exec, &mut session, &case.about["image"]);
-        if !select(&exec, &mut session, case) {
-            continue;
-        }
+        select(&exec, &mut session, case);
         let vertical = case.about.contains_key("vertical");
         let out = exec
             .run(
@@ -1026,7 +1018,8 @@ fn profiles_of_rectangles_match_imagej() {
         assert_eq!(distance.last().copied(), Some(theirs.len() as f64 - 1.0));
         checked += 1;
     }
-    assert!(checked >= 16, "only {checked} profiles");
+    // Four rectangles and four straight lines on each of the four images.
+    assert_eq!(checked, 32, "profiles");
 }
 
 #[test]
