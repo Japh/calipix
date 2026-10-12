@@ -35,10 +35,10 @@ pub enum MathOp {
 ///
 /// * **Unsigned 8-bit** (`ImageProcessor.process`, also used for each
 ///   channel of an RGB image): the result for each of the 256 possible
-///   samples is computed once and clamped to 0..=255. Constants are
-///   truncated to integers except for Multiply, which rounds the product.
-///   Gamma is `exp(ln(v / 255) * g) * 255` and Log is
-///   `ln(v) * 255 / ln(255)`, both rounded; Exp is the inverse of Log.
+///   samples is computed once and clamped to 0..=255. Constants and
+///   results are truncated to integers, except that Multiply rounds the
+///   product. Gamma is `exp(ln(v / 255) * g) * 255`, Log is
+///   `ln(v) * 255 / ln(255)` and Exp is the inverse of Log.
 /// * **Other integers** (`ShortProcessor.process`, which ImageJ has for
 ///   unsigned 16-bit only): results are clamped to the type's range.
 ///   Gamma, Log and Exp depend on `range`, the image's display range, or
@@ -53,6 +53,10 @@ pub enum MathOp {
 ///   for zero; AND, OR and XOR do nothing. Divide multiplies by the
 ///   reciprocal of the divisor, so dividing by zero gives infinities, and
 ///   NaN for samples that are zero.
+///
+/// The integer rules are those of ImageJ 1.54p, the version the reference
+/// results come from. Later versions (1.54u at least) round the results of
+/// Gamma, Log, Exp and Square Root instead of truncating them.
 ///
 /// Abs does nothing to unsigned samples. Reciprocal and NaN Background
 /// need float samples, and complex planes are not supported.
@@ -78,6 +82,15 @@ pub fn apply(buf: &Buffer, op: MathOp, range: Option<(f64, f64)>) -> Result<Buff
             ));
         }
     })
+}
+
+/// What Set with `value` stores in the red, green and blue channels of an
+/// RGB image. ImageJ's `ColorProcessor.set` takes the truncated value as a
+/// packed `0xRRGGBB` colour, so that 77 sets blue to 77 and red and green
+/// to 0, and 0x123456 sets the three channels to 0x12, 0x34 and 0x56.
+pub fn rgb_set_components(value: f64) -> [u8; 3] {
+    let packed = java::int(value);
+    [(packed >> 16) as u8, (packed >> 8) as u8, packed as u8]
 }
 
 /// Refuses the operations that only make sense for float samples.
@@ -106,12 +119,12 @@ fn byte_op(i: i32, op: MathOp) -> u8 {
         MathOp::And(value) => i & value,
         MathOp::Or(value) => i | value,
         MathOp::Xor(value) => i ^ value,
-        MathOp::Gamma(value) => java::round_int(((i as f64 / 255.0).ln() * value).exp() * 255.0),
+        MathOp::Gamma(value) => java::int(((i as f64 / 255.0).ln() * value).exp() * 255.0),
         MathOp::Log if i == 0 => 0,
-        MathOp::Log => java::round_int((i as f64).ln() * scale),
-        MathOp::Exp => java::round_int((i as f64 / scale).exp()),
+        MathOp::Log => java::int((i as f64).ln() * scale),
+        MathOp::Exp => java::int((i as f64 / scale).exp()),
         MathOp::Square => i * i,
-        MathOp::SquareRoot => java::round_int((i as f64).sqrt()),
+        MathOp::SquareRoot => java::int((i as f64).sqrt()),
         MathOp::Min(value) if (i as f64) < value => java::int(value),
         MathOp::Max(value) if (i as f64) > value => java::int(value),
         MathOp::Min(_) | MathOp::Max(_) | MathOp::Abs => i,
@@ -207,13 +220,13 @@ fn int_plane<T: IntSample>(samples: &[T], op: MathOp, range: Option<(f64, f64)>)
             MathOp::Xor(value) => v1 ^ value as i128,
             MathOp::Gamma(_) if span <= 0.0 || v1 == min2 => v1,
             MathOp::Gamma(value) => {
-                round((value * ((v1 - min2) as f64 / span).ln()).exp() * span + min2 as f64)
+                int((value * ((v1 - min2) as f64 / span).ln()).exp() * span + min2 as f64)
             }
             MathOp::Log if v1 <= 0 => 0,
-            MathOp::Log => round(d1.ln() * (max2f / max2f.ln())),
-            MathOp::Exp => round((d1 * (max2f.ln() / max2f)).exp()),
+            MathOp::Log => int(d1.ln() * (max2f / max2f.ln())),
+            MathOp::Exp => int((d1 * (max2f.ln() / max2f)).exp()),
             MathOp::Square => int(d1 * d1),
-            MathOp::SquareRoot => round(d1.sqrt()),
+            MathOp::SquareRoot => int(d1.sqrt()),
             MathOp::Abs => v1.abs(),
             MathOp::Min(value) if d1 < value => int(value),
             MathOp::Max(value) if d1 > value => int(value),

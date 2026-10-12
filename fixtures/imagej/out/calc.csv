@@ -1,0 +1,105 @@
+group,slice,count,image1,image2,options,width,height,bits,min,max
+gray8,1,1,gray8,b8,Add create,32,24,8,0,255
+gray8,2,1,gray8,b8,Subtract create,32,24,8,0,255
+gray8,3,1,gray8,b8,Multiply create,32,24,8,0,255
+gray8,4,1,gray8,b8,Divide create,32,24,8,0,255
+gray8,5,1,gray8,b8,AND create,32,24,8,0,255
+gray8,6,1,gray8,b8,OR create,32,24,8,0,255
+gray8,7,1,gray8,b8,XOR create,32,24,8,0,255
+gray8,8,1,gray8,b8,Min create,32,24,8,0,255
+gray8,9,1,gray8,b8,Max create,32,24,8,0,255
+gray8,10,1,gray8,b8,Average create,32,24,8,0,255
+gray8,11,1,gray8,b8,Difference create,32,24,8,0,255
+gray8,12,1,gray8,b8,Copy create,32,24,8,0,255
+gray8,13,1,gray8,b8,Transparent-zero create,32,24,8,0,255
+gray16,1,1,gray16,b16,Add create,32,24,16,0,65535
+gray16,2,1,gray16,b16,Subtract create,32,24,16,0,49104
+gray16,3,1,gray16,b16,Multiply create,32,24,16,0,65535
+gray16,4,1,gray16,b16,Divide create,32,24,16,0,65535
+gray16,5,1,gray16,b16,AND create,32,24,16,0,65535
+gray16,6,1,gray16,b16,OR create,32,24,16,0,65535
+gray16,7,1,gray16,b16,XOR create,32,24,16,0,65420
+gray16,8,1,gray16,b16,Min create,32,24,16,0,65535
+gray16,9,1,gray16,b16,Max create,32,24,16,0,65535
+gray16,10,1,gray16,b16,Average create,32,24,16,0,65535
+gray16,11,1,gray16,b16,Difference create,32,24,16,0,49104
+gray16,12,1,gray16,b16,Copy create,32,24,16,0,65535
+gray16,13,1,gray16,b16,Transparent-zero create,32,24,16,0,65535
+gray32f,1,1,gray32f,bf,Add create,32,24,32,-Infinity,Infinity
+gray32f,2,1,gray32f,bf,Subtract create,32,24,32,-Infinity,Infinity
+gray32f,3,1,gray32f,bf,Multiply create,32,24,32,-Infinity,Infinity
+gray32f,4,1,gray32f,bf,Divide create,32,24,32,-Infinity,Infinity
+gray32f,5,1,gray32f,bf,AND create,32,24,32,-2147483648,2.1475E9
+gray32f,6,1,gray32f,bf,OR create,32,24,32,-12,30
+gray32f,7,1,gray32f,bf,XOR create,32,24,32,-2147483648,2.1475E9
+gray32f,8,1,gray32f,bf,Min create,32,24,32,-Infinity,10.75
+gray32f,9,1,gray32f,bf,Max create,32,24,32,-11,Infinity
+gray32f,10,1,gray32f,bf,Average create,32,24,32,-Infinity,Infinity
+gray32f,11,1,gray32f,bf,Difference create,32,24,32,0.01562,Infinity
+gray32f,12,1,gray32f,bf,Copy create,32,24,32,-11,10.75
+gray32f,13,1,gray32f,bf,Transparent-zero create,32,24,32,-11,13.4375
+rgb,1,1,rgb,brgb,Add create,32,24,24,0,255
+rgb,2,1,rgb,brgb,Subtract create,32,24,24,0,255
+rgb,3,1,rgb,brgb,Multiply create,32,24,24,0,255
+rgb,4,1,rgb,brgb,Divide create,32,24,24,0,255
+rgb,5,1,rgb,brgb,AND create,32,24,24,0,255
+rgb,6,1,rgb,brgb,OR create,32,24,24,0,255
+rgb,7,1,rgb,brgb,XOR create,32,24,24,0,255
+rgb,8,1,rgb,brgb,Min create,32,24,24,0,255
+rgb,9,1,rgb,brgb,Max create,32,24,24,0,255
+rgb,10,1,rgb,brgb,Average create,32,24,24,0,255
+rgb,11,1,rgb,brgb,Difference create,32,24,24,0,255
+rgb,12,1,rgb,brgb,Copy create,32,24,24,0,255
+rgb,13,1,rgb,brgb,Transparent-zero create,32,24,24,0,255
+gray32f,14,1,gray32f,bf,Divide create divide=NaN,32,24,32,-Infinity,Infinity
+gray32f,15,1,gray32f,bf,Divide create divide=0,32,24,32,-Infinity,Infinity
+gray32f,16,1,gray32f,bf,Divide create divide=-7.5,32,24,32,-Infinity,Infinity
+gray32f,17,1,gray32f,bf,Divide divide=-7.5,32,24,32,-Infinity,Infinity
+mixed_u8,1,1,gray8,b16,Add create,32,24,8,0,255
+mixed_u8,2,1,gray8,b16,Multiply create,32,24,8,0,255
+mixed_u8,3,1,gray8,b16,Copy create,32,24,8,0,255
+mixed_u8,4,1,gray8,bf,Add create,32,24,8,0,255
+mixed_u8,5,1,gray8,bf,Multiply create,32,24,8,-2596,2486
+mixed_u8,6,1,gray8,bf,Divide create,32,24,8,-852,-1
+mixed_u8,7,1,gray8,bf,Min create,32,24,8,0,255
+mixed_u8,8,1,gray8,brgb,Add create,32,24,8,0,255
+mixed_u8,9,1,gray8,brgb,Copy create,32,24,8,0,255
+mixed_u16,1,1,gray16,b8,Add create,32,24,16,0,65535
+mixed_u16,2,1,gray16,b8,Subtract create,32,24,16,0,65528
+mixed_u16,3,1,gray16,bf,Add create,32,24,16,0,65535
+mixed_u16,4,1,gray16,bf,Multiply create,32,24,16,0,65535
+mixed_u16,5,1,gray16,bf,Divide create,32,24,16,0,65535
+mixed_u16,6,1,gray16,bf,Copy create,32,24,16,0,11
+mixed_u16,7,1,gray16,brgb,Add create,32,24,16,0,65535
+mixed_u16,8,1,gray16,b16,Subtract,32,24,16,0,49104
+mixed_f32,1,1,gray32f,b8,Add create,32,24,32,-Infinity,Infinity
+mixed_f32,2,1,gray32f,b8,Divide create,32,24,32,-Infinity,Infinity
+mixed_f32,3,1,gray32f,b16,Multiply create,32,24,32,-Infinity,Infinity
+mixed_f32,4,1,gray32f,brgb,Add create,32,24,32,-Infinity,Infinity
+mixed_f32,5,1,gray8,b8,Add create 32-bit,32,24,32,4,488
+mixed_f32,6,1,gray8,b8,Divide create 32-bit,32,24,32,0,Infinity
+mixed_f32,7,1,gray8,b8,Multiply create 32-bit,32,24,32,0,59487
+mixed_f32,8,1,gray16,b8,Subtract create 32-bit,32,24,32,-13,65528
+mixed_f32,9,1,gray8,bf,Subtract create 32-bit,32,24,32,-6.5,263
+mixed_f32,10,1,gray8,b8,Divide 32-bit,32,24,32,0,Infinity
+mixed_f32,11,1,gray32f,bf,Add 32-bit,32,24,32,-Infinity,Infinity
+mixed_f32,12,1,rgb,brgb,Add create 32-bit,32,24,32,69.3333,255
+mixed_f32,13,1,gray8,brgb,Add create 32-bit,32,24,32,0,454
+mixed_rgb,1,1,rgb,b8,Add create,32,24,24,0,255
+mixed_rgb,2,1,rgb,b8,Copy create,32,24,24,0,255
+mixed_rgb,3,1,rgb,b16,Add create,32,24,24,0,255
+mixed_rgb,4,1,rgb,bf,Subtract create,32,24,24,0,255
+mixed_rgb,5,1,rgb,b8,Add create 32-bit,32,24,24,0,255
+small_u8,1,1,gray8,small8,Add create,20,10,8,0,255
+small_u8,2,1,small8,b8,Subtract create,20,10,8,0,255
+mixed_u8,10,1,gray8,small8,Add,32,24,8,0,255
+mixed_u8,11,1,gray8,small8,Copy,32,24,8,0,255
+stack_u8,1,6,stack_z6_8bit,b8,Add create stack,32,24,8,0,255
+stack_u8,7,6,stack_z6_8bit,bstack,Difference create stack,32,24,8,0,255
+stack_u8,13,6,stack_z6_8bit,b8,Subtract stack,32,24,8,0,255
+stack_u8,19,1,stack_z6_8bit,b8,Add create slice=3,32,24,8,0,255
+stack_u8,20,6,stack_z6_8bit,b8,Add slice=3,32,24,8,0,255
+stack_u8,26,1,stack_z6_8bit,bstack,Add create slice=3,32,24,8,0,255
+stack_u8,27,1,b8,bstack,Add create stack,32,24,8,0,255
+stack_f32,1,6,stack_z6_8bit,bstack,Divide create 32-bit stack,32,24,32,1.9524,2
+stack_f32,7,6,stack_z6_8bit,bf,Multiply create 32-bit stack,32,24,32,-660,989
