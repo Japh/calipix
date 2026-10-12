@@ -1004,6 +1004,12 @@ bytes = 410
 macro = "gen/06_measure.ijm"
 
 [[file]]
+path = "measure_shape_cases.txt"
+sha256 = "44e3be467a58bfc287cfdd83413484f22b3aff98bd7b2d1bf2ac1b8634f9ba4c"
+bytes = 450200
+macro = "gen/80_measure_shapes.ijm"
+
+[[file]]
 path = "png_blend_graya16_1.txt"
 sha256 = "2c81f4eb65378f17cbcb9e955e69e4cfeb7c2677fb13c96e58a59a4890eadf98"
 bytes = 1911
@@ -1866,6 +1872,12 @@ path = "pngw_stack8_3.txt"
 sha256 = "3727e308ba474861e9407e59ee5ea59c49a6d45ae6262aedd97823bc9c0ee043"
 bytes = 514
 macro = "gen/22_png.ijm"
+
+[[file]]
+path = "profile_cases.txt"
+sha256 = "6e0866ccdf874aa03b873a33fe0730e54db7d0fd5314cff53ffcfdb62692f6d4"
+bytes = 161249
+macro = "gen/81_line_profiles.ijm"
 
 [[file]]
 path = "results_all_dec0.csv"
@@ -3223,6 +3235,156 @@ path = "rs_8_9x7.raw"
 sha256 = "ab5011a309b2e712133a91e743788c2c877c680a15d8b47d194d7ef96ea4336d"
 bytes = 126
 macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "selection_ops.csv"
+sha256 = "deea22cf8ac22468d304c0f71383749211374815b24de2be89c72c5e999d0c2a"
+bytes = 73257
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_16_31x23.raw"
+sha256 = "9f3cbba4db3faefeffe14d86249f6e485826432f332b213f4bb15de1a88ee243"
+bytes = 25668
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_24_31x23.raw"
+sha256 = "05e7a5cd8e2393f23ed13583977711ee496ef529a65494bbf30a4d5c009d0967"
+bytes = 38502
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_32_31x23.raw"
+sha256 = "1c801a9254569d93003baa3f4a2643373d3d30e38a2d953b8b41e1605fbae422"
+bytes = 51336
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_10x7.raw"
+sha256 = "0e83ba1eee03d56168b4483ecaf5a50091a9603e9ad0e864cbdd3c225c59cfe6"
+bytes = 70
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_11x11.raw"
+sha256 = "d47b40eb7ec26a97c5294e988dd89e38a6accb070c1d9c32ad0861147e60533c"
+bytes = 242
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_11x8.raw"
+sha256 = "7ebbbcc0c18312e88805a99efb4860d049bba878d2f72c3f4800b56b56bdcce2"
+bytes = 176
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_11x9.raw"
+sha256 = "20c4d1a07e509c76600a8c67473ffb6fbfc6ece5f44800fcedd7593c7c5c1016"
+bytes = 99
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_13x10.raw"
+sha256 = "8f30e7be8f5b8b41f5f41f5d006c2396b3cdf7066df3043cb9e8561d8ff395c7"
+bytes = 130
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_13x9.raw"
+sha256 = "61345df98f0ffce9289aef7d6a8d566d5ba356d7834f6e620c029fe0dff2aff9"
+bytes = 117
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_16x12.raw"
+sha256 = "0fed6e968b7dce6629ecfa01cf698a5b0cd3da3beda69207bb82ee92eb29eaf4"
+bytes = 384
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_18x13.raw"
+sha256 = "f3de10393c7e9df0e05f50b4f04226390a7abc88be0ca80463a5ffd43ad6168d"
+bytes = 468
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_20x14.raw"
+sha256 = "a02d7852439cdc371fe935b238be42925ad12ba2f913d05da7e4c46bc846ce73"
+bytes = 560
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_20x15.raw"
+sha256 = "2c08cb63fc592b22a09dacc415d6a7879cdbac1513068ad1b3d6f2d463bb24b2"
+bytes = 3000
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_20x8.raw"
+sha256 = "572506250401e9d18002e0abdfecd602cd08dd737e707307a04e4d1e679f6de2"
+bytes = 320
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_21x16.raw"
+sha256 = "c2f8631280203a75fdb102821f75a48e21ddbc8930e835c2fc8a77950b8f61cf"
+bytes = 672
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_22x16.raw"
+sha256 = "7ae5af7ee48b0e02a648d2f3ec96ff0ab088d311c0a673f0c1da533696cda40f"
+bytes = 704
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_22x17.raw"
+sha256 = "975b615f9d30ce10d66f7bb4a2e7e40a1615d05cd1340fe9c6b0bd75a2a76d73"
+bytes = 374
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_23x31.raw"
+sha256 = "96d40d06273a0bb57731bf01df6071a1b9c126e42c37c47368bd896c872d790e"
+bytes = 14260
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_25x18.raw"
+sha256 = "d35d17ad90eb4c1379aa8fcb53bc281bee1010bc907d187b4aaab9c46cac5bb8"
+bytes = 900
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_25x19.raw"
+sha256 = "b31d8d360b9493e84693cac6c3332d7def943e5bd9b7b08ffbc30901b721806e"
+bytes = 950
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_31x23.raw"
+sha256 = "2955a6ec17f08de768eb80da3293f2d70c4aeaf510f914c0b4303411144813a2"
+bytes = 71300
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_40x30.raw"
+sha256 = "90555d29fb404f44cb58bfd9cfa40896926b4c66658cc69ac13cc6f585ace0b5"
+bytes = 12000
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_6x6.raw"
+sha256 = "8854b12ec667265c7676994697de1c9e78bbc9c57a9fc72d72ae99e7fffa04e8"
+bytes = 36
+macro = "gen/82_selection_ops.ijm"
+
+[[file]]
+path = "selop_8_9x7.raw"
+sha256 = "f28ca8f83ba1ac0d35025af07af773b56d416c5d58cbe4b0f42c6b0b24986abf"
+bytes = 63
+macro = "gen/82_selection_ops.ijm"
 
 [[file]]
 path = "stack_z3_16bit_le.tif"

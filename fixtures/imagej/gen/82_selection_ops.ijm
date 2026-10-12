@@ -96,6 +96,7 @@ for (i=nImages; i>=1; i--) {
 		close();
 	}
 }
+run("Set Measurements...", "area mean min redirect=None decimal=3");
 File.saveString(csv, d+"/selection_ops.csv");
 print("GEN_OK");
 

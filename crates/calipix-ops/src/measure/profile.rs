@@ -290,12 +290,10 @@ impl Relative {
 
     /// `PolygonRoi.getSpline` for an open line.
     fn spline(&self, evaluation_points: usize) -> (Vec<f32>, Vec<f32>) {
-        let n = self.xs.len();
-        let mut nodes = vec![0f32; n];
+        let mut nodes = vec![0f32];
         let mut last = 0f32;
-        for i in 1..n {
-            let dx = self.xs[i] - self.xs[i - 1];
-            let dy = self.ys[i] - self.ys[i - 1];
+        for (x, y) in self.xs.windows(2).zip(self.ys.windows(2)) {
+            let (dx, dy) = (x[1] - x[0], y[1] - y[0]);
             // The independent coordinate grows by the square root of the
             // distance between vertices.
             let mut step = f64::from(dx * dx + dy * dy).sqrt().sqrt() as f32;
@@ -303,7 +301,7 @@ impl Relative {
                 step = 0.001;
             }
             last += step;
-            nodes[i] = last;
+            nodes.push(last);
         }
         let fit_x = SplineFitter::new(&nodes, &self.xs);
         let fit_y = SplineFitter::new(&nodes, &self.ys);

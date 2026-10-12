@@ -21,7 +21,8 @@ use calipix_core::{AxisKind, Buffer, Cell, ColorModel, Image, Rect, Table};
 use calipix_ops::measure::{
     Calibration, HistogramSpec, MeasureSettings, Measured, Measurements, Outline, PlaneContext,
     Region, Row, Samples, TableFormat, append_row, column_average_profile, format_table,
-    line_profile, measure, outline_of, row_average_profile, row_label, statistics,
+    line_profile, measure, outline_of, row_average_profile, row_label, selection_profile,
+    statistics,
 };
 use calipix_roi::Roi;
 
@@ -809,4 +810,42 @@ fn profiles_match_imagej() {
     }
     report(&failures, compared);
     assert!(seen >= 32, "only {seen} profiles");
+}
+
+/// `profile_cases.txt` (`gen/81_line_profiles.ijm`): Plot Profile along
+/// straight, segmented and freehand lines, thin and wide, and rotated
+/// rectangles.
+#[test]
+fn profiles_along_every_kind_of_line_match_imagej() {
+    let (mut checked, mut compared) = (0, 0);
+    for case in &cases("profile_cases.txt") {
+        let plane = Plane::open(case.about("image").unwrap(), None);
+        let roi: Roi = match (case.about("roi_file"), case.about("roi")) {
+            (Some(file), _) => {
+                calipix_roi::decode(&std::fs::read(fixture(file)).unwrap())
+                    .unwrap()
+                    .roi
+            }
+            (None, Some(text)) => text.parse().unwrap(),
+            (None, None) => panic!("{}: no selection", case.name),
+        };
+        let interpolate = case.about("interpolate") != Some("0");
+        let ours = selection_profile(
+            plane.samples(),
+            plane.width,
+            plane.height,
+            &roi,
+            interpolate,
+        )
+        .unwrap_or_else(|e| panic!("{}: {e}", case.name));
+        let theirs = case.list("profile");
+        assert_eq!(ours.len(), theirs.len(), "{}", case.name);
+        for (i, (o, t)) in ours.iter().zip(&theirs).enumerate() {
+            assert!(close(*o, *t), "{} point {i}: {o}, ImageJ {t}", case.name);
+            compared += 1;
+        }
+        checked += 1;
+    }
+    assert!(checked >= 160, "only {checked} profiles");
+    assert!(compared > 9000, "only {compared} values");
 }

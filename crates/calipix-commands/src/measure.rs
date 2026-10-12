@@ -928,10 +928,27 @@ fn run_histogram(ctx: &mut CommandCtx<'_>, p: HistogramParams) -> Result<Outputs
     let bins = p.bins as usize;
     let plane = p.plane.read(ctx)?;
     let selected = Selected::of(ctx, p.plane.input, &plane)?;
-    let has_selection = !matches!(selected.outline.kind, OutlineKind::Whole);
-    if has_selection && !selected.outline.is_area() {
-        return Err(Error::failed("a histogram needs an area selection or none"));
-    }
+    // Only an area confines the count. As in ImageJ
+    // (`ImagePlus.getStatistics`), a line, an angle or several points
+    // leave the whole image to be counted, and a single point counts the
+    // one pixel it lies in.
+    let single_point = match &selected.outline.kind {
+        OutlineKind::Points(points) if points.len() == 1 => {
+            let (x, y) = (points[0].0.trunc(), points[0].1.trunc());
+            if x < 0.0 || y < 0.0 || x >= plane.width as f64 || y >= plane.height as f64 {
+                return Err(Error::failed("the selected point is outside the image"));
+            }
+            Some(calipix_core::Rect::new(x as usize, y as usize, 1, 1))
+        }
+        _ => None,
+    };
+    let region = || match single_point {
+        Some(rect) => Region::rect(rect),
+        None => selected.region(&plane),
+    };
+    let has_selection = selected.outline.is_area()
+        && !matches!(selected.outline.kind, OutlineKind::Whole)
+        || single_point.is_some();
     let custom = bins != 256 || range.is_some();
     let eight_bit = plane.buffers.len() == 3 || matches!(plane.buffers[0], Buffer::U8(_));
 
@@ -971,7 +988,7 @@ fn run_histogram(ctx: &mut CommandCtx<'_>, p: HistogramParams) -> Result<Outputs
             samples,
             plane.width,
             plane.height,
-            selected.region(&plane),
+            region(),
             &plane.calibration,
             Measurements::default(),
             HistogramSpec { bins, range },

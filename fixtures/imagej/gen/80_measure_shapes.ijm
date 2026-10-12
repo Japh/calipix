@@ -81,6 +81,7 @@ for (k=0; k<images.length; k++) {
 	close();
 }
 
+run("Set Measurements...", "area mean min redirect=None decimal=3");
 File.saveString(s, d+"/measure_shape_cases.txt");
 print("GEN_OK");
 

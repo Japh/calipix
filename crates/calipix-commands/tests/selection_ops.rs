@@ -415,3 +415,33 @@ fn selections_that_cover_nothing_say_so() {
         .unwrap();
     assert_eq!(samples(&session), before);
 }
+
+#[test]
+fn histograms_count_within_areas_only() {
+    let (exec, mut session) = setup();
+    let image = Image::from_vec(8, 6, (0u8..48).collect()).unwrap();
+    let id = session.workspace.insert(image, None);
+    let count = |session: &mut Session, roi: Roi| {
+        session.workspace.set_roi(id, Some(roi)).unwrap();
+        let out = exec
+            .run(session, "analyze.histogram", &Args::new())
+            .unwrap();
+        match (out.get("count"), out.get("mean")) {
+            (Some(&Value::Int(n)), Some(&Value::Float(mean))) => (n, mean),
+            other => panic!("{other:?}"),
+        }
+    };
+    // An area confines the count to the pixels it covers.
+    assert_eq!(count(&mut session, Roi::oval(1.0, 1.0, 4.0, 4.0)).0, 12);
+    // A line, an angle or several points confine nothing.
+    for roi in [
+        Roi::line(1.0, 1.0, 6.0, 4.0),
+        Roi::line(1.0, 1.0, 6.0, 4.0).with_line_width(3.0),
+        Roi::polyline(vec![(1.0, 1.0), (4.0, 4.0), (6.0, 1.0)]),
+        Roi::points(vec![(1.0, 1.0), (4.0, 4.0)]),
+    ] {
+        assert_eq!(count(&mut session, roi), (48, 23.5));
+    }
+    // A single point counts its pixel.
+    assert_eq!(count(&mut session, Roi::point(3.0, 2.0)), (1, 19.0));
+}
