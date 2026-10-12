@@ -1,0 +1,119 @@
+base,slice,command,options,range_before,min_after,max_after
+gray8,1,Add...,value=25,-,0,255
+gray8,2,Add...,value=300,-,0,255
+gray8,3,Add...,value=-50,-,0,255
+gray8,4,Add...,value=2.7,-,0,255
+gray8,5,Subtract...,value=25,-,0,255
+gray8,6,Subtract...,value=2.7,-,0,255
+gray8,7,Multiply...,value=1.25,-,0,255
+gray8,8,Multiply...,value=3,-,0,255
+gray8,9,Multiply...,value=-1,-,0,255
+gray8,10,Multiply...,value=0.5,-,0,255
+gray8,11,Divide...,value=3,-,0,255
+gray8,12,Divide...,value=0,-,0,255
+gray8,13,Divide...,value=0.3,-,0,255
+gray8,14,AND...,value=11110000,-,0,255
+gray8,15,OR...,value=1010101,-,0,255
+gray8,16,XOR...,value=11111111,-,0,255
+gray8,17,Min...,value=100,-,0,255
+gray8,18,Min...,value=100.7,-,0,255
+gray8,19,Max...,value=100,-,0,255
+gray8,20,Max...,value=100.7,-,0,255
+gray8,21,Gamma...,value=0.5,-,0,255
+gray8,22,Gamma...,value=2.2,-,0,255
+gray8,23,Set...,value=77,-,0,255
+gray8,24,Set...,value=300,-,0,255
+gray8,25,Set...,value=-5,-,0,255
+gray8,26,Set...,value=2.9,-,0,255
+gray8,27,Log,,-,0,255
+gray8,28,Exp,,-,0,255
+gray8,29,Square,,-,0,255
+gray8,30,Square Root,,-,0,255
+gray8,31,Abs,,-,0,255
+gray8,32,Reciprocal,,-,0,255
+gray8,33,Gamma...,value=0.5,50 200,50,200
+gray8,34,Log,,50 200,50,200
+gray16,1,Add...,value=25,-,0,65534
+gray16,2,Add...,value=70000,-,0,65534
+gray16,3,Add...,value=-500,-,0,65534
+gray16,4,Add...,value=2.7,-,0,65534
+gray16,5,Add...,value=3000000000,-,0,65534
+gray16,6,Subtract...,value=2500,-,0,65534
+gray16,7,Subtract...,value=2.7,-,0,65534
+gray16,8,Multiply...,value=1.25,-,0,65534
+gray16,9,Multiply...,value=3,-,0,65534
+gray16,10,Multiply...,value=-1,-,0,65534
+gray16,11,Multiply...,value=0.5,-,0,65534
+gray16,12,Divide...,value=3,-,0,65534
+gray16,13,Divide...,value=0,-,0,65534
+gray16,14,Divide...,value=0.3,-,0,65534
+gray16,15,AND...,value=1111111100000000,-,0,65534
+gray16,16,OR...,value=1010101,-,0,65534
+gray16,17,XOR...,value=1111111111111111,-,0,65534
+gray16,18,Min...,value=20000,-,20000,65535
+gray16,19,Min...,value=20000.7,-,20000,65535
+gray16,20,Max...,value=20000,-,0,20000
+gray16,21,Max...,value=20000.7,-,0,20000
+gray16,22,Gamma...,value=0.5,-,0,65534
+gray16,23,Gamma...,value=2.2,-,0,65534
+gray16,24,Set...,value=777,-,0,65534
+gray16,25,Set...,value=70000,-,0,65534
+gray16,26,Set...,value=-5,-,0,65534
+gray16,27,Set...,value=2.9,-,0,65534
+gray16,28,Log,,-,0,65534
+gray16,29,Exp,,-,0,65534
+gray16,30,Square,,-,0,65534
+gray16,31,Square Root,,-,0,65534
+gray16,32,Abs,,-,0,65534
+gray16,33,Reciprocal,,-,0,65534
+gray16,34,Gamma...,value=0.5,1000 50000,1000,50000
+gray16,35,Gamma...,value=2.2,1000 50000,1000,50000
+gray16,36,Log,,1000 50000,1000,50000
+gray16,37,Exp,,1000 50000,1000,50000
+gray16,38,Exp,,0 1000,0,1000
+gray32f,1,Add...,value=25,-,-21.625,42.3906
+gray32f,2,Add...,value=-0.3,-,-21.625,42.3906
+gray32f,3,Subtract...,value=2.7,-,-21.625,42.3906
+gray32f,4,Multiply...,value=1.25,-,-21.625,42.3906
+gray32f,5,Multiply...,value=-3,-,-21.625,42.3906
+gray32f,6,Divide...,value=3,-,-21.625,42.3906
+gray32f,7,Divide...,value=0,-,-21.625,42.3906
+gray32f,8,Divide...,value=0.3,-,-21.625,42.3906
+gray32f,9,AND...,value=11110000,-,-21.625,42.3906
+gray32f,10,OR...,value=1010101,-,-21.625,42.3906
+gray32f,11,XOR...,value=11111111,-,-21.625,42.3906
+gray32f,12,Min...,value=0.5,-,0.5,Infinity
+gray32f,13,Min...,value=-3.2,-,-3.2,Infinity
+gray32f,14,Max...,value=0.5,-,-Infinity,0.5
+gray32f,15,Max...,value=-3.2,-,-Infinity,-3.2
+gray32f,16,Gamma...,value=0.5,-,-21.625,42.3906
+gray32f,17,Gamma...,value=2.2,-,-21.625,42.3906
+gray32f,18,Set...,value=77,-,-21.625,42.3906
+gray32f,19,Set...,value=-5.3,-,-21.625,42.3906
+gray32f,20,Log,,-,-21.625,42.3906
+gray32f,21,Exp,,-,-21.625,42.3906
+gray32f,22,Square,,-,-21.625,42.3906
+gray32f,23,Square Root,,-,-21.625,42.3906
+gray32f,24,Abs,,-,0,Infinity
+gray32f,25,Reciprocal,,-,-21.625,42.3906
+gray32f,26,NaN Background,,threshold -5 10,-4.9844,9.9375
+gray32f,27,NaN Background,,threshold 0 1e30,0,22.5156
+rgb,1,Add...,value=25,-,0,255
+rgb,2,Add...,value=-50,-,0,255
+rgb,3,Subtract...,value=25,-,0,255
+rgb,4,Multiply...,value=1.25,-,0,255
+rgb,5,Divide...,value=3,-,0,255
+rgb,6,Divide...,value=0,-,0,255
+rgb,7,AND...,value=11110000,-,0,255
+rgb,8,OR...,value=1010101,-,0,255
+rgb,9,XOR...,value=11111111,-,0,255
+rgb,10,Min...,value=100,-,0,255
+rgb,11,Max...,value=100,-,0,255
+rgb,12,Gamma...,value=0.5,-,0,255
+rgb,13,Set...,value=77,-,0,255
+rgb,14,Set...,value=1193046,-,0,255
+rgb,15,Log,,-,0,255
+rgb,16,Exp,,-,0,255
+rgb,17,Square,,-,0,255
+rgb,18,Square Root,,-,0,255
+rgb,19,Abs,,-,0,255

@@ -1,0 +1,176 @@
+group,slice,count,source,setup,command,options,width,height,bits,channels,slices,frames,min,max,pixel_width,pixel_height,pixel_depth,unit,x_origin,y_origin,selection,sel_x,sel_y,sel_w,sel_hrs_8_31x23,1,1,gray8,-,Rotate... ,angle=15 grid=1 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_31x23,2,1,gray8,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,0,4,3,20,15
+rs_8_31x23,3,1,gray8,-,Translate...,x=2.5 y=1.25 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_16x12,1,1,gray8,-,Scale...,x=0.5 y=0.5 interpolation=None average create,16,12,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_8_12x14,1,1,gray8,-,Scale...,x=0.4 y=0.6 interpolation=None create,12,14,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_8_53x53,1,1,gray8,-,Scale...,x=1.7 y=2.3 interpolation=None average create,53,53,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_8_16x35,1,1,gray8,-,Scale...,x=0.5 y=1.5 interpolation=None average create,16,35,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_8_31x23,4,1,gray8,-,Scale...,x=0.6 y=0.6 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_31x23,5,1,gray8,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_20x10,1,1,gray8,-,Size...,width=20 height=10 average interpolation=None,20,10,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_8_50x40,1,1,gray8,-,Size...,width=50 height=40 interpolation=None,50,40,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_8_31x23,6,1,gray8,-,Rotate... ,angle=15 grid=1 interpolation=Bilinear,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_31x23,7,1,gray8,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=Bilinear,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,0,4,3,20,15
+rs_8_31x23,8,1,gray8,-,Translate...,x=2.5 y=1.25 interpolation=Bilinear,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_16x12,2,1,gray8,-,Scale...,x=0.5 y=0.5 interpolation=Bilinear average create,16,12,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_8_12x14,2,1,gray8,-,Scale...,x=0.4 y=0.6 interpolation=Bilinear create,12,14,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_8_53x53,2,1,gray8,-,Scale...,x=1.7 y=2.3 interpolation=Bilinear average create,53,53,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_8_16x35,2,1,gray8,-,Scale...,x=0.5 y=1.5 interpolation=Bilinear average create,16,35,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_8_31x23,9,1,gray8,-,Scale...,x=0.6 y=0.6 interpolation=Bilinear,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_31x23,10,1,gray8,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=Bilinear,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_20x10,2,1,gray8,-,Size...,width=20 height=10 average interpolation=Bilinear,20,10,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_8_50x40,2,1,gray8,-,Size...,width=50 height=40 interpolation=Bilinear,50,40,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_8_31x23,11,1,gray8,-,Rotate... ,angle=15 grid=1 interpolation=Bicubic,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_31x23,12,1,gray8,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=Bicubic,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,0,4,3,20,15
+rs_8_31x23,13,1,gray8,-,Translate...,x=2.5 y=1.25 interpolation=Bicubic,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_16x12,3,1,gray8,-,Scale...,x=0.5 y=0.5 interpolation=Bicubic average create,16,12,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_8_12x14,3,1,gray8,-,Scale...,x=0.4 y=0.6 interpolation=Bicubic create,12,14,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_8_53x53,3,1,gray8,-,Scale...,x=1.7 y=2.3 interpolation=Bicubic average create,53,53,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_8_16x35,3,1,gray8,-,Scale...,x=0.5 y=1.5 interpolation=Bicubic average create,16,35,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_8_31x23,14,1,gray8,-,Scale...,x=0.6 y=0.6 interpolation=Bicubic,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_31x23,15,1,gray8,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=Bicubic,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_20x10,3,1,gray8,-,Size...,width=20 height=10 average interpolation=Bicubic,20,10,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_8_50x40,3,1,gray8,-,Size...,width=50 height=40 interpolation=Bicubic,50,40,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_16_31x23,1,1,gray16,-,Rotate... ,angle=15 grid=1 interpolation=None,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_31x23,2,1,gray16,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=None,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,0,4,3,20,15
+rs_16_31x23,3,1,gray16,-,Translate...,x=2.5 y=1.25 interpolation=None,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_16x12,1,1,gray16,-,Scale...,x=0.5 y=0.5 interpolation=None average create,16,12,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_16_12x14,1,1,gray16,-,Scale...,x=0.4 y=0.6 interpolation=None create,12,14,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_16_53x53,1,1,gray16,-,Scale...,x=1.7 y=2.3 interpolation=None average create,53,53,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_16_16x35,1,1,gray16,-,Scale...,x=0.5 y=1.5 interpolation=None average create,16,35,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_16_31x23,4,1,gray16,-,Scale...,x=0.6 y=0.6 interpolation=None,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_31x23,5,1,gray16,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=None,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_20x10,1,1,gray16,-,Size...,width=20 height=10 average interpolation=None,20,10,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_16_50x40,1,1,gray16,-,Size...,width=50 height=40 interpolation=None,50,40,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_16_31x23,6,1,gray16,-,Rotate... ,angle=15 grid=1 interpolation=Bilinear,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_31x23,7,1,gray16,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=Bilinear,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,0,4,3,20,15
+rs_16_31x23,8,1,gray16,-,Translate...,x=2.5 y=1.25 interpolation=Bilinear,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_16x12,2,1,gray16,-,Scale...,x=0.5 y=0.5 interpolation=Bilinear average create,16,12,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_16_12x14,2,1,gray16,-,Scale...,x=0.4 y=0.6 interpolation=Bilinear create,12,14,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_16_53x53,2,1,gray16,-,Scale...,x=1.7 y=2.3 interpolation=Bilinear average create,53,53,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_16_16x35,2,1,gray16,-,Scale...,x=0.5 y=1.5 interpolation=Bilinear average create,16,35,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_16_31x23,9,1,gray16,-,Scale...,x=0.6 y=0.6 interpolation=Bilinear,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_31x23,10,1,gray16,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=Bilinear,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_20x10,2,1,gray16,-,Size...,width=20 height=10 average interpolation=Bilinear,20,10,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_16_50x40,2,1,gray16,-,Size...,width=50 height=40 interpolation=Bilinear,50,40,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_16_31x23,11,1,gray16,-,Rotate... ,angle=15 grid=1 interpolation=Bicubic,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_31x23,12,1,gray16,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=Bicubic,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,0,4,3,20,15
+rs_16_31x23,13,1,gray16,-,Translate...,x=2.5 y=1.25 interpolation=Bicubic,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_16x12,3,1,gray16,-,Scale...,x=0.5 y=0.5 interpolation=Bicubic average create,16,12,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_16_12x14,3,1,gray16,-,Scale...,x=0.4 y=0.6 interpolation=Bicubic create,12,14,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_16_53x53,3,1,gray16,-,Scale...,x=1.7 y=2.3 interpolation=Bicubic average create,53,53,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_16_16x35,3,1,gray16,-,Scale...,x=0.5 y=1.5 interpolation=Bicubic average create,16,35,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_16_31x23,14,1,gray16,-,Scale...,x=0.6 y=0.6 interpolation=Bicubic,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_31x23,15,1,gray16,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=Bicubic,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_16_20x10,3,1,gray16,-,Size...,width=20 height=10 average interpolation=Bicubic,20,10,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_16_50x40,3,1,gray16,-,Size...,width=50 height=40 interpolation=Bicubic,50,40,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_32_31x23,1,1,gray32f,-,Rotate... ,angle=15 grid=1 interpolation=None,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_31x23,2,1,gray32f,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=None,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,0,4,3,20,15
+rs_32_31x23,3,1,gray32f,-,Translate...,x=2.5 y=1.25 interpolation=None,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_16x12,1,1,gray32f,-,Scale...,x=0.5 y=0.5 interpolation=None average create,16,12,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_32_12x14,1,1,gray32f,-,Scale...,x=0.4 y=0.6 interpolation=None create,12,14,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_32_53x53,1,1,gray32f,-,Scale...,x=1.7 y=2.3 interpolation=None average create,53,53,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_32_16x35,1,1,gray32f,-,Scale...,x=0.5 y=1.5 interpolation=None average create,16,35,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_32_31x23,4,1,gray32f,-,Scale...,x=0.6 y=0.6 interpolation=None,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_31x23,5,1,gray32f,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=None,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_20x10,1,1,gray32f,-,Size...,width=20 height=10 average interpolation=None,20,10,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_32_50x40,1,1,gray32f,-,Size...,width=50 height=40 interpolation=None,50,40,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_32_31x23,6,1,gray32f,-,Rotate... ,angle=15 grid=1 interpolation=Bilinear,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_31x23,7,1,gray32f,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=Bilinear,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,0,4,3,20,15
+rs_32_31x23,8,1,gray32f,-,Translate...,x=2.5 y=1.25 interpolation=Bilinear,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_16x12,2,1,gray32f,-,Scale...,x=0.5 y=0.5 interpolation=Bilinear average create,16,12,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_32_12x14,2,1,gray32f,-,Scale...,x=0.4 y=0.6 interpolation=Bilinear create,12,14,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_32_53x53,2,1,gray32f,-,Scale...,x=1.7 y=2.3 interpolation=Bilinear average create,53,53,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_32_16x35,2,1,gray32f,-,Scale...,x=0.5 y=1.5 interpolation=Bilinear average create,16,35,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_32_31x23,9,1,gray32f,-,Scale...,x=0.6 y=0.6 interpolation=Bilinear,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_31x23,10,1,gray32f,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=Bilinear,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_20x10,2,1,gray32f,-,Size...,width=20 height=10 average interpolation=Bilinear,20,10,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_32_50x40,2,1,gray32f,-,Size...,width=50 height=40 interpolation=Bilinear,50,40,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_32_31x23,11,1,gray32f,-,Rotate... ,angle=15 grid=1 interpolation=Bicubic,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_31x23,12,1,gray32f,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=Bicubic,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,0,4,3,20,15
+rs_32_31x23,13,1,gray32f,-,Translate...,x=2.5 y=1.25 interpolation=Bicubic,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_16x12,3,1,gray32f,-,Scale...,x=0.5 y=0.5 interpolation=Bicubic average create,16,12,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_32_12x14,3,1,gray32f,-,Scale...,x=0.4 y=0.6 interpolation=Bicubic create,12,14,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_32_53x53,3,1,gray32f,-,Scale...,x=1.7 y=2.3 interpolation=Bicubic average create,53,53,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_32_16x35,3,1,gray32f,-,Scale...,x=0.5 y=1.5 interpolation=Bicubic average create,16,35,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_32_31x23,14,1,gray32f,-,Scale...,x=0.6 y=0.6 interpolation=Bicubic,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_31x23,15,1,gray32f,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=Bicubic,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_20x10,3,1,gray32f,-,Size...,width=20 height=10 average interpolation=Bicubic,20,10,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_32_50x40,3,1,gray32f,-,Size...,width=50 height=40 interpolation=Bicubic,50,40,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_24_31x23,1,1,rgb,-,Rotate... ,angle=15 grid=1 interpolation=None,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_31x23,2,1,rgb,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=None,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,0,4,3,20,15
+rs_24_31x23,3,1,rgb,-,Translate...,x=2.5 y=1.25 interpolation=None,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_16x12,1,1,rgb,-,Scale...,x=0.5 y=0.5 interpolation=None average create,16,12,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_24_12x14,1,1,rgb,-,Scale...,x=0.4 y=0.6 interpolation=None create,12,14,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_24_53x53,1,1,rgb,-,Scale...,x=1.7 y=2.3 interpolation=None average create,53,53,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_24_16x35,1,1,rgb,-,Scale...,x=0.5 y=1.5 interpolation=None average create,16,35,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_24_31x23,4,1,rgb,-,Scale...,x=0.6 y=0.6 interpolation=None,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_31x23,5,1,rgb,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=None,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_20x10,1,1,rgb,-,Size...,width=20 height=10 average interpolation=None,20,10,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_24_50x40,1,1,rgb,-,Size...,width=50 height=40 interpolation=None,50,40,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_24_31x23,6,1,rgb,-,Rotate... ,angle=15 grid=1 interpolation=Bilinear,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_31x23,7,1,rgb,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=Bilinear,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,0,4,3,20,15
+rs_24_31x23,8,1,rgb,-,Translate...,x=2.5 y=1.25 interpolation=Bilinear,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_16x12,2,1,rgb,-,Scale...,x=0.5 y=0.5 interpolation=Bilinear average create,16,12,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_24_12x14,2,1,rgb,-,Scale...,x=0.4 y=0.6 interpolation=Bilinear create,12,14,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_24_53x53,2,1,rgb,-,Scale...,x=1.7 y=2.3 interpolation=Bilinear average create,53,53,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_24_16x35,2,1,rgb,-,Scale...,x=0.5 y=1.5 interpolation=Bilinear average create,16,35,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_24_31x23,9,1,rgb,-,Scale...,x=0.6 y=0.6 interpolation=Bilinear,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_31x23,10,1,rgb,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=Bilinear,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_20x10,2,1,rgb,-,Size...,width=20 height=10 average interpolation=Bilinear,20,10,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_24_50x40,2,1,rgb,-,Size...,width=50 height=40 interpolation=Bilinear,50,40,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_24_31x23,11,1,rgb,-,Rotate... ,angle=15 grid=1 interpolation=Bicubic,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_31x23,12,1,rgb,sel=4:3:20:15,Rotate... ,angle=-37.5 grid=1 interpolation=Bicubic,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,0,4,3,20,15
+rs_24_31x23,13,1,rgb,-,Translate...,x=2.5 y=1.25 interpolation=Bicubic,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_16x12,3,1,rgb,-,Scale...,x=0.5 y=0.5 interpolation=Bicubic average create,16,12,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_24_12x14,3,1,rgb,-,Scale...,x=0.4 y=0.6 interpolation=Bicubic create,12,14,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,12,14
+rs_24_53x53,3,1,rgb,-,Scale...,x=1.7 y=2.3 interpolation=Bicubic average create,53,53,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,53,53
+rs_24_16x35,3,1,rgb,-,Scale...,x=0.5 y=1.5 interpolation=Bicubic average create,16,35,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,35
+rs_24_31x23,14,1,rgb,-,Scale...,x=0.6 y=0.6 interpolation=Bicubic,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_31x23,15,1,rgb,sel=8:6:12:9,Scale...,x=1.5 y=1.5 interpolation=Bicubic,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_24_20x10,3,1,rgb,-,Size...,width=20 height=10 average interpolation=Bicubic,20,10,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_24_50x40,3,1,rgb,-,Size...,width=50 height=40 interpolation=Bicubic,50,40,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,50,40
+rs_8_31x23,16,1,gray8,-,Rotate... ,angle=90 grid=1 interpolation=Bilinear,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_31x23,17,1,gray8,-,Rotate... ,angle=0 grid=1 interpolation=Bilinear,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_31x23,18,1,gray8,-,Rotate... ,angle=180 grid=1 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_36x30,1,1,gray8,-,Rotate... ,angle=15 grid=1 interpolation=Bilinear enlarge,36,30,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,36,30
+rs_8_35x38,1,1,gray8,-,Rotate... ,angle=-60 grid=1 interpolation=None enlarge,35,38,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,35,38
+rs_8_36x30,2,1,gray8,cal,Rotate... ,angle=15 grid=1 interpolation=Bilinear enlarge,36,30,8,1,1,1,0,255,0.5,0.25,2,µm,3,5,-1,0,0,36,30
+rs_32_31x23,16,1,gray32f,-,Rotate... ,angle=0 grid=1 interpolation=Bilinear,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_39x36,1,1,gray32f,-,Rotate... ,angle=33 grid=1 interpolation=Bicubic enlarge,39,36,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,39,36
+rs_16_39x36,1,1,gray16,-,Rotate... ,angle=33 grid=1 interpolation=Bilinear enlarge,39,36,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,39,36
+rs_24_39x36,1,1,rgb,-,Rotate... ,angle=33 grid=1 interpolation=Bilinear enlarge,39,36,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,39,36
+rs_8_31x23,19,1,gray8,-,Rotate... ,angle=15 grid=1,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_10x8,1,1,gray8,sel=4:3:20:15,Scale...,x=0.5 y=0.5 interpolation=Bilinear average create,10,8,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,10,8
+rs_8_40x30,1,1,gray8,sel=4:3:20:15,Scale...,x=2 y=2 interpolation=Bicubic average create,40,30,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,40,30
+rs_8_13x40,1,1,gray8,-,Scale...,x=- y=- width=13 height=40 interpolation=Bilinear average create,13,40,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,13,40
+rs_8_16x6,1,1,gray8,cal,Scale...,x=0.5 y=0.25 interpolation=Bilinear average create,16,6,8,1,1,1,0,255,1,1,2,µm,1.5,1.25,-1,0,0,16,6
+rs_8_20x10,4,1,gray8,cal,Size...,width=20 height=10 average interpolation=Bilinear,20,10,8,1,1,1,0,255,0.775,0.575,2,µm,3,5,-1,0,0,20,10
+rs_8_20x15,1,1,gray8,-,Size...,width=20 height=10 constrain average interpolation=Bilinear,20,15,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,15
+rs_8_30x30,1,1,gray8,sel=4:3:20:15,Size...,width=30 height=30 average interpolation=Bilinear,30,30,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,30,30
+rs_8_20x10,5,1,gray8,-,Size...,width=20 height=10 interpolation=Bilinear,20,10,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_8_9x7,1,1,gray8,-,Scale...,x=0.3 y=0.3 interpolation=None average create,9,7,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,9,7
+rs_8_9x7,2,1,gray8,-,Scale...,x=0.3 y=0.3 interpolation=Bicubic average create,9,7,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,9,7
+rs_16_31x23,16,1,gray16,range=1000:50000,Scale...,x=0.6 y=0.6 interpolation=Bilinear,31,23,16,1,1,1,1000,50000,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_32_31x23,17,1,gray32f,range=-10:20,Scale...,x=0.6 y=0.6 interpolation=None,31,23,32,1,1,1,-10,20,1,1,1,pixels,0,0,-1,0,0,31,23
+rs_8_50x3,1,1,row,-,Size...,width=50 height=3 interpolation=Bilinear,50,3,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,50,3
+rs_8_20x1,1,1,row,-,Size...,width=20 height=1 average interpolation=Bilinear,20,1,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,1
+rs_8_62x3,1,1,row,-,Scale...,x=2 y=3 interpolation=Bicubic create,62,3,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,62,3
+rs_8_32x24,1,6,stack,slice=2,Rotate... ,angle=15 grid=1 interpolation=Bilinear stack,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_32x24,7,6,stack,slice=2,Rotate... ,angle=15 grid=1 interpolation=Bilinear slice,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_37x31,1,6,stack,slice=2,Rotate... ,angle=15 grid=1 interpolation=Bilinear enlarge stack,37,31,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,37,31
+rs_8_16x12,4,6,stack,slice=2,Scale...,x=0.5 y=0.5 z=1.0 interpolation=Bilinear average process create,16,12,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_8_16x12,10,1,stack,slice=2,Scale...,x=0.5 y=0.5 z=1.0 interpolation=Bilinear average create,16,12,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_8_32x24,13,6,stack,slice=2,Scale...,x=0.5 y=0.5 z=1.0 interpolation=Bilinear process,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_32x24,19,6,stack,slice=2,Scale...,x=0.5 y=0.5 z=1.0 interpolation=Bilinear,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_32x24,25,3,stack,-,Scale...,x=1.0 y=1.0 z=0.5 interpolation=Bilinear average process create,32,24,8,1,3,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_32x24,28,9,stack,-,Scale...,x=1.0 y=1.0 z=1.5 interpolation=Bilinear average process create,32,24,8,1,9,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_16x12,11,3,stack,-,Scale...,x=0.5 y=0.5 z=0.5 interpolation=Bicubic average process create,16,12,8,1,3,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+rs_8_32x24,37,3,stack,-,Scale...,x=1.0 y=1.0 z=0.5 interpolation=None process create,32,24,8,1,3,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_20x10,6,6,stack,-,Size...,width=20 height=10 depth=6 average interpolation=Bilinear,20,10,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,10
+rs_8_32x24,40,3,stack,-,Size...,width=32 height=24 depth=3 average interpolation=Bilinear,32,24,8,1,3,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_32x24,43,9,stack,-,Size...,width=32 height=24 depth=9 average interpolation=Bicubic,32,24,8,1,9,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_8_32x24,52,6,stack,slice=2,Translate...,x=2.5 y=1.25 interpolation=Bilinear stack,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+rs_16_16x12,4,12,hyper,-,Scale...,x=0.5 y=0.5 z=1.0 interpolation=Bilinear average create,16,12,16,3,2,2,10000,15000,0.5,0.5,1.5,µm,0,0,-1,0,0,16,12
+rs_16_32x24,1,12,hyper,pos=2:2:1,Rotate... ,angle=15 grid=1 interpolation=Bilinear slice,32,24,16,3,2,2,20000,26000,0.25,0.25,1.5,µm,0,0,-1,0,0,32,24
+rs_16_20x10,4,12,hyper,-,Size...,width=20 height=10 depth=2 time=2 average interpolation=Bilinear,20,10,16,3,2,2,10000,15000,0.4,0.6,1.5,µm,0,0,-1,0,0,20,10

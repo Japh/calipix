@@ -1,0 +1,84 @@
+group,slice,count,source,setup,command,options,width,height,bits,channels,slices,frames,min,max,pixel_width,pixel_height,pixel_depth,unit,x_origin,y_origin,selection,sel_x,sel_y,sel_w,sel_h
+geo_8_31x23,1,1,gray8,-,Flip Horizontally,,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_8_31x23,2,1,gray8,-,Flip Vertically,,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_8_23x31,1,1,gray8,-,Rotate 90 Degrees Right,,23,31,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_8_23x31,2,1,gray8,-,Rotate 90 Degrees Left,,23,31,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_8_17x11,1,1,gray8,sel=5:3:17:11,Crop,,17,11,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_8_40x30,1,1,gray8,-,Canvas Size...,width=40 height=30 position=Center zero,40,30,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,40,30
+geo_8_36x27,1,1,gray8,-,Canvas Size...,width=36 height=27 position=Bottom-Right,36,27,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,36,27
+geo_8_31x23,3,1,gray8,-,Translate...,x=5 y=-3 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_16_31x23,1,1,gray16,-,Flip Horizontally,,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_16_31x23,2,1,gray16,-,Flip Vertically,,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_16_23x31,1,1,gray16,-,Rotate 90 Degrees Right,,23,31,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_16_23x31,2,1,gray16,-,Rotate 90 Degrees Left,,23,31,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_16_17x11,1,1,gray16,sel=5:3:17:11,Crop,,17,11,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_16_40x30,1,1,gray16,-,Canvas Size...,width=40 height=30 position=Center zero,40,30,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,40,30
+geo_16_36x27,1,1,gray16,-,Canvas Size...,width=36 height=27 position=Bottom-Right,36,27,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,36,27
+geo_16_31x23,3,1,gray16,-,Translate...,x=5 y=-3 interpolation=None,31,23,16,1,1,1,0,65534,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_32_31x23,1,1,gray32f,-,Flip Horizontally,,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_32_31x23,2,1,gray32f,-,Flip Vertically,,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_32_23x31,1,1,gray32f,-,Rotate 90 Degrees Right,,23,31,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_32_23x31,2,1,gray32f,-,Rotate 90 Degrees Left,,23,31,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_32_17x11,1,1,gray32f,sel=5:3:17:11,Crop,,17,11,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_32_40x30,1,1,gray32f,-,Canvas Size...,width=40 height=30 position=Center zero,40,30,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,40,30
+geo_32_36x27,1,1,gray32f,-,Canvas Size...,width=36 height=27 position=Bottom-Right,36,27,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,36,27
+geo_32_31x23,3,1,gray32f,-,Translate...,x=5 y=-3 interpolation=None,31,23,32,1,1,1,-21.625,42.3906,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_24_31x23,1,1,rgb,-,Flip Horizontally,,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_24_31x23,2,1,rgb,-,Flip Vertically,,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_24_23x31,1,1,rgb,-,Rotate 90 Degrees Right,,23,31,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_24_23x31,2,1,rgb,-,Rotate 90 Degrees Left,,23,31,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_24_17x11,1,1,rgb,sel=5:3:17:11,Crop,,17,11,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_24_40x30,1,1,rgb,-,Canvas Size...,width=40 height=30 position=Center zero,40,30,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,40,30
+geo_24_36x27,1,1,rgb,-,Canvas Size...,width=36 height=27 position=Bottom-Right,36,27,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,36,27
+geo_24_31x23,3,1,rgb,-,Translate...,x=5 y=-3 interpolation=None,31,23,24,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_8_31x23,4,1,gray8,sel=3:4:10:7,Flip Horizontally,,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,0,3,4,10,7
+geo_8_31x23,5,1,gray8,sel=3:4:11:8,Flip Vertically,,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,0,3,4,11,8
+geo_8_31x23,6,1,gray8,cal,Flip Horizontally,,31,23,8,1,1,1,0,255,0.5,0.25,2,µm,27,5,-1,0,0,31,23
+geo_8_31x23,7,1,gray8,cal,Flip Vertically,,31,23,8,1,1,1,0,255,0.5,0.25,2,µm,3,17,-1,0,0,31,23
+geo_8_31x23,8,1,gray8,cal sel=3:4:10:7,Flip Horizontally,,31,23,8,1,1,1,0,255,0.5,0.25,2,µm,3,5,0,3,4,10,7
+geo_8_23x31,3,1,gray8,cal,Rotate 90 Degrees Right,,23,31,8,1,1,1,0,255,0.25,0.5,2,µm,17,3,-1,0,0,23,31
+geo_8_23x31,4,1,gray8,cal,Rotate 90 Degrees Left,,23,31,8,1,1,1,0,255,0.25,0.5,2,µm,5,27,-1,0,0,23,31
+geo_8_23x31,5,1,gray8,sel=3:4:10:7,Rotate 90 Degrees Right,,23,31,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,23,31
+geo_8_17x11,2,1,gray8,cal sel=5:3:17:11,Crop,,17,11,8,1,1,1,0,255,0.5,0.25,2,µm,-2,2,-1,0,0,17,11
+geo_8_16x12,1,1,gray8,sel=-4:-3:20:15,Crop,,16,12,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,16,12
+geo_8_11x8,1,1,gray8,sel=20:15:30:30,Crop,,11,8,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,11,8
+geo_16_17x11,2,1,gray16,range=1000:50000 sel=5:3:17:11,Crop,,17,11,16,1,1,1,1000,50000,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_8_17x11,3,1,gray8,sel=5:3:17:11,Duplicate...,title=copy,17,11,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_8_31x23,9,1,gray8,sel=5:3:17:11,Duplicate...,title=copy ignore,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,0,5,3,17,11
+geo_8_17x11,4,1,gray8,cal sel=5:3:17:11,Duplicate...,title=copy,17,11,8,1,1,1,0,255,0.5,0.25,2,µm,-2,2,-1,0,0,17,11
+geo_8_31x23,10,1,gray8,-,Duplicate...,title=copy,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_16_31x23,4,1,gray16,range=1000:50000,Duplicate...,title=copy,31,23,16,1,1,1,1000,50000,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_8_20x15,1,1,gray8,-,Canvas Size...,width=20 height=15 position=Top-Left zero,20,15,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,15
+geo_8_20x31,1,1,gray8,-,Canvas Size...,width=20 height=31 position=Center zero,20,31,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,20,31
+geo_8_41x28,1,1,gray8,-,Canvas Size...,width=41 height=28 position=Top-Right zero,41,28,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,41,28
+geo_8_41x28,2,1,gray8,-,Canvas Size...,width=41 height=28 position=Center-Left zero,41,28,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,41,28
+geo_8_41x28,3,1,gray8,-,Canvas Size...,width=41 height=28 position=Bottom-Center zero,41,28,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,41,28
+geo_8_40x30,2,1,gray8,cal,Canvas Size...,width=40 height=30 position=Center zero,40,30,8,1,1,1,0,255,0.5,0.25,2,µm,3,5,-1,0,0,40,30
+geo_16_36x27,2,1,gray16,range=1000:50000,Canvas Size...,width=36 height=27 position=Center,36,27,16,1,1,1,1000,50000,1,1,1,pixels,0,0,-1,0,0,36,27
+geo_32_36x27,2,1,gray32f,range=-10:20,Canvas Size...,width=36 height=27 position=Center,36,27,32,1,1,1,-10,20,1,1,1,pixels,0,0,-1,0,0,36,27
+geo_8_31x23,11,1,gray8,-,Translate...,x=-7 y=4 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_8_31x23,12,1,gray8,-,Translate...,x=2.5 y=1.25 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_8_31x23,13,1,gray8,-,Translate...,x=40 y=0 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,31,23
+geo_8_31x23,14,1,gray8,sel=3:4:10:7,Translate...,x=2 y=1 interpolation=None,31,23,8,1,1,1,0,255,1,1,1,pixels,0,0,0,3,4,10,7
+geo_8_32x24,1,6,stack,slice=2,Flip Horizontally,stack,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_8_32x24,7,6,stack,slice=2,Flip Vertically,slice,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_8_24x32,1,6,stack,slice=2,Rotate 90 Degrees Right,,24,32,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,24,32
+geo_8_32x24,13,6,stack,-,Flip Z,,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_8_32x24,19,6,stack,range=40:180,Flip Z,,32,24,8,1,6,1,40,180,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_8_17x11,5,6,stack,sel=5:3:17:11,Crop,,17,11,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_8_32x24,25,1,stack,slice=3,Duplicate...,title=copy,32,24,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_8_32x24,26,6,stack,slice=3,Duplicate...,title=copy duplicate,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_8_32x24,32,3,stack,slice=3,Duplicate...,title=copy duplicate range=2-4,32,24,8,1,3,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_8_17x11,11,3,stack,slice=3 sel=5:3:17:11,Duplicate...,title=copy duplicate range=2-4,17,11,8,1,3,1,0,255,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_8_17x11,14,1,stack,slice=3 sel=5:3:17:11,Duplicate...,title=copy,17,11,8,1,1,1,0,255,1,1,1,pixels,0,0,-1,0,0,17,11
+geo_8_36x27,2,6,stack,-,Canvas Size...,width=36 height=27 position=Center zero,36,27,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,36,27
+geo_8_32x24,35,6,stack,slice=2,Translate...,x=5 y=-3 interpolation=None stack,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_8_32x24,41,6,stack,slice=2,Translate...,x=5 y=-3 interpolation=None slice,32,24,8,1,6,1,0,255,1,1,1,pixels,0,0,-1,0,0,32,24
+geo_16_32x24,1,12,hyper,-,Flip Horizontally,stack,32,24,16,3,2,2,10000,15000,0.25,0.25,1.5,µm,0,0,-1,0,0,32,24
+geo_16_32x24,13,12,hyper,pos=2:2:1,Flip Vertically,slice,32,24,16,3,2,2,20000,26000,0.25,0.25,1.5,µm,0,0,-1,0,0,32,24
+geo_16_24x32,1,12,hyper,-,Rotate 90 Degrees Left,,24,32,16,3,2,2,10000,15000,0.25,0.25,1.5,µm,0,0,-1,0,0,24,32
+geo_16_17x11,3,12,hyper,sel=5:3:17:11,Crop,,17,11,16,3,2,2,10000,15000,0.25,0.25,1.5,µm,0,0,-1,0,0,17,11
+geo_16_32x24,25,3,hyper,pos=2:2:1,Duplicate...,title=copy,32,24,16,3,1,1,20000,26000,0.25,0.25,1.5,µm,0,0,-1,0,0,32,24
+geo_16_32x24,28,12,hyper,pos=2:2:1,Duplicate...,title=copy duplicate,32,24,16,3,2,2,20000,26000,0.25,0.25,1.5,µm,0,0,-1,0,0,32,24
+geo_16_32x24,40,4,hyper,pos=2:2:1,Duplicate...,title=copy duplicate channels=2-3 slices=2 frames=1-2,32,24,16,2,1,2,30000,37000,0.25,0.25,1.5,µm,0,0,-1,0,0,32,24
+geo_16_17x11,15,2,hyper,pos=2:2:1 sel=5:3:17:11,Duplicate...,title=copy duplicate channels=2 frames=2,17,11,16,1,2,1,20000,26000,0.25,0.25,1.5,µm,0,0,-1,0,0,17,11

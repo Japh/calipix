@@ -32,6 +32,78 @@ bytes = 493
 macro = "gen/06_measure.ijm"
 
 [[file]]
+path = "calc.csv"
+sha256 = "b44bed4615f5537621f7614c4a0b00dacb15390a4b111235363b4d55926e0b3d"
+bytes = 5827
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_gray16.raw"
+sha256 = "ee1970a786f77fd9d49dc7be15e423af802bfd2b783ff02c43052f40b675ffd1"
+bytes = 19968
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_gray32f.raw"
+sha256 = "2817744f93b44085fdb9eab1e7fcf1b7aeb9bd19299b054af528d91693bea7d1"
+bytes = 52224
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_gray8.raw"
+sha256 = "15aea176f69185ff3fb7d5c8c80f216d185a084b7385de037f06f7ebe920853c"
+bytes = 9984
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_mixed_f32.raw"
+sha256 = "4077c9c99d22032bda00eee15018a2fff697d08f10b6c51f145c9ad18ec4f9bd"
+bytes = 39936
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_mixed_rgb.raw"
+sha256 = "2cd9f7b2806f6a56f426264164bb517ada2cd026e3de04dd0b9c2078090fd1d1"
+bytes = 11520
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_mixed_u16.raw"
+sha256 = "7b7883a7a3ffac5d9b57c32d59cc6f5c8c196ca0a43bbedbeff29d9f95f98b82"
+bytes = 12288
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_mixed_u8.raw"
+sha256 = "8da1264a1a9eeefdc88ab3d42f405c2c276d9e3959d358c42d6041d4b9d5f7fb"
+bytes = 8448
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_rgb.raw"
+sha256 = "44ec3e833709968a906f9d4d3ad8b3fd692bf6bf3480788dfd13340d79aac6b9"
+bytes = 29952
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_small_u8.raw"
+sha256 = "8a26e38de881fd37477493a4b29902462123b244ef6c8cb802533bf12d50a4d7"
+bytes = 400
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_stack_f32.raw"
+sha256 = "5ffa9ac7ead64bbda1decf22e491d2aa20cddaf43bda184e07abc628a080bb5d"
+bytes = 36864
+macro = "gen/61_calculator.ijm"
+
+[[file]]
+path = "calc_stack_u8.raw"
+sha256 = "f18279d485e69f51ac8dc41898a9c6eb9be5c44072015f55dd6ffea9bf68913d"
+bytes = 20736
+macro = "gen/61_calculator.ijm"
+
+[[file]]
 path = "composite.csv"
 sha256 = "ef5ebf539bef9b6b5905abe9108e2193d4ddc4ca2aaba72671d12679bc9f2e28"
 bytes = 20510
@@ -42,6 +114,36 @@ path = "contrast.csv"
 sha256 = "57ff8e6092e5a4d7b1b13f02765acbfdb6ccf881928e10afdee954e05acdff2d"
 bytes = 1477
 macro = "gen/34_contrast.ijm"
+
+[[file]]
+path = "conv_f32.raw"
+sha256 = "b140d960d20623316123da54b82c1eca2df1c68912075d6ff9e196294d8212fc"
+bytes = 76800
+macro = "gen/62_convert.ijm"
+
+[[file]]
+path = "conv_rgb.raw"
+sha256 = "1523f6bc9971d8425984c4238d47731110a9b9f8604abd518824422ae7d8d9ce"
+bytes = 36864
+macro = "gen/62_convert.ijm"
+
+[[file]]
+path = "conv_u16.raw"
+sha256 = "5adede5ea27734414d06eca03a77eaaf481c143e098fda2b5a7d61afa5fa1f3c"
+bytes = 21504
+macro = "gen/62_convert.ijm"
+
+[[file]]
+path = "conv_u8.raw"
+sha256 = "b007a57964e9f2b4f5d6db741151fb4733b22542e4122d6c7597926156a8bc01"
+bytes = 31488
+macro = "gen/62_convert.ijm"
+
+[[file]]
+path = "convert.csv"
+sha256 = "ceb701f7cd572ccfdbc7cf1942aae201cd4266fee7f992be4b66e50dd22c1b2b"
+bytes = 3602
+macro = "gen/62_convert.ijm"
 
 [[file]]
 path = "crafted_bits1_1.txt"
@@ -410,6 +512,186 @@ bytes = 9332
 macro = "gen/20_formats.ijm"
 
 [[file]]
+path = "geo_16_17x11.raw"
+sha256 = "894660309c2b28a56d145bc8333b2641367a43ddd44999001f606b681cf5ff92"
+bytes = 5984
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_16_23x31.raw"
+sha256 = "d710874fb088dab0a7b5ca1dc3b7c70138601d75c92ac976ad24b73570556640"
+bytes = 2852
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_16_24x32.raw"
+sha256 = "73754bffaf6ec81b7ce82a31e8d5a9ccf18cb028143c1682b16fa058ba3e859c"
+bytes = 18432
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_16_31x23.raw"
+sha256 = "df9d100f129a2571eabb566f9b86af55b00ad60a75cf57b196acadaaf30ced61"
+bytes = 5704
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_16_32x24.raw"
+sha256 = "1faa8901a8c8aa6f09d6438c0133bf0369288436e99058379ee2732344cc988a"
+bytes = 66048
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_16_36x27.raw"
+sha256 = "98c40117ff8a56bcdaf31e4270ff98c4640fe4d7aa3213d3dd4b16de3d0b6f5d"
+bytes = 3888
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_16_40x30.raw"
+sha256 = "79e96d7511b2eccbc78bfe966c62433a978bddb64648b6c25bebc8cb8184a08c"
+bytes = 2400
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_24_17x11.raw"
+sha256 = "c8d4fa5e497009377f7984798efb8ba62e35fe9ba03921fac17969f84b5a6400"
+bytes = 561
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_24_23x31.raw"
+sha256 = "95e57cba310bde8e3c10b83707ca2f25d9e5d6c17e26eaef9d248b034ce8700a"
+bytes = 4278
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_24_31x23.raw"
+sha256 = "920b8cd8d20ec8b719920f3451b6561ec28e295d7fd5041ad26067ae310e0e2f"
+bytes = 6417
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_24_36x27.raw"
+sha256 = "a5d5ced92959fe55362b4fd3881ff89a79de3e1bbefdee9934f8b3b78b81fa1b"
+bytes = 2916
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_24_40x30.raw"
+sha256 = "84946d80de529e4e888bfe2daee39c7d0261109fabff4fdcc329aabf27e2df62"
+bytes = 3600
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_32_17x11.raw"
+sha256 = "e36ea2bc77a43b1534003849efe7951f2d5b26eae82e73fcf104186496e2b0b0"
+bytes = 748
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_32_23x31.raw"
+sha256 = "ef3dd7ab7ea29d5188b4e1480d049e2710c2b38675596ebe1993c62acaec5bc6"
+bytes = 5704
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_32_31x23.raw"
+sha256 = "afe4c1b44cdec11e96c75051505f255b3cb5b86274415f4573d3cb38d1586dec"
+bytes = 8556
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_32_36x27.raw"
+sha256 = "164e2c34b9c1ef9c350da5b675ec1bc9e8b1210b4fdbff6d66c44038c09337d5"
+bytes = 7776
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_32_40x30.raw"
+sha256 = "aca1fcebf261f82d00018e358f17862dd33e363766122c6097bdbabad3f5fbc1"
+bytes = 4800
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_11x8.raw"
+sha256 = "32a3cc279125c689901dad285afc7c9d0c5eb72f4dd09418a29956c212f1b9d1"
+bytes = 88
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_16x12.raw"
+sha256 = "d58d73310fa44e3cb589c0394cb86df046222c6715e56fe4edf7bfc6ea004e83"
+bytes = 192
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_17x11.raw"
+sha256 = "6d4451a3c2ae5517a86ad3c46711b04a711d7916aabf937bab05e435b4704b26"
+bytes = 2618
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_20x15.raw"
+sha256 = "892c21442cf410efcb3f3e32569218f88d3042f7caec3fdb301774380ff88ac4"
+bytes = 300
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_20x31.raw"
+sha256 = "b6b7cf48a3b8e2e7db3681bc38db50f20ad06abb23ac04ca9c09b368647f627a"
+bytes = 620
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_23x31.raw"
+sha256 = "65406e113ecfdacaac3b476b8bad16a4f3f2525136f75a412f99e9620f43a56b"
+bytes = 3565
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_24x32.raw"
+sha256 = "3b9888fd30289c406a5d53de33b3e987749e20c6aebb82d239cd98b2465f2c41"
+bytes = 4608
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_31x23.raw"
+sha256 = "9dbfd658fd2e4aa8d881fa6e5391db815f2a4fbc5c8c5ca6c83ebd58af51f43b"
+bytes = 9982
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_32x24.raw"
+sha256 = "13058e4f1d964dbe218437a576d91b362096540c048a6ff3d9f86cb28045046b"
+bytes = 35328
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_36x27.raw"
+sha256 = "55f538f7c2c721ad7ddafc7faebf0e2ad8fb502391ea51bf0fd82798fc835de9"
+bytes = 6804
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_40x30.raw"
+sha256 = "cf405fa70039fc69093c3b0bc640e33709ee429b44810b904b4c8427d680c476"
+bytes = 2400
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geo_8_41x28.raw"
+sha256 = "84737a0359b73013917029d43f908f9cedd361a7c147a7ddaa5751e666c6610c"
+bytes = 3444
+macro = "gen/63_geometry.ijm"
+
+[[file]]
+path = "geometry.csv"
+sha256 = "c32cf4adc3ee51e427086356946f4ec953f0a50d752e70f0745ca6f0b4c1c78d"
+bytes = 9669
+macro = "gen/63_geometry.ijm"
+
+[[file]]
 path = "gray16.png"
 sha256 = "f3263d27a92dc10a1892ec9aa1c7763b2b65932a82ae5f67595ff6898ff388aa"
 bytes = 6087
@@ -570,6 +852,36 @@ path = "luts.csv"
 sha256 = "bac9a9ed3c227a08474dd65afcade2715a9170ba012e7e442ce1b6682ec7377b"
 bytes = 33139
 macro = "gen/30_luts.ijm"
+
+[[file]]
+path = "math.csv"
+sha256 = "ef99fdaa0151558ddf55a9f3a47481ad772384a5b0ecd6f2570970434b5980fe"
+bytes = 4469
+macro = "gen/60_math.ijm"
+
+[[file]]
+path = "math_gray16.raw"
+sha256 = "3f10b37947a136599346209e918644dec9506cb10d1a2104c3040b3c5032893d"
+bytes = 58368
+macro = "gen/60_math.ijm"
+
+[[file]]
+path = "math_gray32f.raw"
+sha256 = "86542f8bda0bc7c6e7aa5965fc589591e2c611644c9f9b9d9edaac62bc05fece"
+bytes = 82944
+macro = "gen/60_math.ijm"
+
+[[file]]
+path = "math_gray8.raw"
+sha256 = "c48307d63959a3a3904bb7154833a1ed8de756329f953044ed7a82838a55ffd0"
+bytes = 26112
+macro = "gen/60_math.ijm"
+
+[[file]]
+path = "math_rgb.raw"
+sha256 = "68a226f70cbd4e27408c9baa9ecbb6761b3d85d5fc92dfe2fcae20b5a73768c0"
+bytes = 43776
+macro = "gen/60_math.ijm"
 
 [[file]]
 path = "measure_cases.txt"
@@ -1767,10 +2079,292 @@ macro = "gen/07_rois.ijm"
 
 [[file]]
 path = "roiset.zip"
-sha256 = "2e19745e3ca30104bfe06be48e7552d4519d46b7d81ae6d191a564d6f65e0cd0"
+sha256 = "8171ec4e7cac6bf8d83b1493db822f4083e333a0a89a0593e1e1c231bc7bfefb"
 bytes = 874
 macro = "gen/07_rois.ijm"
 reproducible = false # embeds zip entry timestamps
+
+[[file]]
+path = "rotate_scale.csv"
+sha256 = "219b0938bbe84b0c78e561364f37628ffa7471ef1de71b1f031711677de31fd2"
+bytes = 23388
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_12x14.raw"
+sha256 = "e99517a4503f93b6a5970c288f1f661380cc0669cdba41df14d915d46c811eed"
+bytes = 1008
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_16x12.raw"
+sha256 = "8187921ede565ccb3d9629c7ed0f6c02de069ec6782686fb93577fc3305e7ec2"
+bytes = 5760
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_16x35.raw"
+sha256 = "76c677668b0c06414375ac57be402e064e2cceca545826e8e8c919027901ee41"
+bytes = 3360
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_20x10.raw"
+sha256 = "f2eac1ae6c12994aecadaa8b5fcd8e3e7af88cf0d47d5dfafab65b4103b6408f"
+bytes = 6000
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_31x23.raw"
+sha256 = "65bca22ccdbebf6ae2d79bb9274996ce6b3e57517222d86123e15c0af3eca1d2"
+bytes = 22816
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_32x24.raw"
+sha256 = "4662c514a35e40cfdd098d6b1ea3a652b466d7359d957fe394e600b6188f3451"
+bytes = 18432
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_39x36.raw"
+sha256 = "26817e4b3ae3e1eb8437cf6c7a1c7d517e6f1f4bc2d3bc06105075e557ca5a83"
+bytes = 2808
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_50x40.raw"
+sha256 = "94221e6b92de66315936024621e248b1ee0f19d39c3c83c759b2dbf2cf101e88"
+bytes = 12000
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_16_53x53.raw"
+sha256 = "a4e779122b7d10044d1dbc7fd976d8610f01863ddb077af7f4a56bf35e1b2ca4"
+bytes = 16854
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_24_12x14.raw"
+sha256 = "cab786915ae7aa0143ce3a1d1176c41852459aa4ff7e0ea34c704bcbd8629d35"
+bytes = 1512
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_24_16x12.raw"
+sha256 = "1c801dc66f003cee04ee7d11924cfab757f947d88bdb948e16229f5c31c8e7cc"
+bytes = 1728
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_24_16x35.raw"
+sha256 = "9acb27b3a7758a1a0fd6be78bcea4bf86e39e3fce59bba976eb17dfd94ad66b9"
+bytes = 5040
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_24_20x10.raw"
+sha256 = "547db0d16d33c4ad8f111d3ac3af20eae75c51a3a1b79f9669c3e7bd880d27c2"
+bytes = 1800
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_24_31x23.raw"
+sha256 = "ceb4c258baac640f09639fce9c92c37ad393e43ea3963f4b2a94d316185d305b"
+bytes = 32085
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_24_39x36.raw"
+sha256 = "289711a4b48e4e762bbd7e8a0ca25d5c6e68ab66bb5bc4c38b37ce5729b35423"
+bytes = 4212
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_24_50x40.raw"
+sha256 = "481084ad0bc7283c391389b8f5cc5b164d40e46fb488941cc7d8acb9efc01562"
+bytes = 18000
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_24_53x53.raw"
+sha256 = "8faf9f453ecaef6cd4c292c2d10362e275b09afccb90c32d7dfd1cfdc46a1db6"
+bytes = 25281
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_32_12x14.raw"
+sha256 = "f7bb8cfb5530c3b40615e6b560b5251e512576db823197deb00f452394101764"
+bytes = 2016
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_32_16x12.raw"
+sha256 = "bb3060572616558d87aa1455e87dd530ba68e709529af1d6c1213fd5a8eb9f81"
+bytes = 2304
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_32_16x35.raw"
+sha256 = "6a38fb9e2aae9a1bc4bad2c09e86ea5d5d87af643dafecdbaab9dcb1c1790bd6"
+bytes = 6720
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_32_20x10.raw"
+sha256 = "5005e305179637c134950242ccfc857f694a5de29ba25ba38aef19dd148ed625"
+bytes = 2400
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_32_31x23.raw"
+sha256 = "136b719215465bbfba5389b1f7cfb06daae2fc45ec1bc2454b7b5a9bf3564478"
+bytes = 48484
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_32_39x36.raw"
+sha256 = "c24c364cfd04b750aa57c8e98931f5e04a5c8975fe0f9243650986d3be89d271"
+bytes = 5616
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_32_50x40.raw"
+sha256 = "65f3326ef8ba48e4eb271239f125a30d88ee3db4c0c0e5ec5046a790e400730a"
+bytes = 24000
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_32_53x53.raw"
+sha256 = "fa2da0b3e055211aec18649b03a187100dd9208d2528c7109a983fcbc3379ac0"
+bytes = 33708
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_10x8.raw"
+sha256 = "a1cec00956e0d503f3e544268a571ca6e44912757d78ea903fe55bd9c3af831d"
+bytes = 80
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_12x14.raw"
+sha256 = "225dbbff27cb272cfde84f2038c23fb43788f36e50073b9a8c26775896b55083"
+bytes = 504
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_13x40.raw"
+sha256 = "04c31fbfb58383b0a7091b39b523ffd731374e2c3644282369ce76848a66c18e"
+bytes = 520
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_16x12.raw"
+sha256 = "3d910ee231e60a293a3fff9544b24bd4d434dec1b1761d92979c3ef77743fc0d"
+bytes = 2496
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_16x35.raw"
+sha256 = "e4fc29aa7bd53aa8243d95eef9d1b4d19e8d6555249e554a89d9c7e4800abf00"
+bytes = 1680
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_16x6.raw"
+sha256 = "cfbae1c60046f53322f0f2fb7258ef93e7dcdb4562f2ad57a1927f04c1317534"
+bytes = 96
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_20x1.raw"
+sha256 = "8600d02eb8256ba6542f7216ceffc95e09821c79d426535973c5c15c35d4d725"
+bytes = 20
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_20x10.raw"
+sha256 = "2d94ae718d1ee419340d08853c762aebb73e56693e0df1009accf25ce14a232e"
+bytes = 2200
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_20x15.raw"
+sha256 = "b3c6156b3f6a4d2cb9c38e0ca2e2175e5a778524e8532f94c0c9c3bbff7471a2"
+bytes = 300
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_30x30.raw"
+sha256 = "a552d9caeb5958f5f52979e5e0b56be37429e1511e0a820076e24a94dda43bc4"
+bytes = 900
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_31x23.raw"
+sha256 = "eca7aca7be6866cf53c50b2bf7e7f1d5f4c5d546cbde83c2f68fe33bf00d09df"
+bytes = 13547
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_32x24.raw"
+sha256 = "615da17b9d88aae62aa2ae2f3ae073fbcec1cbafb147acaa0b2f0a9acfdfb2e9"
+bytes = 43776
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_35x38.raw"
+sha256 = "d78d3e9ae5081fdaceb4ab35ff588d1ef779ef58a887b95a6d3c2c59bf3cd1e6"
+bytes = 1330
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_36x30.raw"
+sha256 = "cda936830c84fdd5decccc92e2f60b068b0eb4ba4c67beec5dfe6c463919b221"
+bytes = 2160
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_37x31.raw"
+sha256 = "b223230fa3b60664e54f6f58f95d2876cefb0655198c28433a9f8a9a8a0671ae"
+bytes = 6882
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_40x30.raw"
+sha256 = "11d7633bbb70b843a1b2dd620702f80ce896e8dc25dd4df68d1f429f72988ae1"
+bytes = 1200
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_50x3.raw"
+sha256 = "eeeb045543fd208be7ac8012c3c06512e51b7821fa926cd079f58a5f5164a7a8"
+bytes = 150
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_50x40.raw"
+sha256 = "6a8dc94ca8a81893a990c1dcb19fa679bfa221a680d66c68ea2629fa7150cc29"
+bytes = 6000
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_53x53.raw"
+sha256 = "899961b279982b932cece71fa718efe8dd01baadaac614ccedfc58766b91e5a8"
+bytes = 8427
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_62x3.raw"
+sha256 = "6e7f11a5bc35e10c695f770fa4d1bc0cd7886faafcee4672e42d71c2bdfa58f3"
+bytes = 186
+macro = "gen/64_rotate_scale.ijm"
+
+[[file]]
+path = "rs_8_9x7.raw"
+sha256 = "ab5011a309b2e712133a91e743788c2c877c680a15d8b47d194d7ef96ea4336d"
+bytes = 126
+macro = "gen/64_rotate_scale.ijm"
 
 [[file]]
 path = "stack_z3_16bit_le.tif"
