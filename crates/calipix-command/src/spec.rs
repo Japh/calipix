@@ -42,6 +42,12 @@ pub struct ParamSpec {
     /// Keyword for this parameter in ImageJ macro option strings, if it
     /// differs from `name`.
     pub ijm_key: Option<String>,
+    /// What to show for each choice of a [`ParamType::Choice`], in the same
+    /// order as the choices. Empty means show the choices themselves.
+    pub choice_labels: Vec<String>,
+    /// For a string parameter: the text may run over several lines, so a
+    /// dialog gives it a taller field.
+    pub multiline: bool,
     /// Set for a parameter that says which plane of the image to act on.
     /// An interactive frontend fills it from the plane on view instead of
     /// asking; elsewhere its default applies.
@@ -65,6 +71,8 @@ impl ParamSpec {
             advanced: false,
             persist: true,
             ijm_key: None,
+            choice_labels: Vec::new(),
+            multiline: false,
             position: None,
         }
     }
@@ -127,6 +135,32 @@ impl ParamSpec {
     pub fn persist(mut self, persist: bool) -> ParamSpec {
         self.persist = persist;
         self
+    }
+
+    pub fn choice_labels<S: Into<String>>(
+        mut self,
+        labels: impl IntoIterator<Item = S>,
+    ) -> ParamSpec {
+        self.choice_labels = labels.into_iter().map(Into::into).collect();
+        self
+    }
+
+    pub fn multiline(mut self, multiline: bool) -> ParamSpec {
+        self.multiline = multiline;
+        self
+    }
+
+    /// What to show for `choice`: its label if labels were given, else the
+    /// choice itself.
+    pub fn choice_label<'a>(&'a self, choice: &'a str) -> &'a str {
+        let ParamType::Choice(choices) = &self.ty else {
+            return choice;
+        };
+        choices
+            .iter()
+            .position(|c| c == choice)
+            .and_then(|i| self.choice_labels.get(i))
+            .map_or(choice, String::as_str)
     }
 
     pub fn position(mut self, axis: PositionAxis) -> ParamSpec {
@@ -202,6 +236,8 @@ impl ParamSpec {
                 ParamType::Choice(choices) => json!(choices),
                 _ => Json::Null,
             },
+            "choice_labels": self.choice_labels,
+            "multiline": self.multiline,
             "default": self.default.as_ref().map(Value::to_json),
             "required": self.required,
             "min": self.min,
@@ -439,6 +475,16 @@ impl CommandSpec {
                 && choices.is_empty()
             {
                 return fail(format!("parameter `{name}` has no choices"));
+            }
+            let choice_count = match &param.ty {
+                ParamType::Choice(choices) => choices.len(),
+                _ => 0,
+            };
+            if !param.choice_labels.is_empty() && param.choice_labels.len() != choice_count {
+                return fail(format!(
+                    "parameter `{name}` has {} labels for {choice_count} choices",
+                    param.choice_labels.len()
+                ));
             }
             if let (Some(min), Some(max)) = (param.min, param.max)
                 && min > max

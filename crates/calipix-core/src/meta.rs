@@ -323,6 +323,19 @@ impl ImageMeta {
         }
     }
 
+    /// The same description (name, colour model, channels, properties) for
+    /// an image with a different pixel type, axes or sizes, as produced by
+    /// cropping, scaling, rotating or converting. Fails if the result is
+    /// not a valid description, for example if the channel metadata no
+    /// longer matches the channel count; adjust `channels` and `color` on
+    /// the result first in that case by building from [`ImageMeta::new`].
+    pub fn with_axes(&self, dtype: DType, axes: Vec<(Axis, usize)>) -> Result<ImageMeta> {
+        let (axes, shape): (Vec<Axis>, Vec<usize>) = axes.into_iter().unzip();
+        let meta = self.reshaped(dtype, axes, shape);
+        meta.validate()?;
+        Ok(meta)
+    }
+
     /// Same image description with a different pixel type.
     pub fn with_dtype(&self, dtype: DType) -> ImageMeta {
         self.reshaped(dtype, self.axes.clone(), self.shape.clone())

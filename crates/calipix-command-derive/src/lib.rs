@@ -12,6 +12,8 @@
 //! | `min = <n>`, `max = <n>`, `step = <n>` | Numeric bounds and increment |
 //! | `unit = "..."` | Unit shown after the control |
 //! | `choices("a", "b")` | Restrict a `String` to these values |
+//! | `labels("A", "B")` | What a dialog shows for each choice, in order |
+//! | `multiline` | A `String` that may run over several lines |
 //! | `path = "open" \| "save" \| "dir"` | What a `PathBuf` is used for |
 //! | `ijm = "..."` | Keyword in ImageJ macro option strings |
 //! | `position = "channel" \| "slice" \| "frame" \| "stack"` | The parameter names a plane (or asks for all of them); frontends fill it from the view |
@@ -125,6 +127,15 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                             .position(::calipix_command::PositionAxis::#axis)
                         });
                     }
+                    "labels" => {
+                        let content;
+                        syn::parenthesized!(content in meta.input);
+                        let labels = content
+                            .parse_terminated(<LitStr as syn::parse::Parse>::parse, syn::Token![,])?;
+                        let labels = labels.iter();
+                        modifiers.push(quote! { .choice_labels([#(#labels),*]) });
+                    }
+                    "multiline" => modifiers.push(quote! { .multiline(true) }),
                     "advanced" => modifiers.push(quote! { .advanced(true) }),
                     "no_persist" => modifiers.push(quote! { .persist(false) }),
                     "choices" => {
@@ -169,7 +180,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                     _ => {
                         return Err(meta.error(
                             "unknown key; expected one of: label, default, min, max, step, \
-                             unit, choices, path, ijm, position, advanced, no_persist, flatten",
+                             unit, choices, labels, multiline, path, ijm, position, advanced, no_persist, flatten",
                         ));
                     }
                 }

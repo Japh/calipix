@@ -145,6 +145,39 @@ impl Table {
         columns[index].cells[row] = cell;
     }
 
+    /// Removes one row. Does nothing if `row` is past the end.
+    pub fn remove_row(&mut self, row: usize) {
+        if row >= self.rows {
+            return;
+        }
+        self.rows -= 1;
+        for column in Arc::make_mut(&mut self.columns).iter_mut() {
+            column.cells.remove(row);
+        }
+    }
+
+    /// Removes a column. Returns false if there was none of that name.
+    pub fn remove_column(&mut self, name: &str) -> bool {
+        let columns = Arc::make_mut(&mut self.columns);
+        let before = columns.len();
+        columns.retain(|c| c.name != name);
+        columns.len() != before
+    }
+
+    /// Puts the columns in the order given by `names`. Columns not named
+    /// keep their relative order after the named ones; names that match no
+    /// column are ignored.
+    pub fn reorder_columns(&mut self, names: &[&str]) {
+        let columns = Arc::make_mut(&mut self.columns);
+        let rank = |c: &Column| {
+            names
+                .iter()
+                .position(|n| *n == c.name)
+                .unwrap_or(names.len())
+        };
+        columns.sort_by_key(rank);
+    }
+
     /// Removes every row but keeps the columns.
     pub fn clear_rows(&mut self) {
         self.rows = 0;
@@ -182,6 +215,27 @@ mod tests {
         assert_eq!(t.numbers("Mean"), Some(vec![Some(3.5), Some(4.0)]));
         assert_eq!(t.numbers("Label"), Some(vec![None, None]));
         assert_eq!(t.numbers("Nope"), None);
+    }
+
+    #[test]
+    fn rows_and_columns_can_be_removed_and_reordered() {
+        let mut t = Table::new();
+        for i in 0..3 {
+            t.push_row([
+                ("A", Cell::from(i as f64)),
+                ("B", Cell::from(10.0 + i as f64)),
+                ("C", Cell::from("x")),
+            ]);
+        }
+        t.remove_row(1);
+        t.remove_row(9);
+        assert_eq!(t.numbers("A"), Some(vec![Some(0.0), Some(2.0)]));
+        t.reorder_columns(&["C", "Nope", "A"]);
+        assert_eq!(t.column_names().collect::<Vec<_>>(), ["C", "A", "B"]);
+        assert!(t.remove_column("A"));
+        assert!(!t.remove_column("A"));
+        assert_eq!(t.column_names().collect::<Vec<_>>(), ["C", "B"]);
+        assert_eq!(t.get(1, "B"), &Cell::Number(12.0));
     }
 
     #[test]
