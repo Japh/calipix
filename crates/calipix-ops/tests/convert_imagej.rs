@@ -11,7 +11,9 @@ use calipix_core::{Buffer, DType, Rect};
 use calipix_ops::convert::{
     UNWEIGHTED, WEIGHTED, convert, float_to_u16_scaled, rgb_to_gray_f32, rgb_to_gray_u8,
 };
-use support::{Difference, Raw, assert_matches, base, crop, csv, raw_planes, report, with_samples};
+use support::{
+    Difference, Raw, assert_matches, base, crop, csv, raw_planes, report, with_convert_specials,
+};
 
 const W: usize = 32;
 const H: usize = 24;
@@ -23,27 +25,7 @@ fn source(name: &str) -> (Vec<Buffer>, Option<(f64, f64)>) {
     let rect = Rect::new(16, 12, W, H);
     let planes = (0..meta.plane_count())
         .map(|p| crop(&image.read_plane(p).unwrap(), meta.width(), rect))
-        .map(|plane| match name {
-            "gray32f" => with_samples(
-                &plane,
-                &[
-                    (0, f32::NAN),
-                    (1, 0.0),
-                    (2, 300.5),
-                    (3, -70000.0),
-                    (4, 1e-30),
-                    (5, 70000.6),
-                    (6, -2.5),
-                    (7, 0.5),
-                    (8, 254.5),
-                    (9, 255.49),
-                    (10, 65534.5),
-                    (11, 1.5),
-                ],
-            ),
-            "gray16" => with_samples(&plane, &[(0, 0u16), (1, 65535), (2, 255), (3, 256)]),
-            _ => plane,
-        })
+        .map(|plane| with_convert_specials(name, &plane))
         .collect();
     (planes, meta.channels.first().and_then(|c| c.display_range))
 }

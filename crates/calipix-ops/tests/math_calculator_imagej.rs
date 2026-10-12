@@ -10,7 +10,10 @@ use std::collections::BTreeMap;
 
 use calipix_core::{Buffer, Rect};
 use calipix_ops::math::{CalcOp, calculate, calculate_rgb};
-use support::{Difference, Raw, assert_matches, base, crop, csv, raw_planes, report, with_samples};
+use support::{
+    Difference, Raw, assert_matches, base, crop, csv, generated, raw_planes, report,
+    with_math_specials,
+};
 
 const W: usize = 32;
 const H: usize = 24;
@@ -26,78 +29,8 @@ fn first(name: &str) -> Vec<Buffer> {
     let image = base(name);
     (0..image.meta().plane_count())
         .map(|p| crop(&image.read_plane(p).unwrap(), image.meta().width(), CROP))
-        .map(|plane| match name {
-            "gray32f" => with_samples(
-                &plane,
-                &[
-                    (0, f32::NAN),
-                    (1, 0.0),
-                    (2, f32::INFINITY),
-                    (3, f32::NEG_INFINITY),
-                    (4, 1e-30),
-                    (5, 3.4e38),
-                    (6, -2.5),
-                    (7, 0.5),
-                ],
-            ),
-            "gray16" => with_samples(&plane, &[(0, 0u16), (1, 65535), (2, 1), (3, 32768)]),
-            _ => plane,
-        })
+        .map(|plane| with_math_specials(name, &plane))
         .collect()
-}
-
-/// Image 2, from the formulas in `61_calculator.ijm`.
-fn second(name: &str) -> Vec<Buffer> {
-    let xy = || (0..H).flat_map(|y| (0..W).map(move |x| (x, y)));
-    match name {
-        "b8" => vec![Buffer::from_vec(
-            xy().map(|(x, y)| {
-                if x % 5 == 0 && y % 3 == 0 {
-                    0
-                } else {
-                    ((x * 7 + y * 13) % 256) as u8
-                }
-            })
-            .collect::<Vec<_>>(),
-        )],
-        "b16" => {
-            let mut v: Vec<u16> = xy()
-                .map(|(x, y)| {
-                    if x % 5 == 0 && y % 3 == 0 {
-                        0
-                    } else {
-                        ((x * 2021 + y * 517) % 65536) as u16
-                    }
-                })
-                .collect();
-            v[1] = 65535;
-            vec![Buffer::from_vec(v)]
-        }
-        "bf" => {
-            let mut v: Vec<f32> = xy()
-                .map(|(x, y)| {
-                    ((x as f64 - 10.0) * 0.5 - (y % 7) as f64 + 0.25 * (x % 3) as f64) as f32
-                })
-                .collect();
-            v[W + 2] = f32::NAN;
-            vec![Buffer::from_vec(v)]
-        }
-        "brgb" => (0..3)
-            .map(|c| {
-                Buffer::from_vec(
-                    xy().map(|(x, y)| {
-                        if x % 6 == 0 && y % 4 == 0 {
-                            0
-                        } else {
-                            [(x * 9) & 255, (y * 11) & 255, (x * y) & 255][c] as u8
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-                )
-            })
-            .collect(),
-        other => panic!("unknown image {other}"),
-    }
 }
 
 #[test]
@@ -120,7 +53,7 @@ fn same_type_arithmetic_matches_imagej() {
             .split(' ')
             .find_map(|o| o.strip_prefix("divide="))
             .map_or(f64::INFINITY, |v| v.parse().unwrap());
-        let (a, b) = (first(name1), second(name2));
+        let (a, b) = (first(name1), generated(name2));
         let expected = &raw_planes(&format!("calc_{group}.raw"), Raw::for_base(group), W, H)
             [slice - 1];
         let ours: Vec<Buffer> = if a.len() == 3 {

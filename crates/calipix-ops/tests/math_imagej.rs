@@ -7,7 +7,9 @@ use std::collections::BTreeMap;
 
 use calipix_core::{Buffer, Rect};
 use calipix_ops::math::{MathOp, apply, rgb_set_components};
-use support::{Difference, Raw, assert_matches, base, crop, csv, raw_planes, report, with_samples};
+use support::{
+    Difference, Raw, assert_matches, base, crop, csv, raw_planes, report, with_math_specials,
+};
 
 /// The rectangle every case is cropped to, and its size.
 const CROP: Rect = Rect {
@@ -25,23 +27,7 @@ fn input(name: &str) -> (Vec<Buffer>, Option<(f64, f64)>) {
     let meta = image.meta();
     let planes = (0..meta.plane_count())
         .map(|p| crop(&image.read_plane(p).unwrap(), meta.width(), CROP))
-        .map(|plane| match name {
-            "gray32f" => with_samples(
-                &plane,
-                &[
-                    (0, f32::NAN),
-                    (1, 0.0),
-                    (2, f32::INFINITY),
-                    (3, f32::NEG_INFINITY),
-                    (4, 1e-30),
-                    (5, 3.4e38),
-                    (6, -2.5),
-                    (7, 0.5),
-                ],
-            ),
-            "gray16" => with_samples(&plane, &[(0, 0u16), (1, 65535), (2, 1), (3, 32768)]),
-            _ => plane,
-        })
+        .map(|plane| with_math_specials(name, &plane))
         .collect();
     let range = meta.channels.first().and_then(|c| c.display_range);
     (planes, range)

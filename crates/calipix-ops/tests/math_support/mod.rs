@@ -225,3 +225,137 @@ pub fn report(operation: &str, difference: Difference) {
         );
     }
 }
+
+/// The second operands `61_calculator.ijm` generates, one plane each (three
+/// for `brgb`), from the formulas documented there.
+pub fn generated(name: &str) -> Vec<Buffer> {
+    let (w, h) = if name == "small8" { (20, 10) } else { (32, 24) };
+    let xy = || (0..h).flat_map(move |y| (0..w).map(move |x| (x, y)));
+    let holes = |x: usize, y: usize| x % 5 == 0 && y % 3 == 0;
+    match name {
+        "b8" => vec![Buffer::from_vec(
+            xy().map(|(x, y)| {
+                if holes(x, y) {
+                    0
+                } else {
+                    ((x * 7 + y * 13) % 256) as u8
+                }
+            })
+            .collect::<Vec<_>>(),
+        )],
+        "b16" => {
+            let mut v: Vec<u16> = xy()
+                .map(|(x, y)| {
+                    if holes(x, y) {
+                        0
+                    } else {
+                        ((x * 2021 + y * 517) % 65536) as u16
+                    }
+                })
+                .collect();
+            v[1] = 65535;
+            vec![Buffer::from_vec(v)]
+        }
+        "bf" => {
+            let mut v: Vec<f32> = xy()
+                .map(|(x, y)| {
+                    ((x as f64 - 10.0) * 0.5 - (y % 7) as f64 + 0.25 * (x % 3) as f64) as f32
+                })
+                .collect();
+            v[w + 2] = f32::NAN;
+            vec![Buffer::from_vec(v)]
+        }
+        "brgb" => (0..3)
+            .map(|c| {
+                Buffer::from_vec(
+                    xy().map(|(x, y)| {
+                        if x % 6 == 0 && y % 4 == 0 {
+                            0
+                        } else {
+                            [(x * 9) & 255, (y * 11) & 255, (x * y) & 255][c] as u8
+                        }
+                    })
+                    .collect::<Vec<_>>(),
+                )
+            })
+            .collect(),
+        "small8" => vec![Buffer::from_vec(
+            xy().map(|(x, y)| ((x * 11 + y * 3) % 256) as u8)
+                .collect::<Vec<_>>(),
+        )],
+        other => panic!("unknown generated image {other}"),
+    }
+}
+
+/// The values `60_math.ijm` and `61_calculator.ijm` write into the first
+/// samples of the cropped 16-bit and float base planes.
+pub fn with_math_specials(name: &str, plane: &Buffer) -> Buffer {
+    match name {
+        "gray32f" => with_samples(
+            plane,
+            &[
+                (0, f32::NAN),
+                (1, 0.0),
+                (2, f32::INFINITY),
+                (3, f32::NEG_INFINITY),
+                (4, 1e-30),
+                (5, 3.4e38),
+                (6, -2.5),
+                (7, 0.5),
+            ],
+        ),
+        "gray16" => with_samples(plane, &[(0, 0u16), (1, 65535), (2, 1), (3, 32768)]),
+        _ => plane.clone(),
+    }
+}
+
+/// The values `62_convert.ijm` writes into the cropped 16-bit and float
+/// base planes.
+pub fn with_convert_specials(name: &str, plane: &Buffer) -> Buffer {
+    match name {
+        "gray32f" => with_samples(
+            plane,
+            &[
+                (0, f32::NAN),
+                (1, 0.0),
+                (2, 300.5),
+                (3, -70000.0),
+                (4, 1e-30),
+                (5, 70000.6),
+                (6, -2.5),
+                (7, 0.5),
+                (8, 254.5),
+                (9, 255.49),
+                (10, 65534.5),
+                (11, 1.5),
+            ],
+        ),
+        "gray16" => with_samples(plane, &[(0, 0u16), (1, 65535), (2, 255), (3, 256)]),
+        _ => plane.clone(),
+    }
+}
+
+/// A base image cropped to `rect`, in memory, with `edit` applied to each
+/// of its planes. Metadata, including the display range, is kept.
+pub fn cropped_base(name: &str, rect: Rect, edit: impl Fn(&Buffer) -> Buffer) -> Image {
+    let mut image = base(name).crop(rect).unwrap().materialize().unwrap();
+    for plane in 0..image.meta().plane_count() {
+        let edited = edit(&image.read_plane(plane).unwrap());
+        image = image.with_plane(plane, edited).unwrap();
+    }
+    image
+}
+
+/// A number as ImageJ's macro language prints it.
+pub fn ij_number(text: &str) -> f64 {
+    text.parse()
+        .unwrap_or_else(|_| panic!("`{text}` is not a number"))
+}
+
+/// True if `ours` is the number ImageJ printed as `theirs` with four
+/// decimals.
+pub fn close(ours: f64, theirs: f64) -> bool {
+    ours == theirs
+        || (ours.is_nan() && theirs.is_nan())
+        || (ours - theirs).abs() <= 1e-4 * (1.0 + theirs.abs())
+}
