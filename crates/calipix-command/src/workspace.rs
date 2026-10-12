@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use calipix_core::{Image, Table};
-use calipix_roi::Roi;
+use calipix_roi::{Roi, RoiEntry};
 
 use crate::{DatasetId, Error, Result};
 
@@ -16,8 +16,10 @@ pub struct Dataset {
     pub path: Option<PathBuf>,
     /// The current selection, which commands act within or measure.
     pub roi: Option<Roi>,
-    /// Selections drawn over the image without being the active one.
-    pub overlay: Vec<Roi>,
+    /// The image's saved regions: selections kept with the image, each
+    /// with its name and appearance. They are drawn over the image, listed
+    /// in the Regions panel, and stored in the file as ImageJ's overlay.
+    pub overlay: Vec<RoiEntry>,
 }
 
 impl Dataset {
@@ -97,8 +99,8 @@ impl Workspace {
         Ok(())
     }
 
-    /// Replaces the overlay of an open image.
-    pub fn set_overlay(&mut self, id: DatasetId, overlay: Vec<Roi>) -> Result<()> {
+    /// Replaces the saved regions of an open image.
+    pub fn set_overlay(&mut self, id: DatasetId, overlay: Vec<RoiEntry>) -> Result<()> {
         self.datasets
             .get_mut(&id)
             .ok_or(Error::NoDataset(id))?

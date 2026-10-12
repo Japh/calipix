@@ -364,7 +364,7 @@ fn run_measure(ctx: &mut CommandCtx<'_>, p: MeasureParams) -> Result<Outputs> {
         let dataset = ctx.workspace().get(p.plane.input)?;
         if let Some(roi) = dataset.roi.clone() {
             let mut overlay = dataset.overlay.clone();
-            overlay.push(roi);
+            overlay.push(calipix_roi::RoiEntry::new(roi));
             ctx.workspace_mut().set_overlay(p.plane.input, overlay)?;
         }
     }

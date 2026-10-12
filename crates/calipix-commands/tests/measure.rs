@@ -288,7 +288,10 @@ fn display_label_off_removes_labels_and_overlay_keeps_selections() {
     exec.run(&mut session, "measure.measure", &Args::new())
         .unwrap();
     assert_eq!(headings(&session), ["Label", "Area"]);
-    assert_eq!(session.workspace.get(id).unwrap().overlay, vec![roi]);
+    assert_eq!(
+        session.workspace.get(id).unwrap().overlay,
+        vec![calipix_roi::RoiEntry::new(roi)]
+    );
 
     exec.run(
         &mut session,
