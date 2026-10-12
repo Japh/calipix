@@ -28,6 +28,7 @@ use calipix_ops::measure::{
     OutlineKind, PlaneContext, Region, Samples, TableFormat,
 };
 use calipix_render::{HistogramOptions, stack_histogram};
+use calipix_roi::Roi;
 
 use crate::view::plane_position;
 
@@ -211,10 +212,7 @@ impl Selected {
         };
         let outline = measure::outline_of(roi, &plane.calibration).map_err(Error::failed)?;
         let mask = if roi.is_area() {
-            Some(
-                roi.mask(width, height)
-                    .ok_or_else(|| Error::failed("the selection is outside the image"))?,
-            )
+            Some(crate::process::selection_mask(roi, width, height)?)
         } else {
             None
         };
@@ -1051,13 +1049,22 @@ struct ProfileParams {
 fn run_plot_profile(ctx: &mut CommandCtx<'_>, p: ProfileParams) -> Result<Outputs> {
     let plane = p.plane.read(ctx)?;
     let dataset = ctx.workspace().get(p.plane.input)?;
-    let needs = "Plot Profile needs a rectangular or straight line selection";
+    let needs = "Plot Profile needs a rectangular or line selection";
     let Some(roi) = &dataset.roi else {
         return Err(Error::failed(format!("{needs}; there is no selection")));
     };
     let cal = &plane.calibration;
     let (samples, w, h) = (plane.samples(), plane.width, plane.height);
-    let (values, spacing) = if roi.is_area() && roi.is_rectangular() {
+    // A rounded rectangle is a rectangle to ImageJ (Roi.RECTANGLE).
+    let rectangle = matches!(roi, Roi::Rectangle { .. } | Roi::RoundedRectangle { .. });
+    let line = matches!(
+        roi,
+        Roi::Line { .. }
+            | Roi::Polyline { .. }
+            | Roi::Freeline { .. }
+            | Roi::RotatedRectangle { .. }
+    );
+    let (values, spacing) = if rectangle {
         let rect = roi
             .pixel_bounds(w, h)
             .ok_or_else(|| Error::failed("the selection is outside the image"))?;
@@ -1072,28 +1079,38 @@ fn run_plot_profile(ctx: &mut CommandCtx<'_>, p: ProfileParams) -> Result<Output
                 cal.pixel_width,
             )
         }
-    } else {
-        // Lines reach here through the outline of the selection, once
-        // calipix-roi has them.
-        let outline = measure::outline_of(roi, cal)
-            .map_err(|_| Error::failed(format!("{needs}, not `{roi}`")))?;
-        let OutlineKind::Line { x1, y1, x2, y2 } = outline.kind else {
-            return Err(Error::failed(format!("{needs}, not `{roi}`")));
-        };
-        // ProfilePlot.getStraightLineProfile: with pixels that are not
-        // square, points are spaced by the line's calibrated length.
-        let spacing = if cal.pixel_width == cal.pixel_height {
-            cal.pixel_width
-        } else {
-            let pixels = ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt();
-            outline.perimeter / pixels
+    } else if line {
+        // ProfilePlot.getStraightLineProfile: along a straight line (a
+        // rotated rectangle is the wide line along its axis) with pixels
+        // that are not square, points are spaced by the line's calibrated
+        // length. Other lines are spaced by the pixel width.
+        let spacing = match *roi {
+            Roi::Line { x1, y1, x2, y2, .. } | Roi::RotatedRectangle { x1, y1, x2, y2, .. }
+                if cal.pixel_width != cal.pixel_height =>
+            {
+                // Line.getFloatPoints: single precision.
+                let dx = f64::from(x2 as f32) - f64::from(x1 as f32);
+                let dy = f64::from(y2 as f32) - f64::from(y1 as f32);
+                let pixels = (dx * dx + dy * dy).sqrt();
+                let calibrated =
+                    ((dx * cal.pixel_width).powi(2) + (dy * cal.pixel_height).powi(2)).sqrt();
+                calibrated / pixels
+            }
+            _ => cal.pixel_width,
         };
         (
-            measure::line_profile(samples, w, h, (x1, y1), (x2, y2), p.interpolate),
+            measure::selection_profile(samples, w, h, roi, p.interpolate),
             spacing,
         )
+    } else {
+        return Err(Error::failed(format!("{needs}, not `{roi}`")));
     };
     let values = values.map_err(Error::failed)?;
+    if values.is_empty() {
+        return Err(Error::failed(
+            "the line selection is too short to have a profile",
+        ));
+    }
     let mut table = Table::new();
     for (i, &v) in values.iter().enumerate() {
         table.push_row([

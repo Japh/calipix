@@ -4,7 +4,7 @@
 use calipix_core::{Cell, Error, Result, Table};
 
 use super::outline::{Outline, OutlineKind};
-use super::profile::line_profile;
+use super::profile::selection_profile;
 use super::stats::{Calibration, HistogramSpec, Region, Samples, Statistics, statistics};
 use calipix_core::{Buffer, Rect};
 
@@ -340,7 +340,7 @@ pub fn results_row(
         }
     }
     if m.bounding_rect {
-        if matches!(outline.kind, OutlineKind::Line { .. }) {
+        if outline.is_line() {
             let (x, y, w, h) = outline.bounds;
             row.set("BX", cal.x(x));
             row.set("BY", cal.y(y, image_height));
@@ -386,7 +386,9 @@ pub fn results_row(
         stack_position(&mut row, context);
     }
     match &outline.kind {
-        OutlineKind::Line { .. } => {
+        // Prefs.reflexAngle is off on a fresh installation.
+        OutlineKind::Angle(degrees) => row.set("Angle", *degrees),
+        OutlineKind::Line => {
             row.set("Length", outline.perimeter);
             if let Some(angle) = outline.line_angle(cal) {
                 row.set("Angle", angle);
@@ -408,6 +410,10 @@ pub fn results_row(
             }
         }
         OutlineKind::Whole | OutlineKind::Area => {}
+    }
+    if let Some((length, width)) = outline.rotated_rectangle(cal) {
+        row.set("RRLength", length);
+        row.set("RRWidth", width);
     }
     row
 }
@@ -439,11 +445,19 @@ pub struct Measured<'a> {
 }
 
 /// Analyze > Measure (`Analyzer.measure`): the rows for one plane and
-/// selection. An area or no selection gives one row; so does a line (the
-/// statistics are those of the profile along it); points give a row each.
+/// selection.
+///
+/// * An area or no selection gives one row of the statistics of the
+///   samples inside it.
+/// * A line gives one row (`Analyzer.measureLength`): its length, and the
+///   statistics of the profile along it or, for a line wider than one
+///   pixel, of the area it covers (`Roi.convertLineToArea`).
+/// * An angle gives one row with the angle and no statistics
+///   (`Analyzer.measureAngle`).
+/// * Points give a row each (`Analyzer.measurePoint`).
 ///
 /// `region` is the part of the plane an area selection covers; it is not
-/// used for lines and points.
+/// used for lines, angles and points.
 pub fn measure(
     image: Measured<'_>,
     region: Region<'_>,
@@ -472,8 +486,9 @@ pub fn measure(
             )?;
             Ok(vec![row(&stats, outline)])
         }
-        &OutlineKind::Line { x1, y1, x2, y2 } => {
-            // Analyzer.measureLength
+        // new ImageStatistics(): nothing is measured but the outline.
+        OutlineKind::Angle(_) => Ok(vec![row(&Statistics::zeroed(), outline)]),
+        OutlineKind::Line => {
             let basic =
                 m.area || m.mean || m.std_dev || m.mode || m.min_max || m.centroid || m.median;
             if !basic {
@@ -487,13 +502,11 @@ pub fn measure(
                 }
                 return Ok(vec![row]);
             }
-            // The statistics of the profile along the line, taken as a
-            // one-row float image with the image's calibration.
-            let profile = line_profile(image.samples, width, height, (x1, y1), (x2, y2), true)?;
-            let n = profile.len();
-            let plane =
-                Buffer::from_vec(profile.into_iter().map(|v| v as f32).collect::<Vec<f32>>());
-            let of_profile = Measurements {
+            let roi = outline
+                .roi
+                .as_ref()
+                .expect("a line outline keeps its selection");
+            let of_line = Measurements {
                 area: true,
                 mean: true,
                 std_dev: true,
@@ -502,15 +515,47 @@ pub fn measure(
                 median: true,
                 ..Measurements::default()
             };
-            let full = statistics(
-                Samples::Gray(&plane),
-                n,
-                1,
-                Region::whole(n, 1),
-                &cal,
-                of_profile,
-                HistogramSpec::default(),
-            )?;
+            let full = if outline.line_width() > 1 {
+                // The samples the line covers: ip.setRoi(convertLineToArea).
+                let mask = roi
+                    .to_area()
+                    .and_then(|area| area.mask(width, height))
+                    .ok_or_else(|| {
+                        Error::OutOfBounds(
+                            "the line selection covers no pixel of the image".to_string(),
+                        )
+                    })?;
+                statistics(
+                    image.samples,
+                    width,
+                    height,
+                    Region::masked(&mask),
+                    &cal,
+                    of_line,
+                    HistogramSpec::default(),
+                )?
+            } else {
+                // The statistics of the profile along the line, taken as a
+                // one-row float image with the image's calibration.
+                let profile = selection_profile(image.samples, width, height, roi, true)?;
+                let n = profile.len();
+                if n == 0 {
+                    return Err(Error::OutOfBounds(
+                        "the line selection is too short to have a profile".to_string(),
+                    ));
+                }
+                let plane =
+                    Buffer::from_vec(profile.into_iter().map(|v| v as f32).collect::<Vec<f32>>());
+                statistics(
+                    Samples::Gray(&plane),
+                    n,
+                    1,
+                    Region::whole(n, 1),
+                    &cal,
+                    of_line,
+                    HistogramSpec::default(),
+                )?
+            };
             // ImageJ asks only for the basic statistics here; everything
             // else stays at zero.
             let mut stats = Statistics::zeroed();
@@ -527,7 +572,14 @@ pub fn measure(
             stats.roi_y = full.roi_y;
             stats.roi_width = full.roi_width;
             stats.roi_height = full.roi_height;
-            if m.centroid {
+            if let (true, Some(((x1, y1), (x2, y2)))) = (m.centroid, outline.straight_line()) {
+                // Line.getFloatPoints: the end points in single precision.
+                let (x1, y1, x2, y2) = (
+                    f64::from(x1 as f32),
+                    f64::from(y1 as f32),
+                    f64::from(x2 as f32),
+                    f64::from(y2 as f32),
+                );
                 stats.x_centroid = cal.x(x1 + (x2 - x1) / 2.0);
                 stats.y_centroid = cal.y(y1 + (y2 - y1) / 2.0, height);
             }
@@ -538,12 +590,15 @@ pub fn measure(
             let mut rows = Vec::with_capacity(points.len());
             for &(x, y) in points {
                 let (px, py) = ((x + 0.5).floor(), (y + 0.5).floor());
-                if px < 0.0 || py < 0.0 || px >= width as f64 || py >= height as f64 {
-                    return Err(Error::OutOfBounds(format!(
-                        "the point ({x}, {y}) is outside the {width}x{height} image"
-                    )));
-                }
-                let rect = Rect::new(px as usize, py as usize, 1, 1);
+                let inside = px >= 0.0 && py >= 0.0 && px < width as f64 && py < height as f64;
+                // A point outside the image leaves the processor with an
+                // empty region (ImageProcessor.setRoi), which is measured
+                // all the same.
+                let rect = if inside {
+                    Rect::new(px as usize, py as usize, 1, 1)
+                } else {
+                    Rect::new(0, 0, 0, 0)
+                };
                 let mut stats = statistics(
                     image.samples,
                     width,

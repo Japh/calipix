@@ -14,7 +14,7 @@
 
 use calipix_command::{CommandCtx, DatasetId, Error, Outputs, Params, Result};
 use calipix_core::{AxisKind, Buffer, ColorModel, Image, ImageMeta, Pixel, Rect, dispatch};
-use calipix_roi::Mask;
+use calipix_roi::{Mask, Roi};
 
 use crate::view::plane_position;
 
@@ -123,9 +123,7 @@ impl PlaneScope {
         let (rect, mask) = match roi {
             None => (whole, None),
             Some(roi) => {
-                let Some(mask) = roi.mask(width, height) else {
-                    return Err(Error::failed("the selection is outside the image"));
-                };
+                let mask = selection_mask(roi, width, height)?;
                 let rect = mask.rect;
                 (rect, (!roi.is_rectangular()).then_some(mask))
             }
@@ -174,6 +172,23 @@ impl PlaneScope {
         ctx.workspace_mut().set_image(self.input, result)?;
         Ok(Outputs::new())
     }
+}
+
+/// The pixels of a `width` x `height` image that the area selection `roi`
+/// covers, or why it covers none: it lies outside the image, or it is
+/// too small or too thin to contain the centre of any pixel.
+pub(crate) fn selection_mask(roi: &Roi, width: usize, height: usize) -> Result<Mask> {
+    roi.mask(width, height).ok_or_else(|| {
+        if roi.pixel_bounds(width, height).is_none() {
+            Error::failed("the selection is outside the image")
+        } else {
+            Error::failed(format!(
+                "the selection covers no pixel: the {} is too small or too thin to contain \
+                 the centre of a pixel",
+                roi.kind()
+            ))
+        }
+    })
 }
 
 /// `original` with the samples inside `rect` (and inside `mask`, if given)
