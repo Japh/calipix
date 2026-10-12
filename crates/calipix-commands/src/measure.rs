@@ -142,7 +142,9 @@ impl PlaneData {
         // ImageJ sees an RGB image as one channel.
         let channels = if rgb { 1 } else { channels };
         let (slices, frames) = (meta.size(&AxisKind::Z), meta.size(&AxisKind::Time));
-        let (slice, frame) = (slice as usize, frame as usize);
+        // An image without slices or frames has only position 1 there.
+        let slice = if slices == 1 { 1 } else { slice as usize };
+        let frame = if frames == 1 { 1 } else { frame as usize };
         let planes = channels * slices * frames;
         let stack_index = ((frame - 1) * slices + (slice - 1)) * channels + channel;
         let slice_label = meta
@@ -152,7 +154,15 @@ impl PlaneData {
             buffers,
             width: meta.width(),
             height: meta.height(),
-            calibration: Calibration::from_meta(meta),
+            calibration: Calibration {
+                // ImageJ's per-image "Invert Y coordinates" (Image > Properties),
+                // kept by the TIFF reader.
+                invert_y: meta
+                    .properties
+                    .get("imagej.inverty")
+                    .is_some_and(|v| v == "true"),
+                ..Calibration::from_meta(meta)
+            },
             context: PlaneContext {
                 label: measure::row_label(
                     &meta.name,
