@@ -119,6 +119,9 @@ enum Block {
     /// A long run of checkboxes, two to a row, as ImageJ sets out the
     /// choices of Set Measurements.
     Checks(Vec<usize>),
+    /// Text of several lines: its label, then a field as wide as the
+    /// dialog under it.
+    Wide(usize),
 }
 
 /// From how many checkboxes in a row they are set out in two columns.
@@ -131,9 +134,10 @@ fn blocks(fields: &[Field], advanced: bool) -> Vec<Block> {
     let close = |run: &mut Vec<usize>, blocks: &mut Vec<Block>| {
         if run.len() >= CHECK_COLUMNS_FROM {
             blocks.push(Block::Checks(std::mem::take(run)));
+        } else if run.is_empty() {
         } else if let Some(Block::Rows(rows)) = blocks.last_mut() {
             rows.append(run);
-        } else if !run.is_empty() {
+        } else {
             blocks.push(Block::Rows(std::mem::take(run)));
         }
     };
@@ -147,6 +151,7 @@ fn blocks(fields: &[Field], advanced: bool) -> Vec<Block> {
         }
         close(&mut run, &mut blocks);
         match blocks.last_mut() {
+            _ if field.param.multiline => blocks.push(Block::Wide(index)),
             Some(Block::Rows(rows)) => rows.push(index),
             _ => blocks.push(Block::Rows(vec![index])),
         }
@@ -188,6 +193,20 @@ fn rows(
                     });
                 ui.add_space(4.0);
             }
+            Block::Wide(index) => {
+                let field = &mut fields[index];
+                let doc = field.param.doc.clone();
+                let label = ui.label(field.param.label.as_str());
+                let control = control(ui, field, workspace, browse).labelled_by(label.id);
+                typing_lines |= control.has_focus();
+                if !doc.is_empty() {
+                    label.on_hover_text(&doc);
+                }
+                if let Some(problem) = field.problem(workspace) {
+                    ui::problem(ui, &problem);
+                }
+                ui.add_space(4.0);
+            }
             Block::Rows(indices) => {
                 egui::Grid::new(("fields", advanced, number))
                     .num_columns(2)
@@ -195,7 +214,7 @@ fn rows(
                     .show(ui, |ui| {
                         for index in indices {
                             let field = &mut fields[index];
-                            typing_lines |= row(ui, field, workspace, browse);
+                            row(ui, field, workspace, browse);
                         }
                     });
             }
@@ -206,44 +225,23 @@ fn rows(
 
 /// One parameter: its label, its control and unit, and under them what is
 /// wrong with the value, if anything.
-fn row(
-    ui: &mut egui::Ui,
-    field: &mut Field,
-    workspace: &Workspace,
-    browse: &mut Browse<'_>,
-) -> bool {
+fn row(ui: &mut egui::Ui, field: &mut Field, workspace: &Workspace, browse: &mut Browse<'_>) {
     let param = field.param.clone();
     // A checkbox carries its own label.
     let is_bool = matches!(field.draft, Draft::Bool(_));
     let text = if is_bool { "" } else { param.label.as_str() };
     // A label is never broken over lines; the column makes room.
-    let label = egui::Label::new(text).extend();
-    let label = if param.multiline {
-        // Beside a tall field the label sits level with its first line.
-        ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
-            ui.add_space(4.0);
-            ui.add(label)
+    let label = ui.add(egui::Label::new(text).extend());
+    let control = ui
+        .horizontal(|ui| {
+            let control = control(ui, field, workspace, browse);
+            if let Some(unit) = &param.unit {
+                ui::weak(ui, unit.clone());
+            }
+            control
         })
         .inner
-    } else {
-        ui.add(label)
-    };
-    let mut controls = |ui: &mut egui::Ui| {
-        let control = control(ui, field, workspace, browse);
-        if let Some(unit) = &param.unit {
-            ui::weak(ui, unit.clone());
-        }
-        control
-    };
-    let control = if param.multiline {
-        // From the top of the row down, so that the row is as tall as
-        // the field.
-        ui.horizontal_top(&mut controls).inner
-    } else {
-        ui.horizontal(&mut controls).inner
-    }
-    .labelled_by(label.id);
-    let typing_lines = param.multiline && control.has_focus();
+        .labelled_by(label.id);
     if !param.doc.is_empty() {
         label.on_hover_text(&param.doc);
         control.on_hover_text(&param.doc);
@@ -255,7 +253,6 @@ fn row(
         ui::problem(ui, &problem);
         ui.end_row();
     }
-    typing_lines
 }
 
 fn control(
@@ -280,9 +277,7 @@ fn control(
             response
         }
         (Draft::Float(value), _) => ui::number(ui, value, range(false)),
-        (Draft::Image(chosen), _) => {
-            image_choice(ui, &param.name, chosen, workspace, !param.required)
-        }
+        (Draft::Image(chosen), _) => image_choice(ui, &param.name, chosen, workspace),
         (Draft::Text(text), ParamType::Choice(choices)) => {
             // What is shown is each choice's label; what is kept is the
             // choice itself.
@@ -318,7 +313,7 @@ fn control(
             ui.add(
                 egui::TextEdit::multiline(text)
                     .font(egui::TextStyle::Monospace)
-                    .desired_width(ui::FIELD_WIDTH)
+                    .desired_width(f32::INFINITY)
                     .desired_rows(lines),
             )
         }
@@ -339,7 +334,6 @@ fn image_choice(
     salt: &str,
     chosen: &mut Option<DatasetId>,
     workspace: &Workspace,
-    optional: bool,
 ) -> egui::Response {
     let name = |id: DatasetId| {
         let Ok(dataset) = workspace.get(id) else {
@@ -360,9 +354,6 @@ fn image_choice(
         .selected_text(chosen.map_or_else(|| "No image".to_string(), name))
         .width(ui::FIELD_WIDTH)
         .show_ui(ui, |ui| {
-            if optional {
-                ui.selectable_value(chosen, None, "No image");
-            }
             for dataset in workspace.datasets() {
                 ui.selectable_value(chosen, Some(dataset.id), name(dataset.id));
             }

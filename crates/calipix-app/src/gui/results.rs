@@ -20,11 +20,19 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
         let names = state.table_names();
         let (Some(shown), Some(text)) = (state.shown_table(), state.table_text()) else {
             state.set_table_attention(false);
-            return ui::empty(ui, "Measurements are listed here: Analyze > Measure adds a row");
+            return ui::empty(
+                ui,
+                "Measurements are listed here: Analyze > Measure adds a row",
+            );
         };
         toolbar(ui, state, &names, &shown, &text);
         ui.add_space(3.0);
-        if text.headings.iter().all(|heading| heading.trim().is_empty()) && text.is_empty() {
+        if text
+            .headings
+            .iter()
+            .all(|heading| heading.trim().is_empty())
+            && text.is_empty()
+        {
             ui::empty(ui, "This table is empty");
         } else {
             rows(ui, state, &text);
@@ -238,10 +246,7 @@ fn rows(ui: &mut egui::Ui, state: &mut AppState, text: &TableText) {
         .id_salt("results_rows")
         .auto_shrink(false)
         .show_viewport(ui, |ui, viewport| {
-            let size = vec2(
-                total.max(viewport.width()),
-                row_height * (count + 1) as f32,
-            );
+            let size = vec2(total.max(viewport.width()), row_height * (count + 1) as f32);
             let (area, _) = ui.allocate_exact_size(size, Sense::hover());
             let origin = area.min;
             // Where the pinned headings and row numbers sit this frame.
@@ -266,10 +271,8 @@ fn rows(ui: &mut egui::Ui, state: &mut AppState, text: &TableText) {
 
             for row in first..last {
                 let top = origin.y + row_height * (row + 1) as f32;
-                let band = Rect::from_min_size(
-                    pos2(pin_x, top),
-                    vec2(viewport.width(), row_height),
-                );
+                let band =
+                    Rect::from_min_size(pos2(pin_x, top), vec2(viewport.width(), row_height));
                 // The part of the row not under the headings takes clicks.
                 let live = band.intersect(Rect::everything_below(pin_y + row_height));
                 let response = ui.interact(live, ui.id().with(("row", row)), Sense::click());
@@ -339,10 +342,7 @@ fn rows(ui: &mut egui::Ui, state: &mut AppState, text: &TableText) {
             painter.vline(numbers.right(), numbers.y_range(), line);
 
             // The headings, over everything.
-            let band = Rect::from_min_size(
-                pos2(pin_x, pin_y),
-                vec2(viewport.width(), row_height),
-            );
+            let band = Rect::from_min_size(pos2(pin_x, pin_y), vec2(viewport.width(), row_height));
             painter.rect_filled(band, 0.0, panel_fill);
             for (column, heading) in text.headings.iter().enumerate().skip(1) {
                 if !in_view(column) {

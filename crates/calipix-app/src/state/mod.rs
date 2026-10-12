@@ -624,6 +624,11 @@ impl AppState {
         let display_only = DISPLAY_COMMANDS.contains(&task.spec.id.as_str());
         self.note_changes(&before, display_only);
         let raised = self.note_tables(&before, &outputs);
+        // A command that changed a table has shown what it did there.
+        let changed_tables = {
+            let entry = self.session.history().applied().last();
+            entry.is_some_and(|entry| !entry.table_changes.is_empty())
+        };
         self.note_auto_contrast(&task);
         if chosen != task.base_active
             && self.session.workspace.active() == task.base_active
@@ -658,12 +663,12 @@ impl AppState {
                 };
                 self.note(format!("{title} finished; {place}"));
             }
-            (None, Some(_)) => {
+            (None, Some(_)) if !changed_tables => {
                 self.queue.push(UiAction::ShowPanel(Panel::Log));
                 self.apply_actions();
                 self.note(format!("{title} finished; its results are in the Log"));
             }
-            (None, None) => self.note(format!("{title} finished")),
+            (None, _) => self.note(format!("{title} finished")),
         }
     }
 

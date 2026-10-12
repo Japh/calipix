@@ -164,7 +164,7 @@ pub fn test_stack() -> Arc<dyn Command> {
     let spec = CommandSpec::new("demo.test_stack", "Test Stack")
         .summary("Creates a stack of noisy 8-bit planes, for trying slow commands on.")
         .menu("Demo", 30.0)
-        .input(size("width", 1024, 8192.0).unit("pixels"))
+        .input(size("width", 1024, 200_000.0).unit("pixels"))
         .input(size("height", 1024, 8192.0).unit("pixels"))
         .input(size("slices", 20, 1000.0))
         .output("output", ParamType::Image)

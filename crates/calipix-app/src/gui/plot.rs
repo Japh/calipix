@@ -7,9 +7,7 @@
 use std::f32::consts::FRAC_PI_2;
 
 use calipix_command::Args;
-use eframe::egui::{
-    self, Align, Align2, Layout, Rect, Sense, Stroke, StrokeKind, pos2, vec2,
-};
+use eframe::egui::{self, Align, Align2, Layout, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 
 use super::{results, ui};
 use crate::state::tables::ticks;
@@ -133,8 +131,9 @@ fn chart(ui: &mut egui::Ui, plot: &PlotData, log: bool) {
     let size = ui.available_size().max(vec2(160.0, 90.0));
     let (rect, response) = ui.allocate_exact_size(size, Sense::hover());
     let name = &plot.name;
-    response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, format!("Plot: {name}")));
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::Other, true, format!("Plot: {name}"))
+    });
     if !ui.is_rect_visible(rect) {
         return;
     }
@@ -224,11 +223,9 @@ fn chart(ui: &mut egui::Ui, plot: &PlotData, log: bool) {
         plot.y_label.clone()
     };
     let galley = painter.layout_no_wrap(y_label, small.clone(), visuals.text_color());
-    let at = pos2(
-        rect.left() + 1.0,
-        area.center().y + galley.size().x / 2.0,
-    );
-    painter.add(egui::epaint::TextShape::new(at, galley, visuals.text_color()).with_angle(-FRAC_PI_2));
+    let at = pos2(rect.left() + 1.0, area.center().y + galley.size().x / 2.0);
+    painter
+        .add(egui::epaint::TextShape::new(at, galley, visuals.text_color()).with_angle(-FRAC_PI_2));
 
     // The data, clipped to the chart.
     let data = painter.with_clip_rect(area);
@@ -243,7 +240,11 @@ fn chart(ui: &mut egui::Ui, plot: &PlotData, log: bool) {
                 let left = scale.x_of(start);
                 let right = scale.x_of(start + plot.bin_width).max(left + 1.0);
                 // Wide bars keep a hairline between them.
-                let right = if right - left > 4.0 { right - 1.0 } else { right };
+                let right = if right - left > 4.0 {
+                    right - 1.0
+                } else {
+                    right
+                };
                 let top = scale.y_of(count).min(area.bottom() - 1.0);
                 data.rect_filled(
                     Rect::from_min_max(pos2(left, top), pos2(right, area.bottom())),

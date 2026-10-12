@@ -134,7 +134,10 @@ mod tests {
 
         // Zoomed far out, a small selection is still a pixel across.
         let far = ImagePlace::new(tab, 1.0, 0.01, [50.0, 50.0]);
-        assert_eq!(far.rect_of(10.0, 10.0, 5.0, 5.0).size(), egui::vec2(1.0, 1.0));
+        assert_eq!(
+            far.rect_of(10.0, 10.0, 5.0, 5.0).size(),
+            egui::vec2(1.0, 1.0)
+        );
     }
 
     #[test]

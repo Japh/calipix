@@ -283,7 +283,12 @@ impl Dialog {
         // recently opened first.
         let mut candidates: Vec<DatasetId> = workspace.active().into_iter().collect();
         let others: Vec<DatasetId> = workspace.datasets().map(|d| d.id).collect();
-        candidates.extend(others.into_iter().rev().filter(|id| Some(*id) != workspace.active()));
+        candidates.extend(
+            others
+                .into_iter()
+                .rev()
+                .filter(|id| Some(*id) != workspace.active()),
+        );
         let mut next_image = 0;
         self.fields = self
             .spec
@@ -297,8 +302,9 @@ impl Dialog {
                         next_image += 1;
                         Draft::Image(image.copied())
                     }
-                    // An image that may be left out starts left out.
-                    (ParamType::Image, _) => Draft::Image(None),
+                    // An image that may be left out is the active one if it
+                    // is, as the executor would fill it in.
+                    (ParamType::Image, _) => Draft::Image(workspace.active()),
                     (_, Some(default)) => draft_of(param, default).unwrap_or_else(|| blank(param)),
                     (_, None) => blank(param),
                 };

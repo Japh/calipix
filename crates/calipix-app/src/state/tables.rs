@@ -358,10 +358,11 @@ pub fn ticks(low: f64, high: f64, wanted: usize) -> Vec<f64> {
         .unwrap_or(10.0 * power);
     let first = (low / step).ceil() as i64;
     let last = (high / step).floor() as i64;
+    // Rounded to the step's own precision, so that 3 x 0.2 is 0.6.
+    let scale = 10f64.powf((1.0 - power.log10()).max(0.0));
     (first..=last)
-        // Multiplying, not adding up, keeps 0.1 steps from drifting.
         .map(|i| {
-            let tick = i as f64 * step;
+            let tick = (i as f64 * step * scale).round() / scale;
             if tick == 0.0 { 0.0 } else { tick }
         })
         .collect()
