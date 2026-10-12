@@ -6,7 +6,7 @@ mod file;
 mod filter;
 mod image;
 mod math;
-mod measure;
+pub mod measure;
 pub mod process;
 mod select;
 mod transform;

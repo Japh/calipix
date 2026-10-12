@@ -1,0 +1,2 @@
+ ,Label,Area,Mean,StdDev,Mode,Min,Max,X,Y,XM,YM,Perim.,BX,BY,Width,Height,Major,Minor,Angle,Circ.,Feret,IntDen,Median,Skew,Kurt,%Area,RawIntDen,Slice,FeretX,FeretY,FeretAngle,MinFeret,AR,Round,Solidity
+1,gray32f.tif,200,-8.648,5.255,-9.084,-19.312,1.891,18,11,17.039,10.687,60,8,6,20,10,22.568,11.284,0,0.698,22.361,-1729.688,-8.805,0.014,-1.030,100,-1729.688,1,8,6,153.435,10,2.000,0.500,1.000

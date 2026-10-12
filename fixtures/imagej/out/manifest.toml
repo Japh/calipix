@@ -8,6 +8,12 @@ os = "windows"
 awt_headless = false
 
 [[file]]
+path = "analyze_cases.txt"
+sha256 = "6ee47e264baf936aa98f6ed34b9c9b7fc77e08bbd1da391a3ab3107b67bad9d7"
+bytes = 166118
+macro = "gen/72_scale_histogram_profile.ijm"
+
+[[file]]
 path = "blobs.tif"
 sha256 = "2549be79124ce0e5f1f3e66284938069101e78920746809ee3baa0f975c0591c"
 bytes = 3232
@@ -564,6 +570,90 @@ path = "luts.csv"
 sha256 = "bac9a9ed3c227a08474dd65afcade2715a9170ba012e7e442ce1b6682ec7377b"
 bytes = 33139
 macro = "gen/30_luts.ijm"
+
+[[file]]
+path = "measure_cases.txt"
+sha256 = "8eac6e449c14e7d3890240e2b8dc8a50198e2815da6f97300deccc9729ae9cc0"
+bytes = 291372
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_freehand0.png"
+sha256 = "03917d98460556cabd0574416502ecfd47cf4332b67b4cee41916aa8edd31147"
+bytes = 214
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_hyper_oval.png"
+sha256 = "a90b40e4fa5c4e06723fa5acbdfce287755f63f464fa898bedd7d2f8ef1a3452"
+bytes = 101
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_oval0.png"
+sha256 = "60518c09c6120507321281dfe21a044f89dc93593b5fe1969ff2d751024c31da"
+bytes = 169
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_oval1.png"
+sha256 = "4e41fb16589e66835d8da94878f6ab76666bdd04e8de7c16acaf2093be4d73e0"
+bytes = 224
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_oval2.png"
+sha256 = "f1438d7edef3435b67e77bf0308458b7afded948f685907b9bd120c111e3facd"
+bytes = 109
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_oval3.png"
+sha256 = "ab02703b59ecd90a3c89708175cfa3c12245c792ea2ecd3338f816e2a7520f9b"
+bytes = 108
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_oval4.png"
+sha256 = "e486cc11a371a16f8abde88fb002ba1636ac332395ae7edaa388cdd1104b37d0"
+bytes = 253
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_oval5.png"
+sha256 = "d21dde57504632b6de4a43130bd8471801b86498a71b5ccf2b887a84604be6b7"
+bytes = 94
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_polygon0.png"
+sha256 = "2a246ab193cbc69dd3f07cc375c4dd335716b60e3ede70c5c44ab6b498969b07"
+bytes = 225
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_polygon1.png"
+sha256 = "e2a5daea0d1dad233364e3fc2010f58da1305b25b3e06096e4e9f53b2b068283"
+bytes = 214
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_polygon2.png"
+sha256 = "824f190bfcace149c04a04de4d491301aea7a357590b205a22c6f49f436a0bde"
+bytes = 257
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_polygon3.png"
+sha256 = "442b827c24f9e2672248893465f2620393cf3aa9dbbb7bf8f9ec072ce5bc149f"
+bytes = 96
+macro = "gen/70_measure.ijm"
+
+[[file]]
+path = "measure_mask_polygon4.png"
+sha256 = "cb59ea428a79a650e16dad5da899ca5c1a5693c38a6fff3e74db685c2bc14d4d"
+bytes = 188
+macro = "gen/70_measure.ijm"
 
 [[file]]
 path = "measure_oval_gray16.csv"
@@ -1464,6 +1554,174 @@ path = "pngw_stack8_3.txt"
 sha256 = "3727e308ba474861e9407e59ee5ea59c49a6d45ae6262aedd97823bc9c0ee043"
 bytes = 514
 macro = "gen/22_png.ijm"
+
+[[file]]
+path = "results_all_dec0.csv"
+sha256 = "07ef9206dc74c1d82057dac89c74c677480734fc18b8cf8fe727625dbb2ce3bd"
+bytes = 321
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_all_dec9.csv"
+sha256 = "bcf7c342022d8e1ce177ffa4facfc70104e1ea98b989011d399d387b1fd45a71"
+bytes = 489
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_all_label.csv"
+sha256 = "d484b4e5105293d2befee92b48ed81e6cb6308bdb4b2a62e742567ec58790113"
+bytes = 395
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_all_label.txt"
+sha256 = "ae6833eaab153f9adc066b97e5ced274a843dedf4b47b33a0529dc5739312f4d"
+bytes = 380
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_all_rgb.csv"
+sha256 = "c9497926dd31de2b52b0abbb8da15462ad2f95633339c0e9dc0422b1a926d1cd"
+bytes = 378
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_all_sci4.csv"
+sha256 = "0809e423eebac6efc2f19749407e7c7af4473d0e4b990a885b8599de0ebd9a4e"
+bytes = 499
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_calibrated.csv"
+sha256 = "2a79130152ea9697b19e8227c5ece4c9231aa96d57b9c186d828eb7062be25c5"
+bytes = 398
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_cases.txt"
+sha256 = "f2f3a1a285afb6aeee89cc873a0798103b00425fa4bd202b40f4398878e60dac"
+bytes = 3356
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_default.csv"
+sha256 = "b9f207b5c36af71d9f1a705d3c8b478150bb479844a609268d8e5087a646c0f2"
+bytes = 41
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_hyper.csv"
+sha256 = "852b17b90e9b530bc6db006026d9b8836d824e0f874ac21bd02e7163cbe44cd8"
+bytes = 114
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_hyper_all.csv"
+sha256 = "7dbef6492f86a7456f37bfcf908396801e9ad39d77ace7ec10708e34df1143a9"
+bytes = 372
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_inverty.csv"
+sha256 = "7bb1997f564be37bc5fd447514d7d90e5d8c1441729590a73a9bc88211381064"
+bytes = 96
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_line.csv"
+sha256 = "e1d5617d11b33814a9939f48a75b34ddd22e1dac36130d3a1993447002e2069e"
+bytes = 75
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_line_all.csv"
+sha256 = "cc14edf74742fd9a4d1ce7028857b45ccdfe25e2cfef47cd699119d979618bfc"
+bytes = 416
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_line_calibrated.csv"
+sha256 = "e45d1616df6d2b81ff78ea1fa77ccf3328c0d0d3e94605ae34caa1b9a16161b4"
+bytes = 108
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_line_length.csv"
+sha256 = "502dd0a265ea8cc593ca63b26c60e84d5065f5015e8ff9fb1ec861387c424210"
+bytes = 48
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_nan_cells.csv"
+sha256 = "0d835f13dc0e387262a0f68b0f7e81d161f694387a279c0a720d414ca7e6a9a8"
+bytes = 54
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_nan_option.csv"
+sha256 = "d8ec84aae54ed6c9936aef86d9ade0ac49f009e4d30655cc2946aa31cc42d674"
+bytes = 40
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_numbers.csv"
+sha256 = "c7ecbd8f8430a343ae2afd6fd6b5b01c69983987f6a145ef5c69f2378bff2fa9"
+bytes = 953
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_numbers.txt"
+sha256 = "709e5720d34718a94e8e782c338bbda5ac0e0532eaa0c552f950dbcf1c70ebec"
+bytes = 949
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_numbers_dec0.csv"
+sha256 = "88e07478cf6ddc8276105adb3b1a0485d135237dda3088d1c4fe17b1ddd3825e"
+bytes = 727
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_numbers_sci5.csv"
+sha256 = "d40bee4bbd928b233b33b394e641ec2cf6d5f05d17031e1870c444c0c507a785"
+bytes = 1223
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_one_pixel.csv"
+sha256 = "68a1474ed888a0bf3a62a3568ed3a62f2556f3874805a1b0e48c8812cb7d3ab5"
+bytes = 354
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_point.csv"
+sha256 = "a78db8c633c3efb7321b3f3a079bf3743f2eb240076869f109b5639231f25a0d"
+bytes = 43
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_point_all.csv"
+sha256 = "668c3a596d71b5f747c68bf6a885f8a9773da9ef25d73bfbbb5fd16e276eaa37"
+bytes = 358
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_point_hyper.csv"
+sha256 = "7a0869c0b13a31d8a4c0eaafbaae2d1e5f8d1825cf79323b7cb0b19ad17a64bb"
+bytes = 48
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_rows.csv"
+sha256 = "7afecf932055ae158d7553d733bf9a97583a182ed2365249b100a3036a099134"
+bytes = 188
+macro = "gen/71_results_format.ijm"
+
+[[file]]
+path = "results_shape_feret.csv"
+sha256 = "d210998cd812c283b5a0789af9c9341bafbfe3a7e5f0acb619641a17db62f2c2"
+bytes = 108
+macro = "gen/71_results_format.ijm"
 
 [[file]]
 path = "rgb.png"

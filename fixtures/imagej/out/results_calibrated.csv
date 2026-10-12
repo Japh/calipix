@@ -1,0 +1,2 @@
+ ,Label,Area,Mean,StdDev,Mode,Min,Max,X,Y,XM,YM,Perim.,BX,BY,Width,Height,Major,Minor,Angle,Circ.,Feret,IntDen,Median,Skew,Kurt,%Area,RawIntDen,Slice,FeretX,FeretY,FeretAngle,MinFeret,AR,Round,Solidity
+1,gray8_calibrated.tif,25,128.670,74.260,91,3,255,7.500,1.750,7.539,1.767,25,2.500,0.500,10,2.500,0,0,0,0.503,10.308,3216.750,129,0.014,-1.207,100,25734.000,1,8,6,165.964,2.500,NaN,Infinity,1.000
