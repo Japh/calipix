@@ -310,8 +310,8 @@ fn fill_runs(place: &ImagePlace, all: &[Run], clip: Rect, color: Color32) -> Opt
             }
         }
         crossings.sort_by(f64::total_cmp);
-        for pair in crossings.chunks_exact(2) {
-            let (x0, x1) = (pair[0].max(left), pair[1].min(right));
+        for [enters, leaves] in crossings.as_chunks::<2>().0 {
+            let (x0, x1) = (enters.max(left), leaves.min(right));
             if x1 > x0 {
                 let strip = Rect::from_min_max(
                     pos2(x0 as f32 / scale, row as f32 / scale),
@@ -856,8 +856,9 @@ mod tests {
         // Twenty device rows; the eight through the hole are two strips.
         assert_eq!(mesh.vertices.len() / 4, 12 + 8 * 2);
         let covers = |x: f32, y: f32| {
-            mesh.vertices
-                .chunks_exact(4)
+            let quads = mesh.vertices.as_chunks::<4>().0;
+            quads
+                .iter()
                 .any(|quad| Rect::from_min_max(quad[0].pos, quad[3].pos).contains(pos2(x, y)))
         };
         let inside = place.screen([1.5, 5.0]);

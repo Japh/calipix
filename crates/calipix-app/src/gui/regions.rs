@@ -337,7 +337,9 @@ fn rows(ui: &mut egui::Ui, state: &mut AppState) {
                     kind_galley,
                     visuals.weak_text_color(),
                 );
-                let name_color = if named {
+                // A region without a name is listed by its number, more
+                // quietly, unless the row is picked out.
+                let name_color = if named || selected {
                     text_color
                 } else {
                     visuals.weak_text_color()

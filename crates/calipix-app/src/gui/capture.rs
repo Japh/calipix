@@ -217,7 +217,7 @@ impl Step {
                     .map(|n| n.trim().parse())
                     .collect::<Result<_, _>>()
                     .context("ipath needs numbers separated by commas")?;
-                if numbers.len() < 4 || numbers.len() % 2 != 0 {
+                if numbers.len() < 4 || !numbers.len().is_multiple_of(2) {
                     bail!("`{text}` should be ipath:<x>,<y>,<x>,<y>,...");
                 }
                 let places = numbers.chunks(2).map(|p| egui::pos2(p[0], p[1])).collect();
