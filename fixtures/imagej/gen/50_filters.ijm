@@ -16,7 +16,7 @@
 // (Raw rather than TIFF so that the files are exact for float and do not join the TIFF corpus.)
 // Outputs: filt_8.raw filt_16.raw filt_32.raw filt_rgb.raw filt_nan.raw filt_struct.raw
 //          filt_8cal.raw filt_stack16_base.raw filt_stack16_gauss.raw filt_stack16_median.raw
-//          filt_index.txt
+//          filt_big8_gauss9.raw filt_big32_gauss9.raw filt_big16_unsharp9.raw filt_index.txt
 var W = 40;
 var H = 30;
 var nCases = 0;
@@ -243,6 +243,28 @@ makeStack();
 makeRectangle(6, 5, 20, 14);
 run("Median...", "radius=2 stack");
 saveAs("Raw Data", d + "/filt_stack16_median.raw");
+close();
+
+// ---- A large Gaussian in a selection of the full 64x48 images. Above sigma 8.5 ImageJ blurs
+// a downscaled copy whose grid starts a kernel radius before the selection, so these differ
+// from the same samples of the blurred whole image. (The 40x30 bases are too small to show it.)
+open(d + "/gray8.tif");
+makeRectangle(41, 37, 20, 10);
+run("Gaussian Blur...", "sigma=9");
+run("Select None");
+saveAs("Raw Data", d + "/filt_big8_gauss9.raw");
+close();
+open(d + "/gray32f.tif");
+makeRectangle(41, 41, 20, 6);
+run("Gaussian Blur...", "sigma=9");
+run("Select None");
+saveAs("Raw Data", d + "/filt_big32_gauss9.raw");
+close();
+open(d + "/gray16.tif");
+makeRectangle(43, 40, 20, 8);
+run("Unsharp Mask...", "radius=9 mask=0.60");
+run("Select None");
+saveAs("Raw Data", d + "/filt_big16_unsharp9.raw");
 close();
 
 File.saveString(index, d + "/filt_index.txt");

@@ -236,6 +236,24 @@ bytes = 3600
 macro = "gen/50_filters.ijm"
 
 [[file]]
+path = "filt_big16_unsharp9.raw"
+sha256 = "006a70442623ec8163b96e863bee0202d712fb64f482a76bb5166405f6b3ba49"
+bytes = 6144
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_big32_gauss9.raw"
+sha256 = "ff6652d837ea5c5a15a9042c9078a53cd9bf69f05b5396198b258b0bf2ffb768"
+bytes = 12288
+macro = "gen/50_filters.ijm"
+
+[[file]]
+path = "filt_big8_gauss9.raw"
+sha256 = "e44e33671c643b0f648dd29988aa356c6f05e82d6c5ffc2ba7c7591473fcded9"
+bytes = 3072
+macro = "gen/50_filters.ijm"
+
+[[file]]
 path = "filt_index.txt"
 sha256 = "11b882bdea105d4545de8bc947068a01ab75c49fc9ec12a6e135f21728bf2a5e"
 bytes = 8604

@@ -359,3 +359,72 @@ fn gaussian_sigma_2_matches_the_tiff_references() {
         }
     }
 }
+
+/// Above sigma 8.5 ImageJ blurs a downscaled copy of each line, on a grid
+/// that starts a kernel radius before the selection. These selections of
+/// the full 64 x 48 images lie far enough from the left and top edges for
+/// that to matter: the result must match ImageJ, and for float must not be
+/// the same as blurring the whole plane.
+#[test]
+fn a_large_gaussian_in_a_selection_matches_imagej() {
+    let (w, h) = (64, 48);
+    type Run = fn(&Buffer, Frame) -> Buffer;
+    let cases: [(&str, &str, Rect, Run); 3] = [
+        (
+            "gray8.tif",
+            "filt_big8_gauss9.raw",
+            Rect::new(41, 37, 20, 10),
+            |p, f| gaussian_blur(p, f, 9.0, 9.0, 0.002).unwrap(),
+        ),
+        (
+            "gray32f.tif",
+            "filt_big32_gauss9.raw",
+            Rect::new(41, 41, 20, 6),
+            |p, f| gaussian_blur(p, f, 9.0, 9.0, 0.0002).unwrap(),
+        ),
+        (
+            "gray16.tif",
+            "filt_big16_unsharp9.raw",
+            Rect::new(43, 40, 20, 8),
+            |p, f| unsharp_mask(p, f, 9.0, 0.6).unwrap(),
+        ),
+    ];
+    for (source, reference, rect, run) in cases {
+        let input = calipix_io::open(fixture(source))
+            .unwrap()
+            .read_plane(0)
+            .unwrap();
+        let bytes = std::fs::read(fixture(reference)).unwrap();
+        let expected = match &input {
+            Buffer::U8(_) => Buffer::from_vec(bytes),
+            Buffer::U16(_) => Buffer::from_vec(
+                bytes
+                    .chunks(2)
+                    .map(|b| u16::from_be_bytes([b[0], b[1]]))
+                    .collect::<Vec<_>>(),
+            ),
+            _ => Buffer::from_vec(
+                bytes
+                    .chunks(4)
+                    .map(|b| f32::from_be_bytes([b[0], b[1], b[2], b[3]]))
+                    .collect::<Vec<_>>(),
+            ),
+        };
+        let ours = run(&input, Frame::new(w, h, rect));
+        assert_eq!(ours, expected, "{reference}");
+        let whole = run(&input, Frame::whole(w, h));
+        let in_rect = |i: &usize| {
+            let (x, y) = (i % w, i / w);
+            x >= rect.x && x < rect.x + rect.w && y >= rect.y && y < rect.y + rect.h
+        };
+        // Rounding to integers hides the difference; float shows it.
+        if input.dtype().is_float() {
+            assert!(
+                (0..w * h)
+                    .filter(in_rect)
+                    .any(|i| whole.get_f64(i) != ours.get_f64(i)),
+                "{reference}: the selection made no difference"
+            );
+        }
+    }
+}
