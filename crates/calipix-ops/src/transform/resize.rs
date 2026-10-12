@@ -358,7 +358,10 @@ impl DownsizeTable {
 /// the edges of the plane. When shrinking, the part of `rect` the reduced
 /// contents no longer cover is set to `background`; with bicubic
 /// interpolation ImageJ instead fills it with whatever the interpolation
-/// finds there, and Calipix does the same.
+/// finds there, and Calipix does the same. Without bicubic interpolation
+/// the bottom row of the plane is read as if it lay a thousandth of a
+/// sample higher, so that without interpolation it repeats the row above:
+/// another ImageJ habit kept for the sake of equal results.
 pub fn scale_in_place(
     buf: &Buffer,
     width: usize,
