@@ -664,3 +664,61 @@ pub fn is_summarized(table: &Table) -> bool {
     let n = table.len();
     n >= 4 && table.get(n - 1, LABEL).as_text() == Some("Max")
 }
+
+/// `ImageStack.getShortSliceLabel`: a slice label cut at its first line
+/// break and at 60 characters, without a three-letter file extension.
+/// `None` if there is nothing to show.
+pub fn short_slice_label(label: &str) -> Option<String> {
+    let line = match label.find('\n') {
+        Some(0) => return None,
+        Some(end) => &label[..end],
+        None => label,
+    };
+    let mut chars: Vec<char> = line.chars().collect();
+    let n = chars.len();
+    if n > 4 && chars[n - 4] == '.' && !chars[n - 1].is_ascii_digit() {
+        chars.truncate(n - 4);
+    }
+    chars.truncate(60);
+    Some(chars.into_iter().collect())
+}
+
+/// The text of the Label column (`Analyzer.getFileName`): the image name,
+/// then for an image of several planes a colon and the plane's label, or
+/// its number in the stack if it has none.
+pub fn row_label(
+    image_name: &str,
+    planes: usize,
+    stack_index: usize,
+    slice_label: Option<&str>,
+) -> String {
+    let mut label = image_name.to_string();
+    if planes > 1 {
+        if !label.is_empty() {
+            label.push(':');
+        }
+        match slice_label
+            .and_then(short_slice_label)
+            .filter(|l| !l.is_empty())
+        {
+            Some(slice) => label.push_str(&slice),
+            None => label.push_str(&stack_index.to_string()),
+        }
+    }
+    label
+}
+
+/// The table without its column of row labels, which is what ImageJ's Set
+/// Measurements leaves when "Display label" is off
+/// (`ResultsTable.disableRowLabels`).
+pub fn without_labels(table: &Table) -> Table {
+    if !table.has_column(LABEL) {
+        return table.clone();
+    }
+    let headings: Vec<&str> = table.column_names().filter(|h| *h != LABEL).collect();
+    let mut out = Table::new();
+    for row in 0..table.len() {
+        out.push_row(headings.iter().map(|h| (*h, table.get(row, h).clone())));
+    }
+    out
+}

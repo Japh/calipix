@@ -172,10 +172,17 @@ pub fn format_table(table: &Table, format: &TableFormat) -> String {
     let csv = d == ',';
     let headings: Vec<&str> = table.column_names().collect();
     let labels = headings.contains(&LABEL);
-    let columns: Vec<(&str, Option<i32>)> = headings
+    // Each column's decimal places and the last row holding text: ImageJ
+    // pads a text column with empty text up to there.
+    let columns: Vec<(&str, Option<i32>, Option<usize>)> = headings
         .iter()
         .filter(|h| **h != LABEL)
-        .map(|h| (*h, column_places(table, h, format)))
+        .map(|h| {
+            let last_text = (0..table.len())
+                .rev()
+                .find(|&row| matches!(table.get(row, h), Cell::Text(_)));
+            (*h, column_places(table, h, format), last_text)
+        })
         .collect();
     let mut out = String::new();
     if format.headings && !(table.is_empty() && headings.is_empty()) {
@@ -187,7 +194,7 @@ pub fn format_table(table: &Table, format: &TableFormat) -> String {
             out.push_str(LABEL);
             out.push(d);
         }
-        let names: Vec<&str> = columns.iter().map(|(h, _)| *h).collect();
+        let names: Vec<&str> = columns.iter().map(|(h, _, _)| *h).collect();
         out.push_str(&names.join(&d.to_string()));
         out.push_str(&format.line_ending);
     }
@@ -211,12 +218,15 @@ pub fn format_table(table: &Table, format: &TableFormat) -> String {
             out.push_str(&label);
             out.push(d);
         }
-        for (i, (heading, places)) in columns.iter().enumerate() {
+        for (i, (heading, places, last_text)) in columns.iter().enumerate() {
             if i > 0 {
                 out.push(d);
             }
             let value = match table.get(row, heading) {
                 Cell::Number(v) => number(*v, *places, format.precision),
+                Cell::Empty if last_text.is_some_and(|last| row < last) => {
+                    if csv { "\"\"" } else { "" }.to_string()
+                }
                 Cell::Empty => number(empty, *places, format.precision),
                 Cell::Text(text) => {
                     let text = text.replace('\n', "\\n");

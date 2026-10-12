@@ -29,6 +29,7 @@ pub use outline::{Feret, Outline, OutlineKind, convex_hull, feret, hull_area, ou
 pub use profile::{column_average_profile, line_profile, row_average_profile};
 pub use results::{
     DEFAULT_HEADINGS, LABEL, MeasureSettings, Measured, Measurements, PlaneContext, Row,
-    append_row, is_summarized, measure, results_row, summarize,
+    append_row, is_summarized, measure, results_row, row_label, short_slice_label, summarize,
+    without_labels,
 };
 pub use stats::{Calibration, HistogramSpec, Region, Samples, Statistics, statistics};
