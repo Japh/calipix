@@ -8,6 +8,9 @@ use crate::model::{Coords, Frame, jround};
 use crate::path::{self, FILL_FLATNESS, Path};
 use crate::{Mask, Roi};
 
+/// Largest whole-selection mask that is ever built.
+const MAX_FULL_MASK: i64 = 1 << 26;
+
 /// The part of `frame` inside a `width` x `height` image.
 fn clip(frame: Frame, width: usize, height: usize) -> Option<Rect> {
     let x0 = i64::from(frame.x).max(0);
@@ -91,9 +94,11 @@ impl Roi {
                     for (&x, &y) in xs.iter().zip(ys) {
                         let px = jround(f64::from(x) + dx);
                         let py = jround(f64::from(y) + dy);
-                        let inside_frame = px >= 0 && py >= 0 && px < frame.w && py < frame.h;
+                        if px < 0 || py < 0 || px >= frame.w || py >= frame.h {
+                            continue;
+                        }
                         let (wx, wy) = (px - window.x, py - window.y);
-                        if inside_frame && wx >= 0 && wy >= 0 && wx < window.w && wy < window.h {
+                        if wx >= 0 && wy >= 0 && wx < window.w && wy < window.h {
                             out[(wy * window.w + wx) as usize] = 255;
                         }
                     }
@@ -173,7 +178,11 @@ impl Roi {
     /// selection alone (outline of an oval, enlarging).
     pub(crate) fn full_mask(&self) -> (Frame, Vec<u8>) {
         let frame = self.frame();
-        let (w, h) = (frame.w.max(0), frame.h.max(0));
+        let (mut w, mut h) = (frame.w.max(0), frame.h.max(0));
+        if i64::from(w) * i64::from(h) > MAX_FULL_MASK {
+            // Far larger than any image; treated as covering nothing.
+            (w, h) = (0, 0);
+        }
         let window = Window { x: 0, y: 0, w, h };
         let mut data = vec![0u8; w as usize * h as usize];
         if !self.local_mask(frame, window, &mut data) {

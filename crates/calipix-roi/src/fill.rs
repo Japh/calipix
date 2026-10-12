@@ -22,6 +22,11 @@ pub(crate) enum Polygon<'a> {
     },
 }
 
+/// Rows above the window that are stepped through one by one, as ImageJ
+/// would, before the filler jumps ahead. A selection that starts more
+/// rows than this above the top of the image is not a real one.
+const FAST_FORWARD_ROWS: i64 = 1 << 16;
+
 /// The part of the full mask to produce.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Window {
@@ -158,15 +163,22 @@ impl Active {
 pub(crate) fn fill(polygon: &Polygon<'_>, width: i32, height: i32, window: Window, out: &mut [u8]) {
     let mut e = build_edge_table(polygon);
     let edges = e.ex.len();
-    if edges == 0 || window.w <= 0 || window.h <= 0 {
+    if edges == 0 || window.w <= 0 || window.h <= 0 || width <= 0 || height <= 0 {
         return;
     }
     let mut active = Active {
         list: vec![0; edges + 1],
         count: 0,
     };
-    let y_start = e.y_min.max(0);
-    if e.y_min != 0 {
+    let mut y_start = e.y_min.max(0);
+    if i64::from(window.y) - i64::from(y_start) > FAST_FORWARD_ROWS {
+        // The window lies far below the top of the polygon (which then
+        // reaches far outside any image): start at the window, placing
+        // the edges as ImageJ does when a polygon starts above row 0,
+        // instead of stepping through every row above it.
+        y_start = window.y;
+    }
+    if e.y_min != 0 || y_start > 0 {
         // PolygonFiller.shiftXValuesAndActivate
         for i in 0..edges {
             if e.ey1[i] < y_start && e.ey2[i] >= y_start {

@@ -262,11 +262,14 @@ impl Path {
             Some((x0, y0, x1, y1)) => {
                 let x = x0.floor() as i32;
                 let y = y0.floor() as i32;
+                let extent = |low: i32, high: f64| {
+                    (high.ceil() - f64::from(low)).clamp(0.0, f64::from(i32::MAX)) as i32
+                };
                 Frame {
                     x,
                     y,
-                    w: (x1.ceil() as i32).wrapping_sub(x),
-                    h: (y1.ceil() as i32).wrapping_sub(y),
+                    w: extent(x, x1),
+                    h: extent(y, y1),
                 }
             }
         }
@@ -654,29 +657,41 @@ pub(crate) fn flatten_local(
     (xp, yp)
 }
 
+/// How often a curve is halved at most when its length is measured. Each
+/// halving cuts the error to about a quarter, so curves up to tens of
+/// millions of pixels long reach ImageJ's tolerance well before this;
+/// ImageJ itself has no limit and would not return for longer ones.
+const LENGTH_DEPTH: u32 = 18;
+
 /// Length of a cubic curve: `ShapeRoi.cBezLength` (Gravesen's adaptive
 /// subdivision).
 pub(crate) fn cubic_length(p: &[f64; 8]) -> f64 {
-    let d = |a: usize, b: usize| ((p[b] - p[a]).powi(2) + (p[b + 1] - p[a + 1]).powi(2)).sqrt();
-    let chord = d(0, 6);
-    let polygon = d(0, 2) + d(2, 4) + d(4, 6);
-    if (polygon - chord) / 2.0 > MAX_ERROR {
-        let (left, right) = split_cubic(p);
-        return cubic_length(&left) + cubic_length(&right);
+    fn length(p: &[f64; 8], depth: u32) -> f64 {
+        let d = |a: usize, b: usize| ((p[b] - p[a]).powi(2) + (p[b + 1] - p[a + 1]).powi(2)).sqrt();
+        let chord = d(0, 6);
+        let polygon = d(0, 2) + d(2, 4) + d(4, 6);
+        if (polygon - chord) / 2.0 > MAX_ERROR && depth < LENGTH_DEPTH {
+            let (left, right) = split_cubic(p);
+            return length(&left, depth + 1) + length(&right, depth + 1);
+        }
+        0.5 * polygon + 0.5 * chord
     }
-    0.5 * polygon + 0.5 * chord
+    length(p, 0)
 }
 
 /// Length of a quadratic curve: `ShapeRoi.qBezLength`.
 pub(crate) fn quad_length(p: &[f64; 6]) -> f64 {
-    let d = |a: usize, b: usize| ((p[b] - p[a]).powi(2) + (p[b + 1] - p[a + 1]).powi(2)).sqrt();
-    let chord = d(0, 4);
-    let polygon = d(0, 2) + d(2, 4);
-    if (polygon - chord) / 2.0 > MAX_ERROR {
-        let (left, right) = split_quad(p);
-        return quad_length(&left) + quad_length(&right);
+    fn length(p: &[f64; 6], depth: u32) -> f64 {
+        let d = |a: usize, b: usize| ((p[b] - p[a]).powi(2) + (p[b + 1] - p[a + 1]).powi(2)).sqrt();
+        let chord = d(0, 4);
+        let polygon = d(0, 2) + d(2, 4);
+        if (polygon - chord) / 2.0 > MAX_ERROR && depth < LENGTH_DEPTH {
+            let (left, right) = split_quad(p);
+            return length(&left, depth + 1) + length(&right, depth + 1);
+        }
+        (2.0 * polygon + chord) / 3.0
     }
-    (2.0 * polygon + chord) / 3.0
+    length(p, 0)
 }
 
 /// ImageJ's `Wand.autoOutline(x, y, 255, 255)` on a mask in legacy mode,

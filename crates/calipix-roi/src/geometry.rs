@@ -7,6 +7,9 @@ use crate::model::{Coords, Frame, Poly, jround, to_int_r};
 use crate::path::{self, FLATNESS, Path, Segment};
 use crate::{Point, Roi};
 
+/// The longest line that is sampled or drawn, in pixels.
+const MAX_LINE_SAMPLES: f64 = (1u32 << 20) as f64;
+
 /// Caliper measurements of a selection, ImageJ's `Roi.getFeretValues()`.
 ///
 /// `max`, `min` and `x`, `y` are in calibrated units when computed with a
@@ -174,20 +177,22 @@ fn smoothed_length(coords: &Coords, close: bool, pw: f64, ph: f64) -> f64 {
     match coords {
         Coords::Int(xp, yp) => {
             let n = xp.len();
-            let f = |v: i32| f64::from(v);
+            // Whole numbers this small add exactly in double precision.
+            let xp: Vec<f64> = xp.iter().map(|&v| f64::from(v)).collect();
+            let yp: Vec<f64> = yp.iter().map(|&v| f64::from(v)).collect();
             length += seg(
-                f(xp[0] + xp[1] + xp[2]) / 3.0 - f(xp[0]),
-                f(yp[0] + yp[1] + yp[2]) / 3.0 - f(yp[0]),
+                (xp[0] + xp[1] + xp[2]) / 3.0 - xp[0],
+                (yp[0] + yp[1] + yp[2]) / 3.0 - yp[0],
             );
             for i in 1..n - 2 {
-                length += seg(f(xp[i + 2] - xp[i - 1]) / 3.0, f(yp[i + 2] - yp[i - 1]) / 3.0);
+                length += seg((xp[i + 2] - xp[i - 1]) / 3.0, (yp[i + 2] - yp[i - 1]) / 3.0);
             }
             length += seg(
-                f(xp[n - 1]) - f(xp[n - 3] + xp[n - 2] + xp[n - 1]) / 3.0,
-                f(yp[n - 1]) - f(yp[n - 3] + yp[n - 2] + yp[n - 1]) / 3.0,
+                xp[n - 1] - (xp[n - 3] + xp[n - 2] + xp[n - 1]) / 3.0,
+                yp[n - 1] - (yp[n - 3] + yp[n - 2] + yp[n - 1]) / 3.0,
             );
             if close {
-                length += seg(f(xp[n - 1] - xp[0]), f(yp[n - 1] - yp[0]));
+                length += seg(xp[n - 1] - xp[0], yp[n - 1] - yp[0]);
             }
         }
         Coords::Float(xp, yp) => {
@@ -222,16 +227,17 @@ fn traced_perimeter(xp: &[i32], yp: &[i32], pw: f64, ph: f64) -> f64 {
         return 0.0;
     }
     let (mut sumdx, mut sumdy, mut corners) = (0i64, 0i64, 0i64);
-    let mut dx1 = xp[0] - xp[n - 1];
-    let mut dy1 = yp[0] - yp[n - 1];
+    let d = |a: i32, b: i32| i64::from(a) - i64::from(b);
+    let mut dx1 = d(xp[0], xp[n - 1]);
+    let mut dy1 = d(yp[0], yp[n - 1]);
     let mut side1 = dx1.abs() + dy1.abs();
     let mut corner = false;
     for i in 0..n {
         let next = if i + 1 == n { 0 } else { i + 1 };
-        let dx2 = xp[next] - xp[i];
-        let dy2 = yp[next] - yp[i];
-        sumdx += i64::from(dx1.abs());
-        sumdy += i64::from(dy1.abs());
+        let dx2 = d(xp[next], xp[i]);
+        let dy2 = d(yp[next], yp[i]);
+        sumdx += dx1.abs();
+        sumdy += dy1.abs();
         let side2 = dx2.abs() + dy2.abs();
         if side1 > 1 || !corner {
             corner = true;
@@ -352,8 +358,8 @@ pub(crate) fn roi_from_guess(guess: Guess, xs: &[f32], ys: &[f32]) -> Option<Roi
             Roi::rectangle(
                 f64::from(x0),
                 f64::from(y0),
-                f64::from(x1 - x0),
-                f64::from(y1 - y0),
+                f64::from(x1) - f64::from(x0),
+                f64::from(y1) - f64::from(y0),
             )
         }
         Guess::Traced => Roi::Traced {
@@ -565,8 +571,8 @@ impl Roi {
                 let shape_frame = Frame {
                     x: x0,
                     y: y0,
-                    w: ((ex + ew).ceil() as i32 - x0).max(1),
-                    h: ((ey + eh).ceil() as i32 - y0).max(1),
+                    w: ((ex + ew).ceil() as i32).wrapping_sub(x0).max(1),
+                    h: ((ey + eh).ceil() as i32).wrapping_sub(y0).max(1),
                 };
                 let steps = path::ellipse_path(ex, ey, ew, eh);
                 let local = path::to_path(&steps, -f64::from(x0), -f64::from(y0));
@@ -646,17 +652,13 @@ impl Roi {
                 let (frame, data) = self.full_mask();
                 path::wand_outline(&data, frame.w, frame.h, frame.w / 2, frame.h / 2)
                     .into_iter()
-                    .map(|(x, y)| (x + frame.x, y + frame.y))
+                    .map(|(x, y)| (x.wrapping_add(frame.x), y.wrapping_add(frame.y)))
                     .collect()
             }
             Roi::Rectangle { .. } | Roi::RoundedRectangle { .. } => {
                 let f = self.frame();
-                vec![
-                    (f.x, f.y),
-                    (f.x + f.w, f.y),
-                    (f.x + f.w, f.y + f.h),
-                    (f.x, f.y + f.h),
-                ]
+                let (right, bottom) = (f.x.wrapping_add(f.w), f.y.wrapping_add(f.h));
+                vec![(f.x, f.y), (right, f.y), (right, bottom), (f.x, bottom)]
             }
             Roi::Line { .. } | Roi::Composite { .. } => {
                 let (xs, ys) = self.float_polygon();
@@ -1098,13 +1100,17 @@ impl Roi {
     ///
     /// The line is sampled at `ceil(length)` equal steps and each sample
     /// `(x, y)` falls in pixel `(round(x - 0.5), round(y - 0.5))`.
-    /// `None` unless this is a straight line.
+    /// `None` unless this is a straight line of at most 2^20 pixels.
     pub fn line_pixels(&self) -> Option<Vec<(i32, i32)>> {
         let Roi::Line { x1, y1, x2, y2, .. } = *self else {
             return None;
         };
         let (dx, dy) = (x2 - x1, y2 - y1);
-        let n = (dx * dx + dy * dy).sqrt().ceil() as i64;
+        let length = (dx * dx + dy * dy).sqrt();
+        if !(length <= MAX_LINE_SAMPLES) {
+            return None;
+        }
+        let n = length.ceil() as i64;
         let (xinc, yinc) = (dx / n as f64, dy / n as f64);
         let mut out: Vec<(i32, i32)> = Vec::new();
         for i in 0..=n.max(0) {
@@ -1126,7 +1132,8 @@ impl Roi {
     /// selection does): straight strokes between the vertices rounded to
     /// whole pixels, each made as [`draw_line_pixels`] makes it, closed
     /// for polygons. Pixels where strokes meet are listed once per
-    /// stroke. `None` for shapes that are not made of vertices.
+    /// stroke. `None` for shapes that are not made of vertices, and for
+    /// outlines of more than 2^22 pixels.
     pub fn drawn_pixels(&self) -> Option<Vec<(i32, i32)>> {
         let vertices: Vec<(i32, i32)> = match self {
             Roi::Line { x1, y1, x2, y2, .. } => {
@@ -1143,7 +1150,9 @@ impl Roi {
                     Coords::Int(x, y) => x
                         .iter()
                         .zip(y)
-                        .map(|(&x, &y)| (x + poly.frame.x, y + poly.frame.y))
+                        .map(|(&x, &y)| {
+                            (x.wrapping_add(poly.frame.x), y.wrapping_add(poly.frame.y))
+                        })
                         .collect(),
                     Coords::Float(x, y) => x
                         .iter()
@@ -1162,6 +1171,9 @@ impl Roi {
         let mut out = Vec::new();
         for pair in vertices.windows(2) {
             out.extend(draw_line_pixels(pair[0].0, pair[0].1, pair[1].0, pair[1].1));
+            if out.len() > 1 << 22 {
+                return None;
+            }
         }
         if self.is_area() && vertices.len() > 1 {
             let (last, first) = (vertices[vertices.len() - 1], vertices[0]);
@@ -1179,13 +1191,17 @@ impl Roi {
     /// ImageJ reads the pixel at each position rounded to the nearest
     /// whole number (see [`profile_pixel`]); with interpolation it
     /// interpolates at the position itself. `None` unless this is a
-    /// straight line.
+    /// straight line of at most 2^20 pixels.
     pub fn profile_positions(&self) -> Option<Vec<Point>> {
         let Roi::Line { x1, y1, x2, y2, .. } = *self else {
             return None;
         };
         let (dx, dy) = (x2 - x1, y2 - y1);
-        let n = jround((dx * dx + dy * dy).sqrt()).max(0);
+        let length = (dx * dx + dy * dy).sqrt();
+        if !(length <= MAX_LINE_SAMPLES) {
+            return None;
+        }
+        let n = jround(length).max(0);
         let (xinc, yinc) = if n > 0 {
             (dx / f64::from(n), dy / f64::from(n))
         } else {
@@ -1212,11 +1228,15 @@ pub fn profile_pixel(position: Point) -> (i32, i32) {
 /// pixels: `ImageProcessor.lineTo`. Used to draw outlines and overlays.
 ///
 /// The longer of the two extents is stepped one pixel at a time and the
-/// other coordinate is rounded half up; both end pixels are included.
+/// other coordinate is rounded half up; both end pixels are included. A
+/// line longer than 2^20 pixels, beyond any image, gives nothing.
 pub fn draw_line_pixels(x1: i32, y1: i32, x2: i32, y2: i32) -> Vec<(i32, i32)> {
     let dx = i64::from(x2) - i64::from(x1);
     let dy = i64::from(y2) - i64::from(y1);
     let n = dx.abs().max(dy.abs());
+    if n as f64 > MAX_LINE_SAMPLES {
+        return Vec::new();
+    }
     let xinc = if dx != 0 { dx as f64 / n as f64 } else { 0.0 };
     let yinc = if dy != 0 { dy as f64 / n as f64 } else { 0.0 };
     let (mut x, mut y) = (f64::from(x1), f64::from(y1));

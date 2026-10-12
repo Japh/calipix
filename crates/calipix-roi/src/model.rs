@@ -72,8 +72,12 @@ impl Poly {
     pub fn float_polygon(&self) -> (Vec<f32>, Vec<f32>) {
         match &self.coords {
             Coords::Int(xp, yp) => (
-                xp.iter().map(|&v| (v + self.frame.x) as f32).collect(),
-                yp.iter().map(|&v| (v + self.frame.y) as f32).collect(),
+                xp.iter()
+                    .map(|&v| v.wrapping_add(self.frame.x) as f32)
+                    .collect(),
+                yp.iter()
+                    .map(|&v| v.wrapping_add(self.frame.y) as f32)
+                    .collect(),
             ),
             Coords::Float(xpf, ypf) => {
                 let (xb, yb) = (self.xbase() as f32, self.ybase() as f32);
@@ -101,8 +105,8 @@ impl Poly {
     pub fn int_polygon(&self) -> (Vec<i32>, Vec<i32>) {
         let (x, y) = self.relative_int();
         (
-            x.iter().map(|v| v + self.frame.x).collect(),
-            y.iter().map(|v| v + self.frame.y).collect(),
+            x.iter().map(|v| v.wrapping_add(self.frame.x)).collect(),
+            y.iter().map(|v| v.wrapping_add(self.frame.y)).collect(),
         )
     }
 

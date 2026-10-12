@@ -10,7 +10,7 @@ use crate::path::{self, Path, Segment};
 use crate::{Point, Roi};
 
 /// Largest number of pixels a temporary mask may have.
-const MAX_WORK_PIXELS: i64 = 1 << 28;
+const MAX_WORK_PIXELS: i64 = 1 << 26;
 
 /// The ellipse with the same area and second moments as a selection:
 /// ImageJ's `EllipseFitter`, which gives the "Major", "Minor" and "Angle"
@@ -155,7 +155,7 @@ struct Canvas {
 
 impl Canvas {
     fn new(x: i32, y: i32, w: i64, h: i64) -> Option<Canvas> {
-        if w <= 0 || h <= 0 || w * h > MAX_WORK_PIXELS {
+        if w <= 0 || h <= 0 || w.saturating_mul(h) > MAX_WORK_PIXELS {
             return None;
         }
         Some(Canvas {
@@ -207,7 +207,10 @@ fn distance_map(data: &[u8], width: usize, height: usize) -> Vec<u8> {
         let mut nearest = p0;
         let d = |p: i32| {
             let (px, py) = (p & 0xffff, (p >> 16) & 0xffff);
-            (x - px) * (x - px) + (y - py) * (y - py)
+            // Java's int arithmetic, which wraps for masks taller or
+            // wider than 46340 pixels.
+            let (dx, dy) = (x - px, y - py);
+            dx.wrapping_mul(dx).wrapping_add(dy.wrapping_mul(dy))
         };
         if p0 != NO_POINT {
             dist_sqr = dist_sqr.min(d(p0));
@@ -540,7 +543,10 @@ impl Roi {
         });
         match snapped {
             Some(poly) => {
-                let (w, h) = (poly.frame.w.max(0), poly.frame.h.max(0));
+                let (mut w, mut h) = (poly.frame.w.max(0), poly.frame.h.max(0));
+                if i64::from(w) * i64::from(h) > MAX_WORK_PIXELS {
+                    (w, h) = (0, 0);
+                }
                 let mut data = vec![0u8; w as usize * h as usize];
                 if let Coords::Float(x, y) = &poly.coords {
                     let polygon = Polygon::Float {
@@ -588,15 +594,15 @@ impl Roi {
             Roi::Rectangle { .. } | Roi::RoundedRectangle { .. } | Roi::Oval { .. }
         ) {
             let f = self.frame();
-            let (w, h) = (f.w + 2 * n, f.h + 2 * n);
-            if w <= 0 || h <= 0 {
+            let (w, h) = (f64::from(f.w) + 2.0 * f64::from(n), f64::from(f.h) + 2.0 * f64::from(n));
+            if w <= 0.0 || h <= 0.0 {
                 return None;
             }
-            let (x, y) = (f64::from(f.x - n), f64::from(f.y - n));
+            let (x, y) = (f64::from(f.x) - f64::from(n), f64::from(f.y) - f64::from(n));
             return Some(if matches!(self, Roi::Oval { .. }) {
-                Roi::oval(x, y, f64::from(w), f64::from(h))
+                Roi::oval(x, y, w, h)
             } else {
-                Roi::rectangle(x, y, f64::from(w), f64::from(h))
+                Roi::rectangle(x, y, w, h)
             });
         }
         let (frame, mask) = self.snapped_mask();
@@ -607,6 +613,9 @@ impl Roi {
         );
         if w * h > MAX_WORK_PIXELS || frame.w <= 0 || frame.h <= 0 {
             return None;
+        }
+        if w >= 1 << 16 || h >= 1 << 16 {
+            return None; // the distance map packs coordinates into 16 bits
         }
         let (w, h) = (w as usize, h as usize);
         // Growing measures distance from the selection, shrinking from
@@ -626,7 +635,13 @@ impl Roi {
         } else {
             edm.iter().map(|&d| u8::from(i32::from(d) > -n) * 255).collect()
         };
-        from_mask(&selected, w, h, frame.x - margin, frame.y - margin)
+        from_mask(
+            &selected,
+            w,
+            h,
+            frame.x.wrapping_sub(margin),
+            frame.y.wrapping_sub(margin),
+        )
     }
 
     /// The centre ImageJ scales a selection about when asked for a
@@ -690,7 +705,10 @@ impl Roi {
             let xbase = (f64::from(f.x) - (f64::from(f.w) * x_scale - f64::from(f.w)) / 2.0) as i32;
             let ybase = (f64::from(f.y) - (f64::from(f.h) * y_scale - f64::from(f.h)) / 2.0) as i32;
             return Roi::Composite {
-                path: local.translated(f64::from(xbase - lf.x), f64::from(ybase - lf.y)),
+                path: local.translated(
+                    f64::from(xbase) - f64::from(lf.x),
+                    f64::from(ybase) - f64::from(lf.y),
+                ),
             };
         }
         let (mut xs, mut ys) = self.transform_points();

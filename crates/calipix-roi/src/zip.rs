@@ -151,8 +151,8 @@ pub fn read_zip(data: &[u8]) -> Result<RoiSet, Error> {
 /// (`RoiManager.getLabel`).
 pub(crate) fn default_label(roi: &Roi) -> String {
     let (x, y, w, h) = roi.int_bounds();
-    let xc = (x + w / 2).max(0);
-    let yc = (y + h / 2).max(0);
+    let xc = (i64::from(x) + i64::from(w) / 2).max(0);
+    let yc = (i64::from(y) + i64::from(h) / 2).max(0);
     let digits = xc.to_string().len().max(yc.to_string().len()).max(4);
     format!("{yc:0digits$}-{xc:0digits$}")
 }
