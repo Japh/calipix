@@ -1,0 +1,21 @@
+results_default.csv	gray8.tif	-	none	area mean min redirect=None decimal=3
+results_all_label.csv	gray32f.tif	-	rect 8 6 20 10	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack display redirect=None decimal=3
+results_all_label.txt	gray8.tif	-	rect 8 6 20 10	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack display redirect=None decimal=3
+results_all_sci4.csv	gray16.tif	-	rect 44 30 20 18	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack scientific redirect=None decimal=4
+results_all_dec0.csv	gray8.tif	-	rect 8 6 20 10	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack redirect=None decimal=0
+results_all_dec9.csv	gray32f.tif	-	none	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack redirect=None decimal=9
+results_all_rgb.csv	rgb.tif	-	rect 0 20 64 3	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack display redirect=None decimal=3
+results_shape_feret.csv	rgb.tif	-	rect 5 9 13 1	shape feret's redirect=None decimal=2
+results_one_pixel.csv	gray16.tif	-	rect 63 47 1 1	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack redirect=None decimal=3
+results_hyper.csv	hyperstack_c3z4t5.tif	2 3 4	rect 3 2 10 7	area mean min stack display redirect=None decimal=3
+results_hyper_all.csv	hyperstack_c3z4t5.tif	3 1 5	none	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack redirect=None decimal=3
+results_calibrated.csv	gray8_calibrated.tif	-	rect 8 6 20 10	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack display redirect=None decimal=3
+results_inverty.csv	gray8_calibrated.tif	-	rect 8 6 20 10	area centroid center bounding invert redirect=None decimal=4
+results_nan_option.csv	gray8.tif	-	rect 8 6 20 10	area mean min nan redirect=None decimal=3
+results_line.csv	gray8.tif	-	line 5 6 50 40	area mean min redirect=None decimal=3
+results_line_all.csv	gray16.tif	-	line 10.5 7.25 40.75 30.5	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack display redirect=None decimal=3
+results_line_length.csv	gray8.tif	-	line 5 6 50 40	perimeter display redirect=None decimal=3
+results_line_calibrated.csv	gray8_calibrated.tif	-	line 2 10 61 10	area mean centroid bounding redirect=None decimal=3
+results_point.csv	gray8.tif	-	point 12 20	area mean min redirect=None decimal=3
+results_point_all.csv	gray8_calibrated.tif	-	point 31 5	area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack display redirect=None decimal=3
+results_point_hyper.csv	hyperstack_c3z4t5.tif	2 3 4	point 4 5	mean redirect=None decimal=3

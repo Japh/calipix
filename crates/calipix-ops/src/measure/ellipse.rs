@@ -23,6 +23,7 @@ pub struct Ellipse {
 /// ImageJ's constants are kept as written there (a truncated square root
 /// of pi, 0.08333333 for one twelfth), because they show in the results.
 pub fn fit_ellipse(rect: Rect, mask: Option<&[u8]>) -> Ellipse {
+    #[allow(clippy::approx_constant)] // ImageJ's value, on purpose
     const HALF_PI: f64 = 1.5707963267949;
     let (left, top) = (rect.x as f64, rect.y as f64);
     let (width, height) = (rect.w, rect.h);

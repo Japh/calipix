@@ -1003,7 +1003,7 @@ fn profiles_of_rectangles_match_imagej() {
         if !select(&exec, &mut session, case) {
             continue;
         }
-        let vertical = case.about.get("vertical").is_some();
+        let vertical = case.about.contains_key("vertical");
         let out = exec
             .run(
                 &mut session,
