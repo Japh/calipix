@@ -144,6 +144,8 @@ pub struct Shell {
     layout_changed: bool,
     /// Errors the GPU reported since the last frame.
     gpu_errors: Arc<Mutex<Vec<String>>>,
+    /// Processor time the last frame took, as the window reports it.
+    frame_seconds: Option<f32>,
 }
 
 impl Shell {
@@ -178,6 +180,7 @@ impl Shell {
             prepared: false,
             layout_changed: false,
             gpu_errors: Arc::default(),
+            frame_seconds: None,
         }
     }
 
@@ -613,7 +616,8 @@ struct Window {
 }
 
 impl eframe::App for Window {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        self.shell.frame_seconds = frame.info().cpu_usage;
         self.shell.ui(ui);
         if let Some(capture) = &mut self.capture
             && capture.drive(ui.ctx(), &mut self.shell)

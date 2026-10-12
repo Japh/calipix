@@ -507,7 +507,15 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
             .effects(modifies()),
         |ctx, p: ListParams| {
             let regions = regions_of(ctx, p.input)?;
-            let remove = chosen(Some(&p.regions), regions.len())?;
+            if regions.is_empty() {
+                return Err(no_regions());
+            }
+            // Naming none is a mistake here, not a way of saying all.
+            let remove =
+                parse_regions(&p.regions, regions.len()).map_err(|reason| Error::InvalidArg {
+                    param: "regions".to_string(),
+                    reason,
+                })?;
             let kept: Vec<RoiEntry> = regions
                 .into_iter()
                 .enumerate()

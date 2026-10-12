@@ -7,6 +7,8 @@
 //!
 //! - `open:<path>` opens an image file
 //! - `run:<command id>` chooses a command as from a menu
+//! - `start:<command id>|<parameter>=<value>|...` runs a command with
+//!   arguments, as the command line would
 //! - `palette:<query>` opens the command palette and types a query
 //! - `set:<parameter>=<value>` types a value into the open dialog
 //! - `more` unfolds the dialog's advanced options
@@ -65,6 +67,7 @@ use crate::state::{Draft, Panel, RowClick, Tool};
 enum Step {
     Open(PathBuf),
     Run(String),
+    Start(String, Vec<(String, String)>),
     Palette(String),
     Set(String, String),
     More,
@@ -109,6 +112,19 @@ impl Step {
         Ok(match verb.trim() {
             "open" => Step::Open(rest.into()),
             "run" => Step::Run(rest.to_string()),
+            "start" => {
+                let mut parts = rest.split('|');
+                let id = parts.next().unwrap_or_default().trim().to_string();
+                let args = parts
+                    .map(|part| {
+                        let (name, value) = part
+                            .split_once('=')
+                            .ok_or_else(|| anyhow!("`{part}` should be <parameter>=<value>"))?;
+                        Ok((name.trim().to_string(), value.to_string()))
+                    })
+                    .collect::<Result<_>>()?;
+                Step::Start(id, args)
+            }
             "palette" => Step::Palette(rest.to_string()),
             "set" => {
                 let (name, value) = rest
@@ -472,6 +488,23 @@ impl Capture {
             }
             Step::Open(path) => shell.state.open_files([path]),
             Step::Run(id) => shell.invoke(&id, &Args::new()),
+            Step::Start(id, given) => {
+                let Some(spec) = shell.state.spec(&id).cloned() else {
+                    return eprintln!("warning: capture step start:{id} names no command");
+                };
+                let mut args = Args::new();
+                for (name, text) in given {
+                    let value = spec
+                        .param(&name)
+                        .ok_or_else(|| format!("no parameter `{name}`"))
+                        .and_then(|param| calipix_command::Value::parse_text(&param.ty, &text));
+                    match value {
+                        Ok(value) => args.insert(name, value),
+                        Err(e) => eprintln!("warning: capture step start:{id}: {e}"),
+                    }
+                }
+                shell.state.start(&id, &args);
+            }
             Step::Palette(query) => {
                 shell.palette.open();
                 shell.palette.query = query;
@@ -573,7 +606,7 @@ impl Capture {
                 }
                 let regions = view.regions;
                 eprintln!(
-                    "capture: tool {}, selection {:?}; regions {}, {} outlined and {} as dots in {} µs",
+                    "capture: tool {}, selection {:?}; regions {}, {} outlined, {} as dots and {}                      labels in {} µs; the last frame took {:.1} ms of processor time",
                     state.tool().title(),
                     state
                         .active()
@@ -582,7 +615,9 @@ impl Capture {
                     regions.regions,
                     regions.outlined,
                     regions.dots,
+                    regions.labels,
                     regions.micros,
+                    shell.frame_seconds.unwrap_or(0.0) * 1000.0,
                 );
                 if let Some(place) = view.place {
                     eprintln!(

@@ -1477,17 +1477,21 @@ impl AppState {
                     // A command's one image needs no label.
                     Value::Image(id) if images == 1 => name_then(*id),
                     Value::Image(id) => format!("{} {}", name.replace('_', " "), name_then(*id)),
-                    // Text over several lines (a kernel) is told on one,
-                    // and a long value (a freehand outline) cut short.
-                    other => {
-                        let text = other
+                    // A long outline (a freehand selection) is cut short.
+                    Value::Roi(roi) => {
+                        format!("{} {}", name.replace('_', " "), shortened(&roi.to_string()))
+                    }
+                    // Text over several lines (a kernel) is told on one.
+                    other => format!(
+                        "{} {}",
+                        name.replace('_', " "),
+                        other
                             .to_text()
                             .lines()
                             .map(str::trim)
                             .collect::<Vec<_>>()
-                            .join("; ");
-                        format!("{} {}", name.replace('_', " "), shortened(&text))
-                    }
+                            .join("; ")
+                    ),
                 })
             })
             .collect::<Vec<_>>()

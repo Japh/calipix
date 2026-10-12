@@ -45,6 +45,8 @@ const HANDLE: f32 = 7.0;
 const DOT_BELOW: f32 = 4.0;
 /// A region smaller than this many points gets no label.
 const LABEL_FROM: f32 = 14.0;
+/// With more regions than this in view, each is drawn more plainly.
+const CROWDED_FROM: usize = 600;
 
 /// Where an image sits on the screen: the mapping the viewer drew it with.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -214,6 +216,8 @@ struct Pen {
     color: Color32,
     /// Width in device pixels.
     width: f32,
+    /// Leave out the dark line underneath, and draw points as dots.
+    plain: bool,
 }
 
 /// Adds the strokes of one run: the dark line under it, then the line.
@@ -239,13 +243,18 @@ fn stroke_run(shapes: &mut Vec<Shape>, place: &ImagePlace, run: &Run, pen: Pen) 
         _ => {
             let under = Stroke::new((pen.width + 2.0) * pixel, EDGE);
             let over = Stroke::new(pen.width * pixel, pen.color);
-            if run.closed && points.len() > 2 {
-                shapes.push(Shape::closed_line(points.clone(), under));
-                shapes.push(Shape::closed_line(points, over));
-            } else {
-                shapes.push(Shape::line(points.clone(), under));
-                shapes.push(Shape::line(points, over));
+            let closed = run.closed && points.len() > 2;
+            let line = |points: Vec<Pos2>, stroke: Stroke| {
+                if closed {
+                    Shape::closed_line(points, stroke)
+                } else {
+                    Shape::line(points, stroke)
+                }
+            };
+            if !pen.plain {
+                shapes.push(line(points.clone(), under));
             }
+            shapes.push(line(points, over));
         }
     }
 }
@@ -397,12 +406,14 @@ fn shape(shapes: &mut Vec<Shape>, place: &ImagePlace, roi: &Roi, pen: Pen) {
         // Along the inside edge of the selected pixels, exactly.
         let outline = place.rect_of(*x, *y, *width, *height);
         let pixel = place.device_pixel();
-        shapes.push(Shape::rect_stroke(
-            outline,
-            0.0,
-            Stroke::new(pixel, EDGE),
-            StrokeKind::Outside,
-        ));
+        if !pen.plain {
+            shapes.push(Shape::rect_stroke(
+                outline,
+                0.0,
+                Stroke::new(pixel, EDGE),
+                StrokeKind::Outside,
+            ));
+        }
         shapes.push(Shape::rect_stroke(
             outline,
             0.0,
@@ -413,7 +424,14 @@ fn shape(shapes: &mut Vec<Shape>, place: &ImagePlace, roi: &Roi, pen: Pen) {
     }
     if let Roi::Points { points } = roi {
         for (x, y) in points {
-            point_marker(shapes, place, [x + 0.5, y + 0.5], pen.color);
+            let at = [x + 0.5, y + 0.5];
+            if pen.plain {
+                let pixel = place.device_pixel();
+                let dot = Rect::from_center_size(place.crisp(at), vec2(3.0, 3.0) * pixel);
+                shapes.push(Shape::rect_filled(dot, 0.0, pen.color));
+            } else {
+                point_marker(shapes, place, at, pen.color);
+            }
         }
         return;
     }
@@ -435,6 +453,7 @@ pub fn selection(
     let pen = Pen {
         color: SELECTION,
         width: 1.0,
+        plain: false,
     };
     let mut shapes = Vec::new();
     if let Some(roi) = &view.selection {
@@ -515,8 +534,63 @@ pub struct RegionStats {
     pub outlined: usize,
     /// Regions on screen too small to be more than a dot.
     pub dots: usize,
+    /// Labels drawn; others gave way to them.
+    pub labels: usize,
     /// Time spent working out what to draw.
     pub micros: u64,
+}
+
+/// Which parts of the image's tab have a label on them already.
+struct Taken {
+    area: Rect,
+    columns: usize,
+    rows: usize,
+    cells: Vec<bool>,
+}
+
+impl Taken {
+    /// Side of a cell in points: finer than a label, so that labels may
+    /// stand close but not on each other.
+    const CELL: f32 = 6.0;
+
+    fn new(area: Rect) -> Taken {
+        let columns = (area.width() / Taken::CELL).ceil().max(1.0) as usize;
+        let rows = (area.height() / Taken::CELL).ceil().max(1.0) as usize;
+        Taken {
+            area,
+            columns,
+            rows,
+            cells: vec![false; columns * rows],
+        }
+    }
+
+    /// Takes the cells under `rect` if none of them is taken. Returns
+    /// false, taking nothing, if the label would lie on another or
+    /// outside the tab.
+    fn claim(&mut self, rect: Rect) -> bool {
+        if !self.area.intersects(rect) {
+            return false;
+        }
+        let cell = |v: f32, origin: f32, count: usize| {
+            (((v - origin) / Taken::CELL).floor().max(0.0) as usize).min(count - 1)
+        };
+        let (c0, c1) = (
+            cell(rect.left(), self.area.left(), self.columns),
+            cell(rect.right(), self.area.left(), self.columns),
+        );
+        let (r0, r1) = (
+            cell(rect.top(), self.area.top(), self.rows),
+            cell(rect.bottom(), self.area.top(), self.rows),
+        );
+        let cells = || (r0..=r1).flat_map(|row| (c0..=c1).map(move |column| (row, column)));
+        if cells().any(|(row, column)| self.cells[row * self.columns + column]) {
+            return false;
+        }
+        for (row, column) in cells() {
+            self.cells[row * self.columns + column] = true;
+        }
+        true
+    }
 }
 
 /// The bounds of each region in image coordinates as drawn, worked out
@@ -594,6 +668,15 @@ pub fn regions(
     let zoom = place.zoom() as f32;
     let mut shapes = Vec::new();
     let mut labels: Vec<(Pos2, usize, bool)> = Vec::new();
+    // With very many regions in view each is drawn more plainly: without
+    // the dark line under its outline, and a point as a dot. Halving the
+    // work keeps a crowded overview quick to move around in.
+    let in_view = look
+        .bounds
+        .iter()
+        .filter(|[x0, y0, x1, y1]| !(*x1 < left || *y1 < top || *x0 > right || *y0 > bottom))
+        .count();
+    let crowded = in_view > CROWDED_FROM;
     // Picked regions are drawn last, over their neighbours.
     for pass in [false, true] {
         for (index, entry) in look.entries.iter().enumerate() {
@@ -628,6 +711,7 @@ pub fn regions(
             let pen = Pen {
                 color,
                 width: if picked { 3.0 } else { 1.0 },
+                plain: crowded && !picked,
             };
             shape(&mut shapes, place, &entry.roi, pen);
             stats.outlined += 1;
@@ -640,20 +724,24 @@ pub fn regions(
     }
     painter.extend(shapes);
     let font = egui::FontId::proportional(11.5);
+    // A label gives way to one already placed where it would go, so that
+    // crowded regions do not bury the image under their labels. Those of
+    // picked regions are placed first.
+    let mut taken = Taken::new(place.rect);
+    labels.sort_by_key(|(_, _, picked)| !picked);
     for (at, index, picked) in labels {
         let entry = &look.entries[index];
         let text = match (look.labels, &entry.props.name) {
             (RegionLabels::Names, Some(name)) if !name.trim().is_empty() => name.clone(),
             _ => (index + 1).to_string(),
         };
-        label(
-            &painter,
-            at,
-            egui::Align2::CENTER_CENTER,
-            &text,
-            &font,
-            picked,
-        );
+        // Near enough the size the text will have, without laying it out.
+        let size = vec2(text.chars().count() as f32 * 6.5 + 10.0, 18.0);
+        if taken.claim(Rect::from_center_size(at, size)) {
+            let middle = egui::Align2::CENTER_CENTER;
+            label(&painter, at, middle, &text, &font, picked);
+            stats.labels += 1;
+        }
     }
     stats.micros = started.elapsed().as_micros() as u64;
     stats
@@ -790,6 +878,18 @@ mod tests {
         assert_eq!(kept.of(&entries, 1)[1], [-0.5, 0.5, 7.5, 4.5]);
         let moved = vec![RoiEntry::new(Roi::rectangle(0.0, 0.0, 1.0, 1.0))];
         assert_eq!(kept.of(&moved, 2), &[[0.0, 0.0, 1.0, 1.0]]);
+    }
+
+    #[test]
+    fn a_label_gives_way_to_one_already_there() {
+        let mut taken = Taken::new(tab());
+        let at = |x: f32, y: f32| Rect::from_center_size(pos2(x, y), vec2(30.0, 18.0));
+        assert!(taken.claim(at(100.0, 100.0)));
+        assert!(!taken.claim(at(110.0, 105.0)));
+        assert!(taken.claim(at(100.0, 130.0)));
+        assert!(taken.claim(at(140.0, 100.0)));
+        // Outside the tab there is nothing to label.
+        assert!(!taken.claim(at(900.0, 900.0)));
     }
 
     #[test]
