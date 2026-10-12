@@ -11,6 +11,13 @@
 //! * With an area selection, samples outside it are left as they were.
 //!   The function still sees the whole plane, and is told the selection's
 //!   bounding rectangle, so that filters can read neighbours outside it.
+//! * A few commands act on the selection's whole bounding rectangle,
+//!   whatever its shape, because ImageJ's do (those of its filters that do
+//!   not declare `SUPPORTS_MASKING`: the flips and Translate). They call
+//!   [`PlaneScope::apply_within`] with [`Extent::Bounds`].
+//! * A line or point selection confines nothing: the whole plane is
+//!   processed (`PlugInFilterRunner` sets the processor's region only for
+//!   an area).
 
 use calipix_command::{CommandCtx, DatasetId, Error, Outputs, Params, Result};
 use calipix_core::{AxisKind, Buffer, ColorModel, Image, ImageMeta, Pixel, Rect, dispatch};
@@ -41,6 +48,18 @@ pub struct PlaneScope {
         position = "stack"
     )]
     pub stack: bool,
+}
+
+/// How far a command's effect reaches when the image has an area
+/// selection.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Extent {
+    /// The pixels the selection covers: ImageJ's filters with
+    /// `SUPPORTS_MASKING`.
+    Selection,
+    /// Every pixel of the selection's bounding rectangle, whatever its
+    /// shape: ImageJ's filters without `SUPPORTS_MASKING`.
+    Bounds,
 }
 
 /// What a plane-processing function is told about the plane it is given.
@@ -111,6 +130,19 @@ impl PlaneScope {
         verb: &str,
         process: impl Fn(&Buffer, &PlaneInfo) -> calipix_core::Result<Buffer>,
     ) -> Result<Outputs> {
+        self.apply_within(ctx, verb, Extent::Selection, process)
+    }
+
+    /// [`apply`](Self::apply), saying how far the result reaches when the
+    /// image has an area selection: over the pixels it covers, or over its
+    /// whole bounding rectangle.
+    pub fn apply_within(
+        &self,
+        ctx: &mut CommandCtx<'_>,
+        verb: &str,
+        extent: Extent,
+        process: impl Fn(&Buffer, &PlaneInfo) -> calipix_core::Result<Buffer>,
+    ) -> Result<Outputs> {
         let dataset = ctx.workspace().get(self.input)?;
         let image = dataset.image.clone();
         let meta = image.meta().clone();
@@ -120,9 +152,15 @@ impl PlaneScope {
         // Only an area selection confines processing; with a line or
         // points selected, ImageJ processes the whole image.
         let roi = dataset.roi.as_ref().filter(|roi| roi.is_area());
-        let (rect, mask) = match roi {
-            None => (whole, None),
-            Some(roi) => {
+        let (rect, mask) = match (roi, extent) {
+            (None, _) => (whole, None),
+            (Some(roi), Extent::Bounds) => {
+                let rect = roi
+                    .pixel_bounds(width, height)
+                    .ok_or_else(|| Error::failed("the selection is outside the image"))?;
+                (rect, None)
+            }
+            (Some(roi), Extent::Selection) => {
                 let mask = selection_mask(roi, width, height)?;
                 let rect = mask.rect;
                 (rect, (!roi.is_rectangular()).then_some(mask))

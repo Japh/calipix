@@ -11,10 +11,11 @@ use calipix_command::{
 };
 use calipix_core::{Axis, AxisKind, Buffer, ColorModel, DType, Image, ImageMeta, Rect};
 use calipix_ops::transform::{self, Interpolation};
+use calipix_roi::{Combine, Roi};
 
 use crate::InputOnly;
 use crate::convert::{axes_of, rebuilt};
-use crate::process::PlaneScope;
+use crate::process::{Extent, PlaneScope};
 
 fn modifies() -> Effects {
     Effects {
@@ -116,6 +117,40 @@ fn selection_rect(ctx: &CommandCtx<'_>, id: DatasetId) -> Result<Option<Rect>> {
     }
 }
 
+/// What Crop and Duplicate take from an image with an area selection
+/// (`Resizer.run`, `Duplicator.cropRoi`): the rectangle of pixels, and the
+/// selection the result keeps.
+///
+/// A rectangle (rounded or not) is used up: the result has no selection.
+/// Any other area keeps its shape on the result, moved so that its bounds
+/// start at the corner (`Roi.setLocation(0, 0)`, which also drops the
+/// fraction of a sub-pixel selection's position). A selection reaching
+/// beyond the image is first cut to the image.
+fn crop_region(roi: &Roi, width: usize, height: usize) -> Result<(Rect, Option<Roi>)> {
+    let outside = || Error::failed("the selection is outside the image");
+    if matches!(roi, Roi::Rectangle { .. } | Roi::RoundedRectangle { .. }) {
+        let rect = roi.pixel_bounds(width, height).ok_or_else(outside)?;
+        return Ok((rect, None));
+    }
+    let (x, y, w, h) = roi.int_bounds();
+    let inside = x >= 0
+        && y >= 0
+        && i64::from(x) + i64::from(w) <= width as i64
+        && i64::from(y) + i64::from(h) <= height as i64;
+    let roi = if inside {
+        roi.clone()
+    } else {
+        // ImageJ intersects the outlines; Calipix the pixels covered,
+        // which gives an outline along pixel edges around the same pixels.
+        Roi::rectangle(0.0, 0.0, width as f64, height as f64)
+            .combined(roi, Combine::And)
+            .ok_or_else(outside)?
+    };
+    let rect = roi.pixel_bounds(width, height).ok_or_else(outside)?;
+    let (left, top, _, _) = roi.bounds();
+    Ok((rect, Some(roi.translated(-left, -top))))
+}
+
 /// Metadata like `meta` for planes of another size, with `edit` applied to
 /// its X and Y axes.
 fn resized_meta(
@@ -207,15 +242,17 @@ fn cropped(image: &Image, rect: Rect) -> Result<Image> {
 // ---------------------------------------------------------------- crop
 
 fn crop(ctx: &mut CommandCtx<'_>, p: InputOnly) -> Result<Outputs> {
-    let Some(rect) = selection_rect(ctx, p.input)? else {
+    let dataset = ctx.workspace().get(p.input)?;
+    let Some(roi) = dataset.roi.as_ref().filter(|roi| roi.is_area()) else {
         return Err(Error::failed(
             "Crop needs an area selection; select the part of the image to keep first",
         ));
     };
-    let image = ctx.image(p.input)?.clone();
+    let image = dataset.image.clone();
+    let (rect, kept) = crop_region(roi, image.meta().width(), image.meta().height())?;
     let result = settle(cropped(&image, rect)?, &image)?;
     ctx.workspace_mut().set_image(p.input, result)?;
-    ctx.workspace_mut().set_roi(p.input, None)?;
+    ctx.workspace_mut().set_roi(p.input, kept)?;
     Ok(Outputs::new())
 }
 
@@ -288,14 +325,98 @@ fn parse_range(text: &str, size: usize, param: &str) -> Result<(usize, usize)> {
     Ok((first as usize - 1, (last - first + 1) as usize))
 }
 
+/// `Duplicator.straightenRotatedRect`: the copy ImageJ makes of an image
+/// with a rotated rectangle selected is turned so that the rectangle lies
+/// straight, and cut to its length and width.
+///
+/// `copy` is the duplicate so far (the selection's bounding rectangle, or
+/// the whole image when the selection is ignored) and `source` the size of
+/// the image it came from. As in ImageJ, the copy is put on a square
+/// canvas as wide as the rectangle's diagonal, rotated about the middle
+/// with bilinear interpolation, moved to make up for the part of the
+/// bounds that lay outside the image, and cropped about the middle.
+fn straightened(
+    ctx: &CommandCtx<'_>,
+    copy: &Image,
+    roi: &Roi,
+    source: (usize, usize),
+) -> Result<Image> {
+    let corners = roi.outline();
+    let (left, top, bounds_width, bounds_height) = roi.int_bounds();
+    let side = |a: usize, b: usize| {
+        // Differences of single-precision vertices, as in ImageJ.
+        let dx = f64::from(corners[b].0 as f32 - corners[a].0 as f32);
+        let dy = f64::from(corners[b].1 as f32 - corners[a].1 as f32);
+        (dx, dy)
+    };
+    let ((dx1, dy1), (dx2, dy2)) = (side(0, 1), side(1, 2));
+    let rr_width = (dx1 * dx1 + dy1 * dy1).sqrt();
+    let rr_height = (dx2 * dx2 + dy2 * dy2).sqrt();
+    let diagonal = (rr_width * rr_width + rr_height * rr_height).sqrt();
+    let phi1 = -dy1.atan2(dx1);
+    let angle = phi1 * 180.0 / std::f64::consts::PI;
+
+    // The part of the bounds inside the image, and how far its middle is
+    // from the middle of the rectangle.
+    let used_left = f64::from(left.max(0));
+    let used_right = (f64::from(left) + f64::from(bounds_width)).min(source.0 as f64);
+    let used_top = f64::from(top.max(0));
+    let used_bottom = (f64::from(top) + f64::from(bounds_height)).min(source.1 as f64);
+    let dx3 = f64::from(left + bounds_width / 2) - (used_left + used_right) / 2.0;
+    let dy3 = f64::from(top + bounds_height / 2) - (used_top + used_bottom) / 2.0;
+    let rad3 = (dx3 * dx3 + dy3 * dy3).sqrt();
+    let phi4 = dy3.atan2(dx3) + phi1;
+    let (dx4, dy4) = (-rad3 * phi4.cos(), -rad3 * phi4.sin());
+
+    let canvas = diagonal as usize;
+    let (out_width, out_height) = (rr_width as usize, rr_height as usize);
+    if out_width == 0 || out_height == 0 || canvas < out_width || canvas < out_height {
+        return Err(Error::failed(
+            "the rotated rectangle is too small to duplicate",
+        ));
+    }
+    let x_offset = ((diagonal - (used_right - used_left)) / 2.0) as i64;
+    let y_offset = ((diagonal - (used_bottom - used_top)) / 2.0) as i64;
+    let whole = Rect::new(0, 0, canvas, canvas);
+    let cut = Rect::new(
+        (canvas - out_width) / 2,
+        (canvas - out_height) / 2,
+        out_width,
+        out_height,
+    );
+    let width = copy.meta().width();
+    let planes = each_plane(ctx, copy, "Straightening", |_, samples| {
+        let square = transform::canvas(samples, width, canvas, canvas, x_offset, y_offset, 0.0)?;
+        let turned =
+            transform::rotate(&square, canvas, whole, angle, Interpolation::Bilinear, 0.0)?;
+        let moved =
+            transform::translate(&turned, canvas, whole, dx4, dy4, Interpolation::Bilinear)?;
+        calipix_core::crop_buffer(&moved, canvas, cut)
+    })?;
+    let meta = resized_meta(copy.meta(), out_width, out_height, |_, _| {})?;
+    Ok(Image::from_planes(meta, planes)?)
+}
+
 fn duplicate(ctx: &mut CommandCtx<'_>, p: DuplicateParams) -> Result<Outputs> {
     let dataset = ctx.workspace().get(p.input)?.clone();
     let source = dataset.image.clone();
     let meta = source.meta().clone();
-    let rect = if p.ignore_selection {
-        None
-    } else {
-        selection_rect(ctx, p.input)?
+    let area = dataset.roi.as_ref().filter(|roi| roi.is_area());
+    // ImageJ straightens the copy of a rotated rectangle, selection
+    // ignored or not.
+    let rotated = area.filter(|roi| matches!(roi, Roi::RotatedRectangle { .. }));
+    let (rect, kept) = match area {
+        Some(roi) if rotated.is_some() && !p.ignore_selection => {
+            let bounds = roi
+                .pixel_bounds(meta.width(), meta.height())
+                .ok_or_else(|| Error::failed("the selection is outside the image"))?;
+            (Some(bounds), None)
+        }
+        Some(roi) if !p.ignore_selection => {
+            let (rect, kept) = crop_region(roi, meta.width(), meta.height())?;
+            (Some(rect), kept)
+        }
+        _ => (None, None),
     };
 
     let mut view = source.clone();
@@ -358,15 +479,23 @@ fn duplicate(ctx: &mut CommandCtx<'_>, p: DuplicateParams) -> Result<Outputs> {
     };
     let mut copy_meta = view.meta().clone();
     copy_meta.name = name;
-    let copy = settle(view.with_meta(copy_meta)?, &source)?;
+    let mut copy = settle(view.with_meta(copy_meta)?, &source)?;
+    if let Some(roi) = rotated {
+        copy = straightened(ctx, &copy, roi, (meta.width(), meta.height()))?;
+    }
     let id = ctx.workspace_mut().insert(copy, None);
-    // A copy of the whole image keeps the selection; a cropped copy is the
-    // selection.
-    if p.ignore_selection
+    // A copy of the whole image keeps the selection. A copy cropped to a
+    // rectangle is the selection; one cropped to another shape keeps the
+    // shape.
+    if rotated.is_some() {
+        // The straightened copy has no selection.
+    } else if p.ignore_selection
         && let Some(roi) = dataset.roi
         && roi.pixel_bounds(meta.width(), meta.height()).is_some()
     {
         ctx.workspace_mut().set_roi(id, Some(roi))?;
+    } else if kept.is_some() {
+        ctx.workspace_mut().set_roi(id, kept)?;
     }
     Ok(Outputs::new().with("image", id))
 }
@@ -385,7 +514,9 @@ fn flip(ctx: &mut CommandCtx<'_>, scope: &PlaneScope, horizontal: bool) -> Resul
         let meta = ctx.image(scope.input).map(|image| image.meta().clone());
         meta.is_ok_and(|meta| rect == Rect::new(0, 0, meta.width(), meta.height()))
     });
-    let outputs = scope.apply(ctx, "Flipping", |plane, info| {
+    // Transformer does not confine itself to the selection's shape: the
+    // whole bounding rectangle is mirrored.
+    let outputs = scope.apply_within(ctx, "Flipping", Extent::Bounds, |plane, info| {
         if horizontal {
             transform::flip_horizontal(plane, info.width, info.rect)
         } else {
@@ -1282,9 +1413,12 @@ pub(crate) fn register(registry: &mut Registry) -> Result<()> {
             .effects(modifies()),
         |ctx, p: TranslateParams| {
             let method = interpolation(&p.interpolation)?;
-            p.scope.apply(ctx, "Translating", |plane, info| {
-                transform::translate(plane, info.width, info.rect, p.x, p.y, method)
-            })
+            // Translator, like the flips, moves the whole bounding
+            // rectangle of a selection.
+            p.scope
+                .apply_within(ctx, "Translating", Extent::Bounds, |plane, info| {
+                    transform::translate(plane, info.width, info.rect, p.x, p.y, method)
+                })
         },
     ))?;
     Ok(())
