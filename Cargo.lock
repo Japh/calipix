@@ -590,6 +590,7 @@ version = "0.1.0"
 dependencies = [
  "calipix-core",
  "calipix-io",
+ "flate2",
  "proptest",
  "thiserror 2.0.21",
 ]

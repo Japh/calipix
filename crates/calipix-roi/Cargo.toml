@@ -9,6 +9,7 @@ rust-version.workspace = true
 
 [dependencies]
 calipix-core.workspace = true
+flate2.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
