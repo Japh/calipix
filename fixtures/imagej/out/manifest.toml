@@ -1418,10 +1418,868 @@ bytes = 9382
 macro = "gen/05_byteorder.ijm"
 
 [[file]]
+path = "roi_angle_int.roi"
+sha256 = "8a15938940ecb0e8024e53f55c061265abb1941ea4ad1905c2043614d0695284"
+bytes = 140
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_angle_sub.roi"
+sha256 = "d38746df1aaf728c8bd8bccdda07cee53ad41380979dd0f36d57ae0302db9223"
+bytes = 164
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_area_freeline_sub.roi"
+sha256 = "8c448f3f4695b8a92519a8e7d88ad399ee76e3d3e16809d6ba0c62ebb936924e"
+bytes = 520
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_area_line_thin.roi"
+sha256 = "6966242130aeb2989f10b41b1af8f594fcfdc58af56c7759f8b46134e1449a96"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_area_line_wide.roi"
+sha256 = "c6f5148e7c034a5554d5e521af4cce1aebcba492a46517657aa69ea7b175daeb"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_area_polyline_thin.roi"
+sha256 = "f1e09d740674046781f410be6b5b1a45fdd08f159ab0e764e00da64c7f4d2291"
+bytes = 2824
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_area_polyline_wide.roi"
+sha256 = "b70fc0597f92c2af61f7b2e4d6841a1ef3c389c6f6fb56247fc23fa26f518099"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_box_line.roi"
+sha256 = "48060faaaea388f4a769ffcf528386da2a7aae314161eea6265f8bd5c8e96711"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_box_oval_sub.roi"
+sha256 = "69d3bc9cf7a55c6a8070137e201df5e740c10b8acae5dffc10040b605a57cd5f"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_box_polyf.roi"
+sha256 = "9c55055cca2261712ea74be008f8a97fca2a1a17133ce5b75658c48d80159fd8"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_and.roi"
+sha256 = "94f761d0b8587e1c1092aed9106c01f6ccabfcbbe49454a99cdd6e07d98c6922"
+bytes = 200
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_combine.roi"
+sha256 = "cfc005c35eee77f9ae65705d18fd594dcd74ced5768185a4d7daa4cc686c8d57"
+bytes = 328
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_curves.roi"
+sha256 = "6e8f2d7cb982c306cae2abed5718beb67decfa12802376b152eb733db7e4d67a"
+bytes = 800
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_hole.roi"
+sha256 = "6358be7eb7083de659bc1c02d8b40df70e53b6ad8ae5f0b9d5162a601e5e45a1"
+bytes = 712
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_or.roi"
+sha256 = "96d0679dec36a8efd1cd472891456dde08d94e8f73c7958a25f6506302216368"
+bytes = 328
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_or_polys.roi"
+sha256 = "597faab277d86f6dfb2f6456990239f7c5d9a6221c58c886e3d85eb23d4f61e7"
+bytes = 232
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_sub_minus_rect.roi"
+sha256 = "946c40150406b41f5614429e9adc252312a1a2bfe56547113f5ae92e0007401a"
+bytes = 232
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_threshold.roi"
+sha256 = "27e674cd1f2ca05e44fb971c735d333f24a492d673a7648ff572a93503a1acb3"
+bytes = 978
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_two.roi"
+sha256 = "f3e7d1fbb0e30465ab8ca403f07a13899b4f2f0e1280666baa9e8e0eee2ac14f"
+bytes = 232
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_comp_xor.roi"
+sha256 = "0d9e8ad5b68741f7edf9a85bedeb9f14140c600a0a0396e4601dbd0ed9a93f4f"
+bytes = 952
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_coords.csv"
+sha256 = "0aa8769814213d6ae25ce3d2e07018939830625febeb92c863a6251711516cc1"
+bytes = 128297
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_ellipse.roi"
+sha256 = "e74a6376f8cbbf7bdb4e0c1629f69b1480c636205b96598314b943921be8e0a2"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_ellipse_circle.roi"
+sha256 = "b829816c79b4a5b95b67adb16852a165cecfb5349a21e5057378b8cbc75b7016"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_ellipse_cross.roi"
+sha256 = "b92d73efd8700e1f2e55a922d0f57e1500b4d1d13a78987895f0414c14049767"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_ellipse_small.roi"
+sha256 = "b314d073d3613b0e97c1fd2ce621a08c4f01d46ef89d03edd1df8e0c89f8ad3c"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_ellipse_sub.roi"
+sha256 = "0d75d86ce8b83ee0a941e0688f6353ce0f0dcac4b59a05ab24ddf81a31211ba4"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_enlarge_ellipse_m4.roi"
+sha256 = "c8a53694a48414263174157bc8277108657cc8b0bbd47795a0fe5586ad170a1c"
+bytes = 432
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_enlarge_hole_2.roi"
+sha256 = "17ca5703cab7a8a33e39486c69f0461d7f838f29ccebf06917ffdbef38958b13"
+bytes = 712
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_enlarge_oval_4.roi"
+sha256 = "498811b121cbae623505a5d7186d189b0510bc95bf520db62a994ffae0ab3929"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_enlarge_poly_3.roi"
+sha256 = "cd7876086d9515ee69561b5669d612ef9fdc62966446b15de1c7de813eb07265"
+bytes = 608
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_enlarge_poly_m2.roi"
+sha256 = "43b3055b76370c42749c1d89f0b3fe481f337463191e655ba8702c278973cff6"
+bytes = 432
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_enlarge_polyf_5.roi"
+sha256 = "89178590c72753a1985dcb8e225a20eda3a4b832bd09da48b9745433b2913b87"
+bytes = 488
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_enlarge_rect_m3.roi"
+sha256 = "d28fd00f9dd62d0891113886c821e086b8d6823a8d8ee162fed7e9a343ee0750"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_fit_ellipse_comp.roi"
+sha256 = "818059cf4a4cf71a9e19249423a295eaaf43e9636acf51c242a7f6a11849d0bd"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_fit_ellipse_oval.roi"
+sha256 = "d415334fc289e5c200e72a07e3a67f193deec52c160e1f3ee0a2af99640f2e3e"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_fit_ellipse_poly.roi"
+sha256 = "39a4002ed313075e6bea9fd4b6ec7f7833e5b4ddb502b608dcc2affe09e2261c"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_fit_ellipse_rect.roi"
+sha256 = "bb47017cdd038749391246c1d17bca18150367c2ad7796f617e9c892ec752e3a"
+bytes = 992
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_free_int.roi"
+sha256 = "bb71c544c943387b8e0d8630c983ea884ba6e59a0e5ccb2f72472c6a74407153"
+bytes = 164
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_free_sub.roi"
+sha256 = "30567822c314b6c87646e1834fe86dd0ffd454d19c79a42ebcd1f8108390c755"
+bytes = 236
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_freeline_int.roi"
+sha256 = "f69674cdd996d529956cb453d583e349914e2fa5877fe2e7e884b724f015f4a7"
+bytes = 156
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_freeline_sub.roi"
+sha256 = "112650eecaaf82968a4cb56c85794dd655fd1004efdf25f4e3696250084d9264"
+bytes = 212
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_hull_comp.roi"
+sha256 = "81d0f55f4e228972bba3194952227852eff1317695166d1ce3c3c5e40b63f52e"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_hull_oval.roi"
+sha256 = "c5706c2ab7db0b8b4f9508bfd35c054c4bb1bfd51abdae328e0a7ecc50e83cd5"
+bytes = 512
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_hull_points.roi"
+sha256 = "8d7dac2c767746f2b88ad61a7634f6f1a06947d847f444692ed9152ec1e688a2"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_hull_poly.roi"
+sha256 = "433665f41c7ba7a1dc481cb26173a8e691ad3871d8e4ac1861a4b879b23315cb"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_info.csv"
+sha256 = "d33999a3209aefbd7e8cee43bc7a782f91370a43f0cd791f5818e9602e7a40e3"
+bytes = 53914
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_bowtie.roi"
+sha256 = "1c85a53f19250057c1370898277f074bbb0cac0a6ae1af774fadddfc708e79ad"
+bytes = 268
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_ellipse.roi"
+sha256 = "29202df951ae40b3be67c03f90546d09d2ea6e232b04f589f50ac77f7a615390"
+bytes = 1060
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_hole.roi"
+sha256 = "f8a4e50594c6f5c9ef6935cf9d691b360ed479a966a40313045e716eadd9e4d7"
+bytes = 764
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_oval.roi"
+sha256 = "4411bc6d24415fe1e92534ce34aa157e4f6a833073e25fa200ea0fbc741e92ec"
+bytes = 808
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_oval_cross.roi"
+sha256 = "48da9410e6daac1aac648e19b57af630471b8bbd98905427fbd80f9e977d607c"
+bytes = 1336
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_parallelogram.roi"
+sha256 = "02301b947876c389ef9abf98664691729b991bc8759cb9b2d0ef84c208aa519e"
+bytes = 232
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_poly_cross.roi"
+sha256 = "998aadbc237df8ea498d7ca4baa6335680f7deeb919252201d0dd3026a081425"
+bytes = 508
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_poly_tri.roi"
+sha256 = "ecdedbda25b82d01d09731b5a6ccf0644f56e5d84ffb8bdda97749434924fe68"
+bytes = 232
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_polyf.roi"
+sha256 = "ec92ab474c839125a7cf1b6d583cda8a8c981b606de55fee5667c88cd512950a"
+bytes = 232
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_rect.roi"
+sha256 = "cef46ed643df1411ac2807ff624ce4793047eb86135e6690785b19738e12c83c"
+bytes = 232
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_rect_corner.roi"
+sha256 = "1e20db4fbba551fc52e887ecbb6afd915d2c806d3c086edb3b29b96e7cfdc87e"
+bytes = 200
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_rect_side.roi"
+sha256 = "5c8b8be283e3373851a6546a1224867bba7b59724d8c88139e55ec2c309a1b7c"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_inverse_rounded.roi"
+sha256 = "7e9c82612022b9da884270d6e6ca36289d2ac36b83dff7361f950322edd14e3c"
+bytes = 344
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_line_backwards.roi"
+sha256 = "cc03150878edf1031dc57b9d4796c57f16e144f6eeeebb941351f2e2504e1291"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_line_cross.roi"
+sha256 = "9da6c9b62318f77997bc94255d875e5660f3342d33dbb14a96ffe336f08db553"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_line_int.roi"
+sha256 = "abec132de0d412eef912bdfb4a8af0c1a89af263e24ea3f003172cd193f795c9"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_line_sub.roi"
+sha256 = "ac14f0664ac7524492707d0bebb8938d7e0069917d8a33ef416df1743c4e9e2d"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_line_vertical.roi"
+sha256 = "8a4292817dc1c4a16f067cfe322495f51881a48ecfd90d7fb6b7d49d070a08c3"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_line_wide.roi"
+sha256 = "c726415bb76046c3fe3e3070f17807bf983edfba761da238eee7ca3c770f27f2"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_line_wide_horizontal.roi"
+sha256 = "84ba58f7814abe365531c9527e56a0bcf61b6559fc47cd63fdb58da0dc75b681"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_masks.csv"
+sha256 = "9b1114d3d82c2b425457fbda5d14f924b240ea78b720406bd6a8250ddb73e956"
+bytes = 116099
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
 path = "roi_oval.roi"
 sha256 = "66648e900602dc5dade3874dee3a7303f3c12ac6cafa9c00c9fae240abb4165b"
 bytes = 128
 macro = "gen/07_rois.ijm"
+
+[[file]]
+path = "roi_oval_1.roi"
+sha256 = "faa6e6a52342a33d0d35c61fd2c3be0fd36f61b07def33b99a28732c7fc09bf3"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_2.roi"
+sha256 = "5c90a199c1385d5f82e5cc6928a3d7e4a95317d47b41e28a77e442f2766b5e96"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_all.roi"
+sha256 = "2747d0de9b0211af9b77bf970a1164e7ba88ae83f484cd0099d4f1ad7d2423a4"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_circle_even.roi"
+sha256 = "ae305640f73beb4881cb907a1f57e4980505a9c01cb3591326513c45d200d069"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_circle_odd.roi"
+sha256 = "95d425121f828d3fbcf3bf01f71869b1f0962b2813f345b0a3f5c3015be624c4"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_cross_br.roi"
+sha256 = "0fcb66839009331cf79fcbd78cca081de6370d9613a1fc903a91ba77ef8245b0"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_cross_tl.roi"
+sha256 = "4bd5c561713633169f0b429009ea2d430c785f1443a6f68e9568412406247067"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_int.roi"
+sha256 = "66648e900602dc5dade3874dee3a7303f3c12ac6cafa9c00c9fae240abb4165b"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_small.roi"
+sha256 = "01e7fb9d00c7460978f60fc746f9d1828b4eceafeb7e91c9648cf744d27bfa43"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_sub.roi"
+sha256 = "3baa54676dfcff3bf04b7d2ed12b3047517c3437e3b560b4019ef6d4e809afb0"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_oval_thin.roi"
+sha256 = "733cad5ec99b1bb5c6e15828b45d173d88d7e354ffcfaf34f90fd445ba6d54e7"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_point_int.roi"
+sha256 = "5eb130b1e4b7126f29f6ba790b080b8b3b5f90eab7b6ed19644cb59757646dd4"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_point_sub.roi"
+sha256 = "791dfff6924224a365318d4244e48fe0844a188beb0b7358ae4362ef675e8401"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_points_cross.roi"
+sha256 = "6418cd6782eebd7283b88b026a2c2ee7e55a03512ed8a5a1b33d43bea9412fe5"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_points_int.roi"
+sha256 = "a37af0661697f903408d470295661bfb9d50249fc6b08b2a12ce30b881d03c4f"
+bytes = 192
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_points_sub.roi"
+sha256 = "99504a7231b665dfb4ade768fd80417d08eec7efc0a73a8d68b2b097f0b88873"
+bytes = 192
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_all.roi"
+sha256 = "06ec8074caa1faa5994f25412332b929b43c466a3f7bc1d346eef0b6003701dd"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_bowtie.roi"
+sha256 = "d4b9edd23fa0707afb801b8e2143d2a6d83c0233ca00d065a5ca02db10208fea"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_concave.roi"
+sha256 = "9d77281bb2d07e74a8934934d2ffeeb8dba80ce6a33fe71549c15f3b53c5323b"
+bytes = 152
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_cross.roi"
+sha256 = "55a90bb169b31fdb30b9d8ca47b6eab46c12412bf633056e2a373d9845c0b614"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_parallelogram.roi"
+sha256 = "2ec7d6e324847dd0858784ef179f5b046db02d550ba0bb6daa05154995917c0d"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_rectilinear.roi"
+sha256 = "add0283cd95bb43e82569278d2fcd33c50b00fbae6bac302dc656c72e713a196"
+bytes = 152
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_small_box.roi"
+sha256 = "f009405a849ec8ac60fcfa99cb114d03559009d514508af6ecf21bf3be32620e"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_star.roi"
+sha256 = "1011e81010f74c0f02f1ac3f9872d6b6a8271558589d9c62bf284c21a212c70a"
+bytes = 148
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_thin.roi"
+sha256 = "dcee0e5792e776bfebf16b83d2ef7a75a01b5f99dcb5129fbd8534158a353e09"
+bytes = 140
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_tiny.roi"
+sha256 = "51d1cfd981971e56d1dcdc60e9975ef20c33457653135656f9a0a5104c972de9"
+bytes = 140
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_poly_tri.roi"
+sha256 = "5e25f54aa5d03a431521265c94d7e3fb7ce2ac495679f72ef65d95886296779f"
+bytes = 140
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyf_bowtie.roi"
+sha256 = "d5952c871eefa23c9d486eee447c127df8c204f2cd1169189225605305c7fafb"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyf_cross.roi"
+sha256 = "b9811412a10f7b29b176e8524d1cd8baf9722427cbb0bf503a2a588e7b8475d1"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyf_half_box.roi"
+sha256 = "dd63485bc4d29cea0a634db1eac40950ae95e528777cb328c8f78814ffdfff8c"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyf_mixed.roi"
+sha256 = "f56b2469615d8591ded240dc5ff931c824b336119a83bc6a463f11942572a900"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyf_small.roi"
+sha256 = "8807492904230a60a2e2aa47b2895614c73fb9b5c65f23d66d05013f761c2780"
+bytes = 164
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyf_tri.roi"
+sha256 = "73f51ca714574364f8e8b7ca86f1f52589c1c5eda5ddea087c41b69a41528e7d"
+bytes = 164
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyline_int.roi"
+sha256 = "d42e2cda0983cb5211de21d818d131d3a051ee83cf76c4ae3955e258da0ae7b5"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyline_sub.roi"
+sha256 = "44c3d7158ca258bc0fe5a5baa7a175a353c1600f9eaf7f6493b3485b093ea7bd"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_polyline_wide.roi"
+sha256 = "291c2835beee34adfa9a539cc91e38fb9ed4f832b21bd0b0a09eb6e571afd2e2"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_props_fill.roi"
+sha256 = "4e868e2fde198018ca97e133fad7b42eb48e2805c64bc161fe293e760b8f5e57"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_props_group.roi"
+sha256 = "aa0e5680c8d0b0fd1c8556b9e80dc80d027bb035943cdaf73295741188fa3ce2"
+bytes = 162
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_props_line.roi"
+sha256 = "c3e3b581925a278fa982da1355556fc35feb553b2356a1d52d0555814c167397"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_props_stroke.roi"
+sha256 = "3d2f63b2d5a9b3a49c7e394451d7acb5557a16186c2b749ab71636ccfa168349"
+bytes = 142
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rect_all.roi"
+sha256 = "cec7088cf6ed96dddcf8785cd07658e8472d03aa1f95481952fc3f59bb91413f"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rect_cross_br.roi"
+sha256 = "5910bb642a81d0d8631bbb03603d5554733c2c9797eb50c32ba405692910a77a"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rect_cross_tl.roi"
+sha256 = "ce4d15b18d0f19272ae3eadfa4a846889a586d58d4181436b41f3db4bc1d3cfb"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rect_int.roi"
+sha256 = "caeecf8c18742bf9c06420768989a32663bb345f063812a7f7675b366ac7f61c"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rect_sub.roi"
+sha256 = "385a252d61d05fec199f6617f16b8dacf00e4192d9ceabe187111414d6fade04"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rect_tiny.roi"
+sha256 = "c1b38e9a075d66166a7ce08458153e43e223266b63a98467b0b1cc283c5c9dae"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotate_comp_25.roi"
+sha256 = "2914caa9d8ff70a925fce4de4952bf4ae5a82cbd4f941f30977e54270d0d5005"
+bytes = 728
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotate_hole_25.roi"
+sha256 = "b229598d9401528fc8827d5c379537d87cc8eb3f4fd4295fb4069d460c4fd046"
+bytes = 712
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotate_line_15.roi"
+sha256 = "fc77fcf5a9829027de8dd9fa1725d2df908c8767d21025891948f30178836862"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotate_oval_m45.roi"
+sha256 = "0af82108336efba6fe02bd49f4f9ad9da6b168352dcbff4fd44fa8988634ace6"
+bytes = 512
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotate_points_10.roi"
+sha256 = "4ec11961c23a2364094f1716907824a15f3bfeb1f0c1f0743267b408ef681c4a"
+bytes = 192
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotate_poly_90.roi"
+sha256 = "9430752764366df822beceddd66d8e6b099f4cf09e422f53da5e30a995f4011b"
+bytes = 164
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotate_rect_30.roi"
+sha256 = "c951e8f5298ee925aff6ca73d5648618f72cb6249ddf7624baf0bf862784aaff"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotate_rotrect_20.roi"
+sha256 = "6ae74cc03298d3963fa41db882d480c96c95db697af91eb5f70402e2f516df66"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotrect.roi"
+sha256 = "94e0332e46fa8e7859387e06e19796cc19ede6235337312095a130ef7f43e097"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotrect_axis.roi"
+sha256 = "9e65b7c76f68ba80811c30a06e958359a6d61bf5fa5c8f67a7689ee17ecf5437"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotrect_cross.roi"
+sha256 = "124d3e7e8812baac9bb1d9a27a49bf07120ae33a6b02bf9b7f3c39b7fad26893"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rotrect_sub.roi"
+sha256 = "c09e7b6018464b823b4564484a434f429c38d7ef45ba9bc1d9d447fb8536c717"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rounded.roi"
+sha256 = "6bc1fc8379c7ac2f949199ba7274a0a68929c94a2de3b83ccdc2b560623cb1b6"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rounded_big_arc.roi"
+sha256 = "241a6a67bdef0cc2f256c43a12cc02ffa696cf9b0e9b35608457587afdbdaa10"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rounded_cross.roi"
+sha256 = "746b893ccaa282765fa09a12a6c8c1c8fe0c87923f63e7f737d35ab8c10f2a88"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rounded_large.roi"
+sha256 = "0133859fe1ff1da050dc54dc3531d20bd3f9b9c0df74987ae1e2c944e631bd49"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_rounded_small.roi"
+sha256 = "cf151cd4e3b4e25232735740f771db05ed592445bc08b4a0c5f6fc877e15bbaa"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_comp.roi"
+sha256 = "939b652a3a6b99f3dbd9347fe43887e39f33a28d71194042132fca7d8f4384d1"
+bytes = 728
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_comp_centered.roi"
+sha256 = "3ab502a6edcbc510834b6da7c7c730e537d692b445ba43741d64f8f341b014bf"
+bytes = 728
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_hole.roi"
+sha256 = "32b03aecc2ee16c5cb89855e71739e0ac7259a39b0ee9477e9f751c35ac3eba9"
+bytes = 712
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_hole_centered.roi"
+sha256 = "da73ca12624e9d1992f6646147fa4fa8fed0e4580f68477577e07430737c72a2"
+bytes = 712
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_line.roi"
+sha256 = "4d754a91e2b50955884495ea8703a4c21b3094c54bc0ab2e9f1abb4468045d44"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_line_centered.roi"
+sha256 = "ccc60ebb78ecf2570026591a6d9251da182f5bec877587dda30f248acf5bc567"
+bytes = 128
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_oval_centered.roi"
+sha256 = "cc0d4613b6102a6265aeffbc544796c72fa57a5a611e2c230a65685e3090f1e3"
+bytes = 512
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_poly.roi"
+sha256 = "7a9deae4092da89b78588a599e4a76d2033209b2cc54e64d942beffaf7e5ed68"
+bytes = 164
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_poly_centered.roi"
+sha256 = "99a38471f929fa23f75d62b5d1cfcde7d182fa9ec8e1d4362288ed13adb09032"
+bytes = 164
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_scale_rect.roi"
+sha256 = "78a29f0f97300d0d6185542f9383b3b74d8114527326fee6bb1b8b8cae51a60d"
+bytes = 176
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_traced_1px.roi"
+sha256 = "9389a88062a43a91fc3b3835a894a6dcca8131bf0749fb7c7ec876902b5421b7"
+bytes = 144
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_traced_int.roi"
+sha256 = "40864f4a3e6d5953fbb1b0a5496e6cc58b299cbfed19e0e63b10c05f711c4261"
+bytes = 160
+macro = "gen/40_roi_shapes.ijm"
+
+[[file]]
+path = "roi_traced_stairs.roi"
+sha256 = "c7579e88a1b2452bc4a71e6ea1c9d5b6973cceca9f5e40cac0ae170d82b44c73"
+bytes = 160
+macro = "gen/40_roi_shapes.ijm"
 
 [[file]]
 path = "roiset.zip"
