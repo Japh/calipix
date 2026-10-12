@@ -46,11 +46,31 @@ fn stored_overlay(properties: &BTreeMap<String, String>) -> Vec<&str> {
         .collect()
 }
 
+/// One element of an image's overlay as the workspace holds it.
+///
+/// This and [`OverlayElement::entry`] are the only places that convert
+/// between what ImageJ stores about an overlay element ([`RoiEntry`]: the
+/// shape with its name, colours and position) and what
+/// `Workspace::set_overlay` takes. The workspace holds the shape alone
+/// today; once it holds entries, `from_entry` and `entry` become the
+/// identity and the stored bytes no longer need to be matched on saving.
+type OverlayElement = Roi;
+
+/// The workspace's form of a decoded overlay element.
+fn from_entry(entry: RoiEntry) -> OverlayElement {
+    entry.roi
+}
+
+/// What is known of an overlay element of the workspace, for encoding.
+fn entry_of(element: &OverlayElement) -> RoiEntry {
+    RoiEntry::new(element.clone())
+}
+
 /// What an image opened from a file brings with it.
 #[derive(Default)]
 struct Stored {
     roi: Option<Roi>,
-    overlay: Vec<Roi>,
+    overlay: Vec<OverlayElement>,
     /// What could not be read, for the user.
     notes: Vec<String>,
 }
@@ -69,7 +89,7 @@ fn stored_selections(image: &Image) -> Stored {
     }
     for (i, hex) in stored_overlay(properties).into_iter().enumerate() {
         match calipix_roi::decode_hex(hex) {
-            Ok(entry) => stored.overlay.push(entry.roi),
+            Ok(entry) => stored.overlay.push(from_entry(entry)),
             Err(e) => stored.notes.push(format!(
                 "element {} of the overlay was left out: {e}",
                 i + 1
@@ -105,8 +125,8 @@ fn with_selections(dataset: &Dataset) -> Result<(Image, Vec<String>)> {
     meta.properties
         .retain(|key, _| key != ROI_PROPERTY && !key.starts_with(OVERLAY_PROPERTY));
 
-    let encode = |roi: &Roi, what: &str, notes: &mut Vec<String>| -> Option<String> {
-        match calipix_roi::encode(&RoiEntry::new(roi.clone())) {
+    let encode = |entry: &RoiEntry, what: &str, notes: &mut Vec<String>| -> Option<String> {
+        match calipix_roi::encode(entry) {
             Ok(bytes) => Some(to_hex(&bytes)),
             Err(e) => {
                 notes.push(format!("{what} was not saved: {e}"));
@@ -120,7 +140,7 @@ fn with_selections(dataset: &Dataset) -> Result<(Image, Vec<String>)> {
     if let Some(roi) = &dataset.roi {
         let hex = match old_roi {
             Some(old) if same_shape(&old, roi) => Some(old),
-            _ => encode(roi, "the selection", &mut notes),
+            _ => encode(&RoiEntry::new(roi.clone()), "the selection", &mut notes),
         };
         if let Some(hex) = hex {
             meta.properties.insert(ROI_PROPERTY.to_string(), hex);
@@ -132,7 +152,9 @@ fn with_selections(dataset: &Dataset) -> Result<(Image, Vec<String>)> {
     // their place among those.
     let mut unused: Vec<Option<String>> = old_overlay.into_iter().map(Some).collect();
     let mut written: Vec<String> = Vec::new();
-    for (i, roi) in dataset.overlay.iter().enumerate() {
+    for (i, element) in dataset.overlay.iter().enumerate() {
+        let entry = entry_of(element);
+        let roi = &entry.roi;
         let found = unused
             .iter()
             .position(|old| old.as_deref().is_some_and(|hex| same_shape(hex, roi)));
@@ -148,7 +170,7 @@ fn with_selections(dataset: &Dataset) -> Result<(Image, Vec<String>)> {
             }
             None => {
                 let what = format!("element {} of the overlay", i + 1);
-                written.extend(encode(roi, &what, &mut notes));
+                written.extend(encode(&entry, &what, &mut notes));
             }
         }
     }
