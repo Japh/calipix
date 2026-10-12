@@ -221,6 +221,10 @@ Verified against ImageJ 1.54p on 221 cases, comparing every sample.
 | Results text line endings | Platform-dependent | Always LF | Same file on every machine |
 | Set Scale "Global" | Also applies to images opened later | Applies to images open now | No hidden state |
 | Processing a composite image | Acts on the current channel | Acts on every channel shown together | The viewer has no "current channel" in composite mode; name a channel to restrict it |
+| Shift while drawing a rectangle or oval | Square from the diagonal | Square from the longer side | Easier to aim |
+| Adding to or subtracting from a selection | Geometric union and difference | Same pixels, outline along pixel edges | No geometric clipping yet |
+| Overlay and ROI Manager | Two separate lists | One list of saved regions per image, stored as the overlay | One concept instead of two |
+| Width of drawn lines | Global line-width setting | Always 1 when drawn; wider lines can be specified as text | No hidden global state |
 | Opening zoom | 100%, in a window sized to the image | Largest standard zoom step at which the image fits the tab | One window; small images should not be specks |
 | Mouse wheel | Scrolls through a stack | Zooms about the cursor; Shift+wheel steps through the stack | Matches other image viewers; see `docs/ux.md` |
 | Undo | One step, some commands only | Every command, unlimited steps; saving is not undone | Images are immutable snapshots that share unchanged planes. |

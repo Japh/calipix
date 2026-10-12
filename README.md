@@ -40,6 +40,7 @@ drift apart, and every run is recorded for undo and reproducibility.
 |---|---|
 | `calipix-core` | N-dimensional image model: typed buffers, calibrated axes, lazy views |
 | `calipix-command` | Command definitions, registry, executor, undo history |
+| `calipix-roi` | Selections: shapes, the pixels they cover, ImageJ's file format |
 | `calipix-ops` | Image processing algorithms |
 | `calipix-io` | File formats |
 | `calipix-render` | Reference renderer (samples to display colours) |
@@ -64,8 +65,21 @@ Milestone 1 (viewer) is in place:
 - Display controls that never change image data: display range, auto
   contrast, lookup tables, channel modes.
 
-Processing and measurement come next (milestone 2): selections, filters,
-image maths, measurements and results tables.
+Milestone 2 (measure) is in place:
+
+- Selections of every ImageJ shape, drawn and edited on the image or given
+  as text, and one list of saved regions per image. ImageJ's `.roi` and
+  `.zip` files open and save.
+- Filters, arithmetic, the image calculator, pixel-type conversion and
+  geometry (crop, scale, rotate, flip), confined to the selection where
+  ImageJ confines them.
+- Every measurement in ImageJ's Set Measurements, a Results table that saves
+  the same text ImageJ does, Set Scale, histograms and line profiles with
+  plots.
+
+Segmentation comes next (milestone 3): thresholds, binary operations,
+particle analysis, stack operations, and a server that lets agents drive the
+application.
 
 [docs/compat.md](docs/compat.md) records how results compare with ImageJ,
 [docs/ux.md](docs/ux.md) is the interface specification, and

@@ -43,9 +43,13 @@ Things deliberately left out of the milestone in which they came up.
 
 - Spline-fit, text and image selections; Fit Spline, Fit Circle, Make Band,
   Area to Line, Straighten, Interpolate.
-- Overlay entries keep only their shape: names, colours and positions from
-  ImageJ files are dropped.
-- Opening a `.zip` selection set (needs the ROI manager).
+- Regions tied to a plane: positions are read, shown and written, but Add
+  does not record the plane on view and Measure Regions ignores them.
+- A line-width control for drawn lines.
+- Every arrow-key nudge is its own History step; successive nudges should
+  merge.
+- The saved-region list is copied on every command run; share it instead
+  for images with thousands of regions.
 
 ## Viewer
 
@@ -56,6 +60,14 @@ Things deliberately left out of the milestone in which they came up.
 - Rendering CPU-fallback tiles off the interface thread.
 
 ## Application
+
+- History has no memory budget: earlier states are kept for as long as the
+  session lasts (sharing whatever did not change).
+- The History panel does not scroll to the newest entry.
+- Row deletion in Results is a command registered by the application; it
+  belongs with the other measurement commands.
+- Warnings returned by Open and Save (for example an overlay element that
+  could not be read) are logged but not shown prominently.
 
 - Groups within a dialog (Set Measurements lists quantities and options
   without a visual break).

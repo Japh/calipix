@@ -27,24 +27,29 @@ contribute to it. Change this document first, then the code.
 ## Window layout
 
 ```
-+--------------------------------------------------------------+
++----------------------------------------------------------------+
 | File  Edit  View  Image  Process  Analyze  Extensions  Window  Help |
-+--------------------------------------------+-----------------+
-|  [ image A ] [ image B ]                   |  Info           |
-|                                            +-----------------+
-|              image viewer                  |  Display        |
-|                                            |                 |
-|  C 1 2 3  Z ----o--------  T --o---------- +-----------------+
-+--------------------------------------------+  Histogram      |
-|  History | Results | Plot | Log            |                 |
-+--------------------------------------------+-----------------+
-| status message                    x, y, value   zoom   image |
-+--------------------------------------------------------------+
++---+------------------------------------------+-----------------+
+| T |  [ image A ] [ image B ]                 |  Info | Regions |
+| o |                                          +-----------------+
+| o |              image viewer                |  Display        |
+| l |                                          |                 |
+| s |  C 1 2 3  Z ----o-------  T --o--------- +-----------------+
+|   +------------------------------------------+  Histogram      |
+|   |  History | Results | Plot | Log          |                 |
++---+------------------------------------------+-----------------+
+| status message              x, y, value   zoom   selection  image |
++----------------------------------------------------------------+
 ```
 
 - **Centre:** open images as tabs. Tabs can be dragged side by side or into
   a grid to compare images; *Window > Show Images Side by Side* does it in
   one step.
+- **Left:** the tool strip: Pointer, Rectangle, Oval, Polygon, Freehand,
+  Line, Segmented Line and Point. The tool belongs to the application, not
+  to one image, so it stays the same across tabs.
+- **Right:** *Regions* (the image's saved regions) shares a tab group with
+  *Info*.
 - **Right:** *Info* (name, size, type, calibration), *Display* (display
   range, lookup table, channels) and *Histogram* for the active image. The
   column runs the full height of the window so that all three fit.
@@ -64,6 +69,16 @@ contribute to it. Change this document first, then the code.
   and ROI Manager.
 - Selection tools sit in a tool strip. Drawing or editing a shape is one
   step in History, like any command; a cancelled gesture leaves no trace.
+- With any tool: drag inside a selection to move it, drag a handle to
+  reshape it, click bare image to remove it. Shift constrains (square,
+  circle, 45 degree steps) or adds to the selection; Alt centres or
+  subtracts. Arrow keys nudge by one pixel; Esc cancels a shape in progress.
+- Rectangles and ovals lie on pixel edges. Other shapes use whole pixel
+  coordinates up to 150% zoom and finer ones beyond, as in ImageJ.
+- Panning (middle-drag, Space+drag) and wheel zoom work whatever tool is
+  chosen, and a drag that pans never draws.
+- Clicking a region, in the list or on the image, makes it the selection.
+  T saves the selection as a region.
 - Every shape can also be given exactly, as text, with *Edit > Selection >
   Specify Selection*: `rectangle 10 20 30 40`, `oval 10 20 30 40`,
   `polygon 5,5 40,8 22,30`, `line 0 0 50 50`.
@@ -205,6 +220,8 @@ parameters:
 | Measure | Ctrl+M |
 | Crop, Duplicate | Ctrl+Shift+X, Ctrl+Shift+D |
 | Previous, next plane | Left, Right |
+| Tools: pointer, rectangle, oval, polygon, freehand, line, segmented line, point | V, R, O, G, F, L, S, P |
+| Add selection to regions | T |
 | Undo, Redo | Ctrl+Z, Ctrl+Shift+Z |
 | Command palette | Ctrl+K |
 | Zoom in, out, fit, 100% | `+`, `-`, `0`, `1` |
@@ -212,6 +229,11 @@ parameters:
 Ctrl is Cmd on macOS. Shortcuts are declared on commands, shown in menus
 and the palette, and never hard-coded in interface code. No two commands
 share a shortcut; a test enforces it.
+
+Keys that only mean something while pointing at a particular thing are the
+exception and belong to that thing: arrows, Esc, Enter, Backspace and Delete
+on the image while a selection exists or a shape is being drawn, and the
+row keys of the Results table and the Regions list.
 
 ## Appearance
 
